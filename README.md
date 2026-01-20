@@ -37,12 +37,13 @@ This project builds a multi-agent system that **automatically enriches missing d
 - Resume failed jobs with exponential backoff
 - Cost monitoring per batch
 
-### Secondary Functions (Optional)
+### Future Enhancements (Post-MVP)
 
 #### 3. Query Answering
 
-- Natural language → SQL generation
+- Natural language → SQL generation for ad-hoc queries
 - "How many shootings in Austin in 2018?" → Returns structured data
+- *Not needed for enrichment workflow - deferred to v2*
 
 #### 4. Research Synthesis
 
@@ -73,7 +74,7 @@ Example: Enriching Record #142 — shooting in Houston, 2018-03-15, officer name
 
 - Calls **Tavily API** with the constructed query
 - Returns 5-10 news articles with titles, snippets, URLs
-- May query **PostgreSQL** for related records to cross-reference
+- Uses simple database queries (by ID) to fetch record details - no NL→SQL generation needed
 
 #### 4. Validation Agent (Quality Checker)
 
