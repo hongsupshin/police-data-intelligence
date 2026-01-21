@@ -180,46 +180,26 @@ class FieldExtraction(BaseModel):
     llm_reasoning: str | None = None
 
 
-class ValidatedArticle(BaseModel):
-    """Article that passed anchor matching validation.
+class ValidationResult(BaseModel):
+    """Result of validating an article against incident anchors.
+
+    Verifies each article describes the same incident as the database
+    record using binary pass/fail checks. Pass criteria: article passes
+    if date_match AND location_match are both True.
 
     Attributes:
         article: The original retrieved article.
-        anchor_match_date: Whether date matched within tolerance.
-        anchor_match_location: Whether location matched.
-        date_offset_days: Days difference from incident date.
-        extractions: Fields extracted from this article.
-        entities: NER entities detected in this article.
+        date_match: Whether article date is within ±3 days of incident_date.
+        location_match: Whether location matches via string similarity or geocoding.
+        victim_name_match: Whether victim name matches (None if unavailable).
+        passed: True if date AND location match (computed from above).
     """
 
     article: Article
-    anchor_match_date: bool = False
-    anchor_match_location: bool = False
-    date_offset_days: int | None = None
-    extractions: list[FieldExtraction] = Field(default_factory=list)
-    entities: list[DetectedEntity] = Field(default_factory=list)
-
-
-class MergedField(BaseModel):
-    """Result of merging extractions from multiple sources.
-
-    Attributes:
-        field_name: Name of the merged field.
-        suggested_value: Final suggested value after merge.
-        confidence: Overall confidence after merge.
-        source_count: Number of sources contributing.
-        has_conflict: Whether sources disagreed.
-        conflicting_values: Values that disagreed if conflict exists.
-        llm_reasoning: LLM explanation for conflict resolution.
-    """
-
-    field_name: str
-    suggested_value: str | None
-    confidence: ConfidenceLevel
-    source_count: int = 0
-    has_conflict: bool = False
-    conflicting_values: list[str] = Field(default_factory=list)
-    llm_reasoning: str | None = None
+    date_match: bool = False
+    location_match: bool = False
+    victim_name_match: bool | None = None
+    passed: bool = False
 
 
 class EnrichmentState(BaseModel):
@@ -244,9 +224,10 @@ class EnrichmentState(BaseModel):
         search_attempts: History of all search attempts for audit.
         retrieved_articles: Current set of articles from latest search.
 
-        validated_articles: Articles that passed anchor matching.
+        validation_results: Articles validated against incident anchors.
 
-        merged_fields: Final merged extractions ready for output.
+        extracted_fields: Only enriched/updated fields with provenance.
+        conflicting_fields: Field names with conflicts (for escalation).
 
         retry_count: Number of retry attempts made.
         max_retries: Maximum retries before escalation (default 3).
@@ -278,10 +259,11 @@ class EnrichmentState(BaseModel):
     retrieved_articles: list[Article] = Field(default_factory=list)
 
     # Validation results (Validate Node)
-    validated_articles: list[ValidatedArticle] = Field(default_factory=list)
+    validation_results: list[ValidationResult] = Field(default_factory=list)
 
-    # Merge results (Merge Node)
-    merged_fields: list[MergedField] = Field(default_factory=list)
+    # Merge outputs (Merge Node)
+    extracted_fields: list[FieldExtraction] = Field(default_factory=list)
+    conflicting_fields: list[str] | None = None
 
     # Coordinator control
     retry_count: int = 0

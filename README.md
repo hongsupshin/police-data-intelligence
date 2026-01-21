@@ -38,7 +38,7 @@ while keeping humans in the loop, reducing volunteer time by 75%.
 - Extract **media feature set** (officer names, weapons, ages, circumstances,
   etc.)
 - Run entity detection (NER) for supplementary information
-- Validate via anchor matching and assign per-field confidence scores
+- Validate via incident matching and assign per-field confidence scores
 - Output results to CSV/spreadsheet with reasoning summaries for human review
 
 #### 2. Batch Processing
@@ -64,7 +64,7 @@ while keeping humans in the loop, reducing volunteer time by 75%.
 
 ## Architecture
 
-The system uses **4 specialized nodes** orchestrated by a Coordinator in
+The system uses **5 specialized nodes** orchestrated by a Coordinator in
 LangGraph. Each node is either deterministic (rule-based) or agentic
 (LLM-powered).
 
@@ -90,20 +90,72 @@ LangGraph. Each node is either deterministic (rule-based) or agentic
   - `entity_dropped`: Remove officer name, keep location + date
 - No LLM needed - algorithmic query construction
 
-#### 3. Validate Node (Hybrid)
+#### 3. Validate Node (Rule-based)
 
-- Rule-based anchor matching (date ±2 days, location verification)
-- Extracts media feature set from retrieved articles
-- Runs entity detection (NER) for additional information
-- Assigns per-field confidence scores
-- LLM used only for fuzzy matching and conflict resolution
+- **Purpose**: Verify each article describes the _same incident_ as the database
+  record
+- **Checks performed** (binary pass/fail per article):
+  - Date match: Within ±3 days of `incident_date`
+  - Location match: String similarity or geocoding verification
+  - Victim name match: When available (optional check, accounts for name
+    disclosure issues)
+- **Pass criteria**: Article passes if `date_match AND location_match` are both
+  True
+- **Output**: `ValidationResult` per article with binary flags
+- **Design rationale**: Simple rule-based checks are sufficient because these
+  rare incidents are nearly unique by time + location alone
+
+**ValidationResult structure**:
+
+```python
+class ValidationResult:
+    article: Article
+    date_match: bool          # Within ±3 days
+    location_match: bool      # String similarity or geocoding
+    victim_name_match: bool | None  # None if victim name unavailable
+    passed: bool              # True if date AND location match
+```
+
+**Note on temporal tolerance**: Articles may describe incidents at different
+reporting stages (day-of shooting vs. later outcome). An article saying "suspect
+in critical condition" when the database shows "fatal" is still the _same
+incident_ - this is handled in Merge as temporally-sequenced information, not
+validation failure.
 
 #### 4. Merge Node (Hybrid)
 
-- Aggregates validated data from multiple articles
-- Detects conflicts (e.g., one source says "taser" another says "firearm")
-- Rule-based aggregation for consistent data
-- Flags conflicts for human review escalation
+- **Sub-step 1: Extract fields** from each validated article using LLM
+- **Sub-step 2: Check consistency** across articles (accounting for format
+  variations)
+- **Sub-step 3: Merge with database** record
+- **Conflict detection**: Identifies when articles disagree on substantive facts
+  (not just formatting)
+- **Design principle**: Only enriches fields being added/updated; does not
+  create entries for unchanged fields
+
+**Merge logic per field**:
+
+```
+For each field:
+  - Database has value + articles agree → keep database (immutable)
+  - Database empty + articles agree → add from articles
+  - Database has value + articles conflict with it → escalate
+  - Articles conflict with each other → escalate
+```
+
+**Consistency classification**:
+
+| Scenario         | Example                                     | Action                          |
+| ---------------- | ------------------------------------------- | ------------------------------- |
+| Agreement        | Both sources say "Officer Rodriguez"        | High confidence                 |
+| Conflict         | Source A: "Rodriguez", B: "Ramirez"         | Flag for Coordinator escalation |
+| Composite        | A has name + clothing, B has name + vehicle | Flag with merged view           |
+| Single source    | Only one article found                      | Medium confidence               |
+| Format variation | "123 E 6th St" vs "123 East Sixth Street"   | Normalize and merge             |
+
+**Immutability assumption**: All database values are from official state
+government data and treated as ground truth. If articles conflict with existing
+database values, this triggers escalation rather than overwriting.
 
 #### 5. Coordinator Node (Agentic)
 
@@ -112,7 +164,16 @@ LangGraph. Each node is either deterministic (rule-based) or agentic
 - **Escalation routing**: Routes conflicts and low-confidence results to human
   review
 - **Flow control**: Manages state transitions and completion criteria
+- **Decision gates**: Acts as supervisor at multiple pipeline points (after
+  Search, after Validate, after Merge)
 - Uses LLM reasoning to make routing decisions based on intermediate results
+
+**Coordinator decision points**:
+
+```
+Search → Coordinator (quantity check) → Validate → Coordinator (quality check) → Merge → Coordinator (conflict check) → Output or Escalation
+         ↑_____retry if <2 articles_____|          ↑___retry if 0 validated___|          ↑___escalate if conflicts___|
+```
 
 ### Agent Walkthrough
 
@@ -128,11 +189,17 @@ Extract → {officer: NULL, date: 2018-03-15, location: "Houston", severity: "fa
     ↓
 Search (exact_match) → 3 articles retrieved
     ↓
-Validate → Officer name extracted: "James Rodriguez" [HIGH confidence]
+Coordinator → Quantity check: 3 articles ≥ 2 → proceed to Validate
     ↓
-Merge → No conflicts detected
+Validate → All 3 articles pass (date + location match)
     ↓
-Coordinator → Route to output (database staging)
+Coordinator → Quality check: 3 validated articles → proceed to Merge
+    ↓
+Merge → Extract: Officer name "James Rodriguez" from 2 sources, weapon "handgun" from 1 source
+    ↓
+Merge → Consistency check: No conflicts detected
+    ↓
+Coordinator → Conflict check: Clean merge → route to output
     ↓
 Human reviews and approves
 ```
@@ -144,15 +211,19 @@ Record #142
     ↓
 Extract → {officer: NULL, date: 2018-03-15, location: "Houston"}
     ↓
-Search (exact_match) → 1 article retrieved [insufficient]
+Search (exact_match) → 1 article retrieved
     ↓
-Coordinator → Decision: "Insufficient sources (< 2), retry with temporal_expanded"
+Coordinator → Quantity check: 1 article < 2 → retry with temporal_expanded
     ↓
-Search (temporal_expanded) → 4 articles retrieved [sufficient]
+Search (temporal_expanded) → 4 articles retrieved
     ↓
-Validate → Extract fields from 4 sources
+Coordinator → Quantity check: 4 articles ≥ 2 → proceed to Validate
     ↓
-Merge → 2 sources agree on "Officer Rodriguez", 2 have no officer name
+Validate → 3 articles pass matching, 1 fails (wrong date)
+    ↓
+Coordinator → Quality check: 3 validated articles → proceed to Merge
+    ↓
+Merge → 2 sources agree on "Officer Rodriguez", 1 has no officer name
     ↓
 Coordinator → Route to output with MEDIUM confidence flag
 ```
@@ -162,11 +233,17 @@ Coordinator → Route to output with MEDIUM confidence flag
 ```text
 Search → 5 articles retrieved
     ↓
-Validate → All 5 articles pass anchor matching
+Coordinator → Quantity check: 5 articles ≥ 2 → proceed
     ↓
-Merge → Conflict detected: 3 sources say "taser", 2 say "firearm"
+Validate → All 5 articles pass date + location matching
     ↓
-Coordinator → Decision: "Conflicting weapon data, escalate to human review"
+Coordinator → Quality check: 5 validated articles → proceed
+    ↓
+Merge → Extract weapon info: 3 sources say "taser", 2 say "firearm"
+    ↓
+Merge → Consistency check: Conflict detected on weapon field
+    ↓
+Coordinator → Conflict check: Conflicting weapon data → escalate to human review
     ↓
 Human review queue (with source evidence provided)
 ```
@@ -189,17 +266,19 @@ class EnrichmentState:
     # Search tracking
     search_attempts: List[SearchAttempt]  # History of all search tries
     retrieved_articles: List[Article]     # Current article set
+    next_strategy: str                    # Coordinator sets this for Search
 
     # Validation results
-    validated_articles: List[ValidatedArticle]
+    validation_results: List[ValidationResult]
+
+    # Merge outputs
+    extracted_fields: List[FieldExtraction]  # Only enriched/updated fields
+    conflicting_fields: Optional[List[str]]  # Field names with conflicts
 
     # Coordinator control
     retry_count: int
     max_retries: int = 3
-    next_strategy: str  # "exact_match", "temporal_expanded", "entity_dropped"
-    current_stage: str  # "extract", "search", "validate", "merge"
-
-    # Escalation
+    current_stage: str              # "extract", "search", "validate", "merge"
     escalation_reason: Optional[str]
     requires_human_review: bool
 ```
@@ -215,87 +294,56 @@ class SearchAttempt:
     timestamp: datetime
 ```
 
+**FieldExtraction** tracks provenance for audit trails:
+
+```python
+class FieldExtraction:
+    field_name: str                    # e.g., "officer_badge_number"
+    value: str | None                  # Extracted value
+    confidence: ConfidenceLevel        # HIGH, MEDIUM, LOW
+    sources: List[str]                 # Article URLs
+    source_quotes: List[str]           # Exact quotes from sources
+    extraction_method: str             # "llm", "regex", "ner"
+    llm_reasoning: Optional[str]       # Only for flagged cases
+```
+
+**Provenance design principle**: Only fields being **added or updated** get
+`FieldExtraction` objects. This reduces noise (no need for 17 empty entries when
+only 3 fields changed) while maintaining complete audit trail for enrichments. A
+separate `fields_checked` list tracks what Merge attempted to extract, enabling
+"we looked for X but didn't find it" debugging without bloating the core state.
+
 This design makes retry logic **visible in the graph execution trace** - you can
 see exactly what searches were tried and why they succeeded or failed.
 
 ### Retry Strategy Progression
 
-The Coordinator implements a escalating retry strategy:
+The Coordinator implements an escalating retry strategy:
 
-| Retry # | Strategy            | Description                             | Max Retries         |
+| Retry # | Strategy            | Description                             | Trigger             |
 | ------- | ------------------- | --------------------------------------- | ------------------- |
 | 0       | `exact_match`       | All fields, exact date                  | -                   |
 | 1       | `temporal_expanded` | Date range ±2 days                      | After < 2 results   |
 | 2       | `entity_dropped`    | Drop officer name, keep location + date | After retry 1 fails |
 | 3       | Escalate            | Flag for human review                   | Hard limit          |
 
-**Design Rationale**: Each retry changes the search approach in a meaningful
-way. Simple parameter tweaking (e.g., lowering confidence threshold) happens
-within nodes; strategy changes route through the Coordinator for visibility.
+**Design Rationale**: Each retry changes the search approach in a meaningful way
+(temporal expansion, spatial expansion, entity dropping). Simple parameter
+tweaking (e.g., lowering confidence threshold) happens within nodes; strategy
+changes route through the Coordinator for visibility.
 
-### Validation Pipeline
+### Escalation Triggers
 
-The Validation Node implements a multi-stage pipeline:
+The Coordinator routes to human review when:
 
-```text
-Retrieved Articles (1-5)
-        ↓
-   Deduplicate (content similarity > 0.9 = same source)
-        ↓
-   Anchor Match (date ±2 days, location match)
-        ↓
-   [No match] → "No information found" → Route to Coordinator
-        ↓
-   Extract media feature set + entity detection
-        ↓
-   Per-field consistency check
-        ↓
-   Output to Merge with confidence scores
-```
-
-**Source Expectations**: Local news incidents typically have 1-3 unique sources.
-Single-source extractions are valid but flagged for review.
-
-**Consistency Classification**:
-
-| Scenario      | Example                                     | Action                          |
-| ------------- | ------------------------------------------- | ------------------------------- |
-| Agreement     | Both sources say "Officer Rodriguez"        | High confidence                 |
-| Conflict      | Source A: "Rodriguez", B: "Ramirez"         | Flag for Coordinator escalation |
-| Composite     | A has name + clothing, B has name + vehicle | Flag with merged view           |
-| Single source | Only one article found                      | Medium confidence               |
-
-**Per-Field Confidence**: Each field gets its own confidence level:
-
-```text
-Record #142 Enrichment:
-✓ Officer Name: "James Rodriguez" [HIGH - 2 sources agree]
-⚠ Weapon: "Handgun" [MEDIUM - 1 source, unclear context]
-✗ Age: Not found
-```
-
-**LLM Reasoning** (used sparingly for cost): Only generated for
-flagged/medium-confidence cases:
-
-```text
-Flag: Conflicting officer names
-Reasoning: Source A (Houston Chronicle) names "Officer James Rodriguez"
-in a direct quote from police spokesperson. Source B (KHOU) names
-"Sgt. J. Ramirez" without attribution. Chronicle appears more authoritative.
-Suggested resolution: Prefer "James Rodriguez"
-```
-
-**Escalation Triggers** (Coordinator routes to human review):
-
-- Confidence below threshold
-- Conflicting information across sources
-- Composite information requiring merge review
-- Overwriting existing non-null values
-- Soft anchor match (date ±3-7 days)
+- Confidence below threshold (per-field or overall)
+- Conflicting information across sources (substantive, not formatting)
+- Articles conflict with existing database values (immutability violation)
 - Max retries reached without sufficient data
+- Composite information requiring human judgment
 
-**Provenance Tracking**: Every extracted field records its source(s), exact
-quote/context, and extraction method for audit trails.
+**Human review format**: System provides article excerpts, extracted values,
+confidence scores, and conflict descriptions to enable informed decision-making.
 
 ## Data Sources
 
@@ -317,7 +365,7 @@ requiring dataset-aware extraction:
 | Outcome        | `civilian_died` (boolean)      | `civilian_harm` (enum)              |
 | Weapon         | `weapon_reported_by_media`     | ❌ No field exists                  |
 
-This means the Extract and Validate nodes must use **conditional field mapping**
+This means the Extract and Merge nodes must use **conditional field mapping**
 based on which dataset a record belongs to.
 
 ### Batch Processing Priority
@@ -358,7 +406,7 @@ cycle**. The system uses a **manual trigger via REST API**:
 | Component           | Technology           | Purpose                                                          |
 | ------------------- | -------------------- | ---------------------------------------------------------------- |
 | Agent Orchestration | LangGraph            | State management, graph-based execution with conditional routing |
-| LLM Provider        | OpenAI (GPT-4o-mini) | Coordinator reasoning and validation fuzzy matching              |
+| LLM Provider        | OpenAI (GPT-4o-mini) | Coordinator reasoning and Merge field extraction                 |
 | Database            | PostgreSQL           | TJI incident records                                             |
 | Vector Store        | Qdrant               | Research paper semantic search                                   |
 | Web Search          | Tavily               | News retrieval (1,000 free searches/month)                       |
@@ -394,6 +442,8 @@ principles:
 - **Accuracy over automation**: Conservative confidence thresholds, escalation
   on conflicts
 - **Visible retry logic**: All search attempts logged for audit and debugging
+- **Immutability respect**: Never overwrite official government data without
+  human approval
 
 ## Development
 
@@ -403,9 +453,9 @@ principles:
 police-data-intelligence/
 ├── src/
 │   ├── agents/          # Node implementations (Extract, Search, Validate, Merge, Coordinator)
-│   ├── state/           # Pydantic state models (EnrichmentState, SearchAttempt, etc.)
+│   ├── state/           # Pydantic state models (EnrichmentState, SearchAttempt, FieldExtraction, etc.)
 │   ├── retrieval/       # Tavily integration and search strategies
-│   ├── validation/      # Anchor matching and confidence scoring
+│   ├── validation/      # Incident matching and binary flag checks
 │   ├── database/        # PostgreSQL connection and queries
 │   └── api/             # FastAPI endpoints
 ├── tests/
