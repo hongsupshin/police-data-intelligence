@@ -1,30 +1,52 @@
 # Test Cases for Police Data Intelligence Assistant
 
-These test cases validate the **enrichment pipeline**, the core system capability.
+These test cases validate the **enrichment pipeline**, the core system
+capability.
+
+---
+
+## Media Feature Set
+
+Fields extracted from every article (not just missing fields):
+
+| Field             | Description                                             |
+| ----------------- | ------------------------------------------------------- |
+| `officer_name`    | Name(s), rank, years of service                         |
+| `civilian_name`   | Full name                                               |
+| `civilian_age`    | Age at time of incident                                 |
+| `civilian_race`   | Race/ethnicity                                          |
+| `weapon`          | Weapon type or "unarmed"                                |
+| `location_detail` | Address, neighborhood                                   |
+| `time_of_day`     | When incident occurred                                  |
+| `outcome`         | Fatal/non-fatal, injuries                               |
+| `circumstance`    | Traffic stop, warrant service, mental health call, etc. |
+
+Entity detection (NER) supplements this set to capture additional names,
+organizations, or locations.
 
 ---
 
 ## Test 1: Single Record Enrichment
 
-**Scenario:** Enrich a specific incident with missing weapon information.
+**Scenario:** Extract all media features for a specific incident.
 
 **Input:**
+
 ```python
 record = {
     "incident_id": 142,
     "date_incident": "2016-02-08",
     "incident_city": "AUSTIN",
     "civilian_name_first": "DAVID",
-    "civilian_name_last": "JOSEPH",
-    "weapon_reported_by_media": None  # Missing - needs enrichment
+    "civilian_name_last": "JOSEPH"
 }
 ```
 
 **Expected Agent Behavior:**
 
 1. **Planning Agent:**
-   - Identifies missing field: `weapon_reported_by_media`
-   - Constructs search query: `"David Joseph" Austin police shooting February 2016`
+   - Constructs search query:
+     `"David Joseph" Austin police shooting February 2016`
 
 2. **Retrieval Agent:**
    - Calls Tavily API with constructed query
@@ -32,14 +54,16 @@ record = {
 
 3. **Validation Agent:**
    - Anchor matching: date ±3 days, location match, name match
-   - Extracts weapon information from articles
-   - Assigns confidence score based on source agreement
+   - Extracts all fields in media feature set
+   - Runs entity detection for additional information
+   - Assigns per-field confidence based on source agreement
 
 4. **Synthesis Agent:**
-   - Formats suggestion with evidence
-   - Presents for human approval
+   - Formats extraction results with evidence
+   - Flags items for human review
 
 **Expected Output:**
+
 ```text
 ENRICHMENT RESULT
 Record: David Joseph (Austin, Feb 8, 2016)
@@ -49,80 +73,95 @@ Found 4 relevant articles:
   - KVUE News (Feb 8, 2016)
   - Texas Tribune (Feb 10, 2016)
 
-Anchor Match Confidence: 95% (HIGH)
+Anchor Match: 95% (HIGH)
   ✓ Date: Feb 8, 2016 (exact match)
   ✓ Location: Austin, Texas (exact match)
   ✓ Name: David Joseph (exact match)
 
-EXTRACTED FIELD:
-  weapon_reported_by_media: "NONE (unarmed)"
-  Confidence: 88% (HIGH - 3 sources agree)
-  Evidence: "Joseph was naked and unarmed when shot..."
-  Sources: Statesman, KVUE, Tribune
+EXTRACTED FIELDS:
+  weapon: "NONE (unarmed)" [HIGH - 3 sources]
+  civilian_age: 17 [HIGH - 3 sources]
+  officer_name: "Geoffrey Freeman" [MEDIUM - 1 source]
+  circumstance: "mental health call" [HIGH - 2 sources]
+  outcome: "fatal" [HIGH - 3 sources]
 
-SUGGESTED UPDATE:
-  weapon_reported_by_media: NULL → "NONE (unarmed)"
+ENTITIES DETECTED:
+  ORG: Austin Police Department
+  PERSON: Art Acevedo (police chief)
 
-⚠️ HUMAN REVIEW REQUIRED
-Approve this update? [Y/n]
+⚠️ HUMAN REVIEW REQUIRED (1 field MEDIUM confidence)
 ```
 
 **What This Tests:**
+
 - Search query construction from record details
 - News article retrieval via API
 - Anchor matching (entity resolution)
-- Information extraction from unstructured text
-- Confidence scoring based on source agreement
-- Human-in-the-loop output format
+- Full media feature set extraction
+- Entity detection for supplementary information
+- Per-field confidence scoring
 
 ---
 
 ## Test 2: Batch Enrichment
 
-**Scenario:** Process all records missing weapon information.
+**Scenario:** Process all records, prioritized by location and year.
+
+**Priority Order:**
+
+1. Houston (largest city) → Dallas → Austin → Other cities
+2. Recent years first (2024 → 2023 → 2022 → ...)
 
 **Input:**
+
 ```json
 {
-  "field": "weapon_reported_by_media",
-  "dataset": "incidents_civilians_shot",
-  "limit": 10
+  "dataset": "civilians_shot",
+  "priority": "location_year",
+  "limit": 100
 }
 ```
 
 **Expected Agent Behavior:**
-- System internally fetches 10 records where weapon is NULL
-- Queue records for enrichment
-- Process each through the enrichment pipeline
-- Track progress and success/failure counts
-- Log costs per record
 
-**Expected Output:**
+- Fetch records ordered by priority (Houston 2024 first)
+- Process each through the enrichment pipeline
+- Extract full media feature set per record
+- Track progress, costs, and generate output file
+
+**Expected Output (Console):**
+
 ```text
 BATCH ENRICHMENT PROGRESS
-Target: 10 records missing weapon_reported_by_media
+Processing: civilians_shot (Houston 2024 → ...)
 
-[████████░░] 8/10 complete
+[████████░░] 80/100 complete
 
 Results:
-  ✓ 6 enriched (HIGH confidence)
-  ⚠ 2 enriched (MEDIUM confidence - needs review)
-  ✗ 2 failed (no matching articles found)
+  ✓ 60 enriched (HIGH confidence)
+  ⚠ 15 enriched (MEDIUM confidence - needs review)
+  ✗ 5 failed (no matching articles found)
 
-Cost: $0.12 (avg $0.012/record)
-Time: 45 seconds
+Cost: $1.20 (avg $0.012/record)
 
-PENDING HUMAN REVIEW:
-  - Record #142: weapon = "NONE (unarmed)" [MEDIUM]
-  - Record #287: weapon = "knife" [MEDIUM]
+Output: enrichment_results_2024-01-19.csv
 ```
 
+**Expected Output File (CSV/Markdown):**
+
+| record_id | city    | date       | field        | value      | confidence | reasoning                   | sources |
+| --------- | ------- | ---------- | ------------ | ---------- | ---------- | --------------------------- | ------- |
+| 142       | Austin  | 2016-02-08 | weapon       | unarmed    | HIGH       | 3 sources agree             | [urls]  |
+| 142       | Austin  | 2016-02-08 | officer_name | G. Freeman | MEDIUM     | Single source, direct quote | [url]   |
+| 287       | Houston | 2018-03-15 | weapon       | knife      | MEDIUM     | 2 sources, unclear context  | [urls]  |
+
 **What This Tests:**
-- Batch processing workflow
-- Progress tracking
-- Cost monitoring
-- Handling of failed enrichments
-- Queue management
+
+- Location/year priority ordering
+- Full feature set extraction per record
+- Progress and cost tracking
+- Structured output file generation
+- Reasoning summaries for human review
 
 ---
 
@@ -144,6 +183,7 @@ PENDING HUMAN REVIEW:
    - Flags for human review
 
 **Expected Output:**
+
 ```text
 ⚠️ CONFLICT DETECTED
 
@@ -172,6 +212,7 @@ Suggested Resolution: FLAG FOR MANUAL REVIEW
 ```
 
 **What This Tests:**
+
 - Conflict detection across sources
 - LLM reasoning for ambiguous cases
 - Appropriate escalation to human review
@@ -185,6 +226,7 @@ Suggested Resolution: FLAG FOR MANUAL REVIEW
 **Input:** Obscure incident with no news coverage.
 
 **Expected Output:**
+
 ```text
 ENRICHMENT RESULT
 Record: [Name Redacted] (Small Town, Jan 3, 2015)
@@ -207,6 +249,7 @@ Record status: UNCHANGED
 ```
 
 **What This Tests:**
+
 - Graceful handling of no results
 - Appropriate status reporting
 - Suggestions for manual follow-up
