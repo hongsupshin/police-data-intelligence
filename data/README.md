@@ -1,6 +1,7 @@
 # TJI Police Data - Setup Instructions
 
-This directory contains the Texas Justice Initiative police shooting data and setup scripts.
+This directory contains the Texas Justice Initiative police shooting data and
+setup scripts.
 
 ## Files and Structure
 
@@ -19,10 +20,14 @@ data/
 ```
 
 The ETL code is organized into reusable modules:
-- **cleaners.py**: Pure functions for data type conversion (boolean, date, text, etc.)
-- **entity_managers.py**: PostgreSQL deduplication logic using INSERT...ON CONFLICT
+
+- **cleaners.py**: Pure functions for data type conversion (boolean, date, text,
+  etc.)
+- **entity_managers.py**: PostgreSQL deduplication logic using INSERT...ON
+  CONFLICT
 - **loaders.py**: Complete CSV-to-database transformation pipelines
-- **config.py**: Centralized database configuration with environment variable support
+- **config.py**: Centralized database configuration with environment variable
+  support
 
 ## Quick Start
 
@@ -42,7 +47,8 @@ pytest tests/ -v
 pytest tests/ --cov=data.etl --cov-report=term-missing
 ```
 
-All ETL modules have unit tests (94% coverage). Tests use mocked databases, so they don't require PostgreSQL running.
+All ETL modules have unit tests (94% coverage). Tests use mocked databases, so
+they don't require PostgreSQL running.
 
 ### 3. Load Schema and Data
 
@@ -64,7 +70,8 @@ This script will:
 
 ### 4. Verify Data Loaded (Optional)
 
-While unit tests validate the ETL logic with mocked data, this step verifies that data was actually loaded into your PostgreSQL database:
+While unit tests validate the ETL logic with mocked data, this step verifies
+that data was actually loaded into your PostgreSQL database:
 
 ```bash
 psql tji_police_data
@@ -136,7 +143,8 @@ raw_value = "  true  "
 cleaned = clean_boolean(raw_value)  # Returns: True
 ```
 
-All modules are fully tested (94% coverage) and ready for use by enrichment agents.
+All modules are fully tested (94% coverage) and ready for use by enrichment
+agents.
 
 ## Database Schema (Normalized Design)
 
@@ -144,42 +152,60 @@ All modules are fully tested (94% coverage) and ready for use by enrichment agen
 
 The original CSV files have a **denormalized structure** with repeating columns:
 
-- `officer_age_1`, `officer_age_2`, ..., `officer_age_11` (up to 11 officers per incident)
+- `officer_age_1`, `officer_age_2`, ..., `officer_age_11` (up to 11 officers per
+  incident)
 - `agency_name_1`, `agency_name_2`, ..., `agency_name_11` (up to 11 agencies)
-- `civilian_name_first_1`, `civilian_name_first_2`, `civilian_name_first_3` (up to 3 civilians)
+- `civilian_name_first_1`, `civilian_name_first_2`, `civilian_name_first_3` (up
+  to 3 civilians)
 
-It's understandable to have a single flat file for simplicity, but this design leads to several issues:
+It's understandable to have a single flat file for simplicity, but this design
+leads to several issues:
 
 - **Hard limits**: Cannot store incidents with >11 officers
 - **Wasted space**: Most incidents don't have 11 officers → many NULL columns
-- **Complex queries**: Finding all incidents for Officer X requires checking 11 columns
-- **Poor analytics**: Cannot easily aggregate by officer demographics across incidents
-- **Maintenance challenge**: Adding a new officer attribute requires 11 new columns
+- **Complex queries**: Finding all incidents for Officer X requires checking 11
+  columns
+- **Poor analytics**: Cannot easily aggregate by officer demographics across
+  incidents
+- **Maintenance challenge**: Adding a new officer attribute requires 11 new
+  columns
 
-The normalized schema fixes these issues by separating entities (officers, civilians, agencies) from relationships (who was involved in which incident).
+The normalized schema fixes these issues by separating entities (officers,
+civilians, agencies) from relationships (who was involved in which incident).
 
 ### Master Tables (Deduplicated Entities)
 
-- `officers`: Unique officer demographics (age, race, gender, name), reusable across all incidents
-- `civilians`: Unique civilian demographics (age, race, gender, name), reusable across all incidents
-- `agencies`: Unique law enforcement agencies (name, city, county, zip), reusable across all incidents
+- `officers`: Unique officer demographics (age, race, gender, name), reusable
+  across all incidents
+- `civilians`: Unique civilian demographics (age, race, gender, name), reusable
+  across all incidents
+- `agencies`: Unique law enforcement agencies (name, city, county, zip),
+  reusable across all incidents
 
 ### Incident Tables (One per Incident Type)
 
-- `incidents_civilians_shot` (Police → Civilian Shootings): Core incident data include date, location, weapon, narratives
-- `incidents_officers_shot` (Civilian → Officer Shootings): Core incident data include date, location, harm level
+- `incidents_civilians_shot` (Police → Civilian Shootings): Core incident data
+  include date, location, weapon, narratives
+- `incidents_officers_shot` (Civilian → Officer Shootings): Core incident data
+  include date, location, harm level
 
 ### Junction Tables (Relationships)
 
-- `incident_civilians_shot_officers_involved`: Links officers (shooters) to civilian shooting incidents (many-to-many)
-- `incident_civilians_shot_victims`: Links civilians (victims) to civilian shooting incidents, stores outcome (civilian_died as boolean)
-- `incident_officers_shot_victims`: Links officers (victims) to officer shooting incidents, stores outcome (officer_harm  as INJURY or DEATH)
-- `incident_officers_shot_shooters`: Links civilians (shooters) to officer shooting incidents (many-to-many)
-- `incident_civilians_shot_agencies` & `incident_officers_shot_agencies`: Links agencies to incidents with report metadata
+- `incident_civilians_shot_officers_involved`: Links officers (shooters) to
+  civilian shooting incidents (many-to-many)
+- `incident_civilians_shot_victims`: Links civilians (victims) to civilian
+  shooting incidents, stores outcome (civilian_died as boolean)
+- `incident_officers_shot_victims`: Links officers (victims) to officer shooting
+  incidents, stores outcome (officer_harm as INJURY or DEATH)
+- `incident_officers_shot_shooters`: Links civilians (shooters) to officer
+  shooting incidents (many-to-many)
+- `incident_civilians_shot_agencies` & `incident_officers_shot_agencies`: Links
+  agencies to incidents with report metadata
 
 ### Supporting Tables
 
-- `media_coverage_civilians_shot` & `media_coverage_officers_shot`: Media links for each incident (one-to-many)
+- `media_coverage_civilians_shot` & `media_coverage_officers_shot`: Media links
+  for each incident (one-to-many)
 
 ## Test Cases
 
@@ -204,7 +230,8 @@ brew services start postgresql@15
 
 ### Permission denied
 
-The config auto-detects your username (`$USER`). To override, use environment variables:
+The config auto-detects your username (`$USER`). To override, use environment
+variables:
 
 ```bash
 export POSTGRES_USER=your_username
@@ -218,7 +245,11 @@ Or edit `data/etl/config.py` directly if needed.
 
 After loading the data:
 
-1. **Explore the normalized schema** - Run sample queries in `psql` to understand the data structure
-2. **Identify enrichment targets** - Query for records with missing critical fields
-3. **Implement enrichment agents** - Build the web search + extraction pipeline (see `test_queries.md`)
-4. **Test with real data** - Start with a small batch (10 records) to validate the pipeline
+1. **Explore the normalized schema** - Run sample queries in `psql` to
+   understand the data structure
+2. **Identify enrichment targets** - Query for records with missing critical
+   fields
+3. **Implement enrichment agents** - Build the web search + extraction pipeline
+   (see `test_queries.md`)
+4. **Test with real data** - Start with a small batch (10 records) to validate
+   the pipeline
