@@ -22,7 +22,6 @@ from data.etl.cleaners import (
     clean_timestamp,
 )
 
-
 # Type alias for schema definitions
 SchemaType = list[tuple[str, Callable[[Any], Any]]]
 
