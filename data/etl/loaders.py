@@ -6,10 +6,15 @@ transformation pipeline for a specific dataset.
 
 The loaders:
 1. Read CSV files using pandas
-2. Apply cleaning functions to each field
+2. Apply schema-driven cleaning to each field
 3. Create master table records (officers, civilians, agencies) with deduplication
 4. Create incident records and relationship tables
 5. Handle errors gracefully with transaction rollback
+
+Schema-driven approach:
+- Column-to-cleaner mappings defined in config.py
+- apply_schema() automatically applies cleaning based on table schema
+- Eliminates repetitive clean_* calls and reduces errors
 """
 
 from pathlib import Path
@@ -17,12 +22,15 @@ from pathlib import Path
 import pandas as pd
 from psycopg2.extensions import connection
 
-from data.etl.cleaners import (
-    clean_boolean,
-    clean_date,
-    clean_integer,
-    clean_text,
-    clean_timestamp,
+from data.etl.cleaners import clean_boolean, clean_date, clean_integer, clean_text
+from data.etl.config import (
+    CIVILIAN_ENTITY_SCHEMA,
+    CIVILIANS_SHOT_INCIDENT_SCHEMA,
+    OFFICER_ENTITY_SCHEMA,
+    OFFICERS_SHOT_INCIDENT_SCHEMA,
+    apply_schema,
+    clean_entity_fields,
+    clean_entity_fields_with_suffix,
 )
 from data.etl.entity_managers import (
     get_or_create_agency,
@@ -65,45 +73,25 @@ def load_civilians_shot(conn: connection, csv_path: Path) -> tuple[int, int]:
             # ----------------------------------------------------------------
             # 1. Create incident record
             # ----------------------------------------------------------------
+            incident_values = apply_schema(row, CIVILIANS_SHOT_INCIDENT_SCHEMA)
             cursor.execute(
                 """
                 INSERT INTO incidents_civilians_shot (
                     ois_report_no, date_ag_received, date_incident, time_incident,
                     incident_address, incident_city, incident_county, incident_zip,
                     incident_result_of, incident_call_other,
-                    weapon_reported_by_media, weapon_reported_by_media_category, deadly_weapon,
-                    num_officers_recorded, multiple_officers_involved, officer_on_duty,
-                    num_reports_filed, num_rows_about_this_incident,
-                    cdr_narrative, custodial_death_report, lea_narrative_published, lea_narrative_shorter
+                    weapon_reported_by_media, weapon_reported_by_media_category,
+                    deadly_weapon, num_officers_recorded, multiple_officers_involved,
+                    officer_on_duty, num_reports_filed, num_rows_about_this_incident,
+                    cdr_narrative, custodial_death_report, lea_narrative_published,
+                    lea_narrative_shorter
                 ) VALUES (
-                    %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                    %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                    %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
                 )
                 RETURNING incident_id
             """,
-                (
-                    clean_text(row.get("ois_report_no")),
-                    clean_date(row.get("date_ag_received")),
-                    clean_date(row.get("date_incident")),
-                    clean_text(row.get("time_incident")),
-                    clean_text(row.get("incident_address")),
-                    clean_text(row.get("incident_city")),
-                    clean_text(row.get("incident_county")),
-                    clean_text(row.get("incident_zip")),
-                    clean_text(row.get("incident_result_of")),
-                    clean_text(row.get("incident_call_other")),
-                    clean_text(row.get("weapon_reported_by_media")),
-                    clean_text(row.get("weapon_reported_by_media_category")),
-                    clean_boolean(row.get("deadly_weapon")),
-                    clean_integer(row.get("num_officers_recorded")),
-                    clean_boolean(row.get("multiple_officers_involved")),
-                    clean_boolean(row.get("officer_on_duty")),
-                    clean_integer(row.get("num_reports_filed")),
-                    clean_integer(row.get("num_rows_about_this_incident")),
-                    clean_text(row.get("cdr_narrative")),
-                    clean_boolean(row.get("custodial_death_report")),
-                    clean_text(row.get("lea_narrative_published")),
-                    clean_text(row.get("lea_narrative_shorter")),
-                ),
+                incident_values,
             )
 
             incident_id = cursor.fetchone()[0]
@@ -112,20 +100,17 @@ def load_civilians_shot(conn: connection, csv_path: Path) -> tuple[int, int]:
             # ----------------------------------------------------------------
             # 2. Create civilian victim record and link to incident
             # ----------------------------------------------------------------
-            civilian_id = get_or_create_civilian(
-                cursor,
-                age=clean_integer(row.get("civilian_age")),
-                race=clean_text(row.get("civilian_race")),
-                gender=clean_text(row.get("civilian_gender")),
-                name_first=clean_text(row.get("civilian_name_first")),
-                name_last=clean_text(row.get("civilian_name_last")),
-                name_full=clean_text(row.get("civilian_name_full")),
+            civilian_fields = clean_entity_fields(
+                row, "civilian_", CIVILIAN_ENTITY_SCHEMA
             )
+            civilian_id = get_or_create_civilian(cursor, **civilian_fields)
 
             if civilian_id:
                 cursor.execute(
                     """
-                    INSERT INTO incident_civilians_shot_victims (incident_id, civilian_id, civilian_died)
+                    INSERT INTO incident_civilians_shot_victims (
+                        incident_id, civilian_id, civilian_died
+                    )
                     VALUES (%s, %s, %s)
                 """,
                     (incident_id, civilian_id, clean_boolean(row.get("civilian_died"))),
@@ -134,31 +119,25 @@ def load_civilians_shot(conn: connection, csv_path: Path) -> tuple[int, int]:
             # ----------------------------------------------------------------
             # 3. Create officer records and link to incident (up to 11 officers)
             # ----------------------------------------------------------------
+            # Officer schema for civilians_shot (no names in this dataset)
+            officer_basic_schema = [
+                ("age", clean_integer),
+                ("race", clean_text),
+                ("gender", clean_text),
+            ]
+
             for i in range(1, 12):  # Officers 1-11
-                # Handle the fact that officer_1 fields might not have the _1 suffix
-                if i == 1:
-                    age_col = (
-                        "officer_age_1" if "officer_age_1" in row else "officer_age"
-                    )
-                    race_col = (
-                        "officer_race_1" if "officer_race_1" in row else "officer_race"
-                    )
-                    gender_col = (
-                        "officer_gender_1"
-                        if "officer_gender_1" in row
-                        else "officer_gender"
+                # Handle officer_1 fields that might not have _1 suffix
+                if i == 1 and "officer_age" in row:
+                    officer_fields = clean_entity_fields(
+                        row, "officer_", officer_basic_schema
                     )
                 else:
-                    age_col = f"officer_age_{i}"
-                    race_col = f"officer_race_{i}"
-                    gender_col = f"officer_gender_{i}"
+                    officer_fields = clean_entity_fields_with_suffix(
+                        row, "officer_", f"_{i}", officer_basic_schema
+                    )
 
-                officer_id = get_or_create_officer(
-                    cursor,
-                    age=clean_integer(row.get(age_col)),
-                    race=clean_text(row.get(race_col)),
-                    gender=clean_text(row.get(gender_col)),
-                )
+                officer_id = get_or_create_officer(cursor, **officer_fields)
 
                 if officer_id:
                     caused_injury = (
@@ -178,14 +157,21 @@ def load_civilians_shot(conn: connection, csv_path: Path) -> tuple[int, int]:
             # ----------------------------------------------------------------
             # 4. Create agency records and link to incident (up to 11 agencies)
             # ----------------------------------------------------------------
+            # Agency schema with suffix pattern (CSV: agency_name_{i})
+            agency_suffix_schema = [
+                ("name", clean_text),
+                ("city", clean_text),
+                ("county", clean_text),
+                ("zip", clean_text),  # CSV uses "zip", will rename to "zip_code"
+            ]
+
             for i in range(1, 12):  # Agencies 1-11
-                agency_id = get_or_create_agency(
-                    cursor,
-                    name=clean_text(row.get(f"agency_name_{i}")),
-                    city=clean_text(row.get(f"agency_city_{i}")),
-                    county=clean_text(row.get(f"agency_county_{i}")),
-                    zip_code=clean_text(row.get(f"agency_zip_{i}")),
+                agency_fields = clean_entity_fields_with_suffix(
+                    row, "agency_", f"_{i}", agency_suffix_schema
                 )
+                # Rename 'zip' to 'zip_code' to match function signature
+                agency_fields["zip_code"] = agency_fields.pop("zip")
+                agency_id = get_or_create_agency(cursor, **agency_fields)
 
                 if agency_id:
                     cursor.execute(
@@ -271,6 +257,7 @@ def load_officers_shot(conn: connection, csv_path: Path) -> tuple[int, int]:
             # ----------------------------------------------------------------
             # 1. Create incident record
             # ----------------------------------------------------------------
+            incident_values = apply_schema(row, OFFICERS_SHOT_INCIDENT_SCHEMA)
             cursor.execute(
                 """
                 INSERT INTO incidents_officers_shot (
@@ -280,18 +267,7 @@ def load_officers_shot(conn: connection, csv_path: Path) -> tuple[int, int]:
                 ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 RETURNING incident_id
             """,
-                (
-                    clean_text(row.get("ois_report_no")),
-                    clean_date(row.get("date_ag_received")),
-                    clean_timestamp(row.get("date_incident")),
-                    clean_text(row.get("incident_address")),
-                    clean_text(row.get("incident_city")),
-                    clean_text(row.get("incident_county")),
-                    clean_text(row.get("incident_zip")),
-                    clean_integer(row.get("num_civilians_recorded")),
-                    clean_text(row.get("civilian_harm")),
-                    clean_boolean(row.get("civilian_suicide")),
-                ),
+                incident_values,
             )
 
             incident_id = cursor.fetchone()[0]
@@ -300,19 +276,15 @@ def load_officers_shot(conn: connection, csv_path: Path) -> tuple[int, int]:
             # ----------------------------------------------------------------
             # 2. Create officer victim record and link to incident
             # ----------------------------------------------------------------
-            officer_id = get_or_create_officer(
-                cursor,
-                age=clean_integer(row.get("officer_age")),
-                race=clean_text(row.get("officer_race")),
-                gender=clean_text(row.get("officer_gender")),
-                name_first=clean_text(row.get("officer_name_first")),
-                name_last=clean_text(row.get("officer_name_last")),
-            )
+            officer_fields = clean_entity_fields(row, "officer_", OFFICER_ENTITY_SCHEMA)
+            officer_id = get_or_create_officer(cursor, **officer_fields)
 
             if officer_id:
                 cursor.execute(
                     """
-                    INSERT INTO incident_officers_shot_victims (incident_id, officer_id, officer_harm)
+                    INSERT INTO incident_officers_shot_victims (
+                        incident_id, officer_id, officer_harm
+                    )
                     VALUES (%s, %s, %s)
                 """,
                     (incident_id, officer_id, clean_text(row.get("officer_harm"))),
@@ -321,15 +293,20 @@ def load_officers_shot(conn: connection, csv_path: Path) -> tuple[int, int]:
             # ----------------------------------------------------------------
             # 3. Create civilian shooter records and link to incident (up to 3)
             # ----------------------------------------------------------------
+            # Civilian schema for officers_shot (includes names)
+            civilian_suffix_schema = [
+                ("age", clean_integer),
+                ("race", clean_text),
+                ("gender", clean_text),
+                ("name_first", clean_text),
+                ("name_last", clean_text),
+            ]
+
             for i in range(1, 4):  # Civilians 1-3
-                civilian_id = get_or_create_civilian(
-                    cursor,
-                    age=clean_integer(row.get(f"civilian_age_{i}")),
-                    race=clean_text(row.get(f"civilian_race_{i}")),
-                    gender=clean_text(row.get(f"civilian_gender_{i}")),
-                    name_first=clean_text(row.get(f"civilian_name_first_{i}")),
-                    name_last=clean_text(row.get(f"civilian_name_last_{i}")),
+                civilian_fields = clean_entity_fields_with_suffix(
+                    row, "civilian_", f"_{i}", civilian_suffix_schema
                 )
+                civilian_id = get_or_create_civilian(cursor, **civilian_fields)
 
                 if civilian_id:
                     cursor.execute(
@@ -344,14 +321,21 @@ def load_officers_shot(conn: connection, csv_path: Path) -> tuple[int, int]:
             # ----------------------------------------------------------------
             # 4. Create agency records and link to incident (up to 2 agencies)
             # ----------------------------------------------------------------
+            # Agency schema with suffix pattern (CSV: agency_name_{i})
+            agency_suffix_schema = [
+                ("name", clean_text),
+                ("city", clean_text),
+                ("county", clean_text),
+                ("zip", clean_text),  # CSV uses "zip", will rename to "zip_code"
+            ]
+
             for i in range(1, 3):  # Agencies 1-2
-                agency_id = get_or_create_agency(
-                    cursor,
-                    name=clean_text(row.get(f"agency_name_{i}")),
-                    city=clean_text(row.get(f"agency_city_{i}")),
-                    county=clean_text(row.get(f"agency_county_{i}")),
-                    zip_code=clean_text(row.get(f"agency_zip_{i}")),
+                agency_fields = clean_entity_fields_with_suffix(
+                    row, "agency_", f"_{i}", agency_suffix_schema
                 )
+                # Rename 'zip' to 'zip_code' to match function signature
+                agency_fields["zip_code"] = agency_fields.pop("zip")
+                agency_id = get_or_create_agency(cursor, **agency_fields)
 
                 if agency_id:
                     cursor.execute(

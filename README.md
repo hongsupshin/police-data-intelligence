@@ -259,7 +259,7 @@ class EnrichmentState:
     incident_id: str
     officer_name: Optional[str]
     civilian_name: Optional[str]
-    incident_date: datetime
+    incident_date: date
     location: str
     severity: str
 
