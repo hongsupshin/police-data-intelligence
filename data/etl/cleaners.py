@@ -15,17 +15,38 @@ import pandas as pd
 def clean_boolean(value: Any) -> bool | None:
     """Convert various boolean representations to Python bool or None.
 
+    Handles standard boolean values plus TJI-specific outcome values:
+    - "DEATH" maps to True (fatal outcome)
+    - "INJURY" maps to False (non-fatal outcome)
+
     Args:
         value: A value that may represent a boolean (bool, str, pd.NA, etc.).
 
     Returns:
         True, False, or None. Returns None for missing values or invalid inputs.
+
+    Examples:
+        >>> clean_boolean("DEATH")
+        True
+        >>> clean_boolean("INJURY")
+        False
+        >>> clean_boolean("true")
+        True
+        >>> clean_boolean(None)
+        None
     """
     if pd.isna(value) or value == "":
         return None
     if isinstance(value, bool):
         return value
     if isinstance(value, str):
+        value_upper = value.upper().strip()
+        # Handle TJI-specific outcome values
+        if value_upper == "DEATH":
+            return True
+        elif value_upper == "INJURY":
+            return False
+        # Handle standard boolean representations
         value_lower = value.lower().strip()
         if value_lower in ("true", "t", "yes", "1"):
             return True
