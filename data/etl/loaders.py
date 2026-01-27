@@ -28,14 +28,16 @@ from data.etl.config import (
     CIVILIANS_SHOT_INCIDENT_SCHEMA,
     OFFICER_ENTITY_SCHEMA,
     OFFICERS_SHOT_INCIDENT_SCHEMA,
-    apply_schema,
-    clean_entity_fields,
-    clean_entity_fields_with_suffix,
 )
 from data.etl.entity_managers import (
     get_or_create_agency,
     get_or_create_civilian,
     get_or_create_officer,
+)
+from data.etl.schema_utils import (
+    apply_schema,
+    clean_entity_fields,
+    clean_entity_fields_with_suffix,
 )
 
 

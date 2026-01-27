@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Unit tests for data/etl/config.py schema-driven ETL functionality.
+"""Unit tests for schema definitions and schema processing utilities.
 
-This module tests the schema definitions and helper functions that enable
-schema-driven data transformation in the ETL pipeline.
+This module tests the schema definitions (config.py) and helper functions
+(schema_utils.py) that enable schema-driven data transformation in the ETL
+pipeline.
 
 Test coverage includes:
 - apply_schema: Applying cleaning functions based on table schema
@@ -22,6 +23,8 @@ from data.etl.config import (
     CIVILIANS_SHOT_INCIDENT_SCHEMA,
     OFFICER_ENTITY_SCHEMA,
     OFFICERS_SHOT_INCIDENT_SCHEMA,
+)
+from data.etl.schema_utils import (
     apply_schema,
     clean_entity_fields,
     clean_entity_fields_with_suffix,
