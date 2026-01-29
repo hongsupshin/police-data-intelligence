@@ -414,6 +414,89 @@ cycle**. The system uses a **manual trigger via REST API**:
 | Deployment          | Docker + Terraform   | Infrastructure as code                                           |
 | Monitoring          | LangSmith            | LLM observability and execution tracing                          |
 
+## Setup & Configuration
+
+### Tavily API Setup
+
+The Search Node uses Tavily API for news article retrieval. Tavily offers a free
+tier with 1,000 searches/month.
+
+**1. Get API Key**
+
+Sign up at [tavily.com](https://tavily.com) and get your API key from the
+dashboard.
+
+**2. Configure Environment**
+
+Add to your `.env` file:
+
+```bash
+TAVILY_API_KEY=your_tavily_api_key_here
+```
+
+**3. Test Connection**
+
+```bash
+# Load environment variables
+export $(grep -v '^#' .env | xargs)
+
+# Test API connection
+python -c "
+from tavily import TavilyClient
+import os
+
+client = TavilyClient(api_key=os.getenv('TAVILY_API_KEY'))
+result = client.search('test query', max_results=1)
+print('✓ Tavily API connected successfully')
+print(f'✓ Search returned {len(result.get(\"results\", []))} result(s)')
+"
+```
+
+### Tavily Response Schema
+
+The Search Node receives structured responses from Tavily API:
+
+```python
+{
+  "query": str,                    # Original search query
+  "follow_up_questions": None,     # Optional follow-up questions (if enabled)
+  "answer": None,                  # Optional AI-generated answer (if enabled)
+  "images": list,                  # Related image URLs
+  "results": [                     # Main search results array
+    {
+      "url": str,                  # Article URL
+      "title": str,                # Article title
+      "content": str,              # Extracted content/snippet
+      "score": float               # Relevance score (0-1)
+    }
+  ],
+  "response_time": float,          # API response time in seconds
+  "request_id": str                # Unique request ID for debugging
+}
+```
+
+**Key Fields for Incident Enrichment**:
+
+- `results[]` - Array of news articles
+- `results[].url` - Used for source attribution and provenance tracking
+- `results[].title` - Quick relevance check for incident matching
+- `results[].content` - Primary text for field extraction in Merge Node
+- `results[].score` - Relevance score used by Coordinator for quality assessment
+
+**Search Configuration**:
+
+```python
+# Example: Search Node configuration
+client.search(
+    query="Houston police shooting March 2018",
+    max_results=5,           # Retrieve 5-10 articles per incident
+    search_depth="advanced"  # Optional: "basic" or "advanced"
+)
+```
+
+The Search Node tracks all API calls in `SearchAttempt` objects for retry
+orchestration and cost monitoring.
+
 ## Success Metrics
 
 **Quantitative Targets**:
