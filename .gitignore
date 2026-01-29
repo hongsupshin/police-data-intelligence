@@ -128,3 +128,6 @@ metrics/
 tmp/
 temp/
 *.tmp
+
+# Formatting
+node_modules/

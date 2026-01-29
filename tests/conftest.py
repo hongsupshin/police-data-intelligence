@@ -52,3 +52,68 @@ def db_config() -> dict[str, Any]:
         "host": "localhost",
         "port": 5432,
     }
+
+
+@pytest.fixture
+def db_connection():
+    """Provide a real database connection for integration tests.
+
+    Yields:
+        Active PostgreSQL connection to the actual database.
+        Connection is automatically closed after test completes.
+    """
+    from src.database.connection import get_connection
+
+    conn = get_connection()
+    yield conn
+    conn.close()
+
+
+@pytest.fixture
+def test_incident_civilians_shot(db_connection):
+    """Find a test incident from civilians_shot dataset.
+
+    Args:
+        db_connection: Database connection fixture.
+
+    Returns:
+        Incident ID as string, or None if no suitable incident found.
+    """
+    cursor = db_connection.cursor()
+    cursor.execute(
+        """
+        SELECT i.incident_id
+        FROM incidents_civilians_shot i
+        WHERE i.date_incident IS NOT NULL
+            AND i.incident_city IS NOT NULL
+        LIMIT 1;
+    """
+    )
+    result = cursor.fetchone()
+    cursor.close()
+    return str(result[0]) if result else None
+
+
+@pytest.fixture
+def test_incident_officers_shot(db_connection):
+    """Find a test incident from officers_shot dataset.
+
+    Args:
+        db_connection: Database connection fixture.
+
+    Returns:
+        Incident ID as string, or None if no suitable incident found.
+    """
+    cursor = db_connection.cursor()
+    cursor.execute(
+        """
+        SELECT i.incident_id
+        FROM incidents_officers_shot i
+        WHERE i.date_incident IS NOT NULL
+            AND i.incident_city IS NOT NULL
+        LIMIT 1;
+    """
+    )
+    result = cursor.fetchone()
+    cursor.close()
+    return str(result[0]) if result else None

@@ -17,11 +17,10 @@ from src.agents.state import (
     EscalationReason,
     FieldExtraction,
     MediaFeatureField,
-    MergedField,
     PipelineStage,
     SearchAttempt,
     SearchStrategyType,
-    ValidatedArticle,
+    ValidationResult,
 )
 
 __all__ = [
@@ -33,9 +32,8 @@ __all__ = [
     "EscalationReason",
     "FieldExtraction",
     "MediaFeatureField",
-    "MergedField",
     "PipelineStage",
     "SearchAttempt",
     "SearchStrategyType",
-    "ValidatedArticle",
+    "ValidationResult",
 ]
