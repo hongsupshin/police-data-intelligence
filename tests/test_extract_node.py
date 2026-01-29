@@ -19,6 +19,7 @@ from src.agents.extract_node import extract_node, fetch_incident
 from src.agents.state import DatasetType, EnrichmentState, PipelineStage
 
 
+@pytest.mark.integration
 class TestFetchIncident:
     """Test cases for the fetch_incident function."""
 
@@ -74,6 +75,7 @@ class TestFetchIncident:
             fetch_incident(db_connection, 999999, DatasetType.CIVILIANS_SHOT)
 
 
+@pytest.mark.integration
 class TestExtractNodeCiviliansShot:
     """Test cases for extract_node with civilians_shot dataset."""
 
@@ -183,6 +185,7 @@ class TestExtractNodeCiviliansShot:
         assert updated_state.severity == expected_severity
 
 
+@pytest.mark.integration
 class TestExtractNodeOfficersShot:
     """Test cases for extract_node with officers_shot dataset."""
 
@@ -292,6 +295,7 @@ class TestExtractNodeOfficersShot:
         assert updated_state.severity == expected_severity
 
 
+@pytest.mark.integration
 class TestConditionalFieldMapping:
     """Test that field mapping differs correctly between datasets."""
 
