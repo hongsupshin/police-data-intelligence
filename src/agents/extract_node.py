@@ -224,6 +224,11 @@ def extract_node(state: EnrichmentState) -> EnrichmentState:
         state.officer_name = incident_data["officer_name"]
         state.civilian_name = incident_data["civilian_name"]
         state.incident_date = incident_data["incident_date"]
+
+        # Escalate when date is none
+        if not state.incident_date:
+            raise ValueError("Incident date is empty.")
+
         state.location = incident_data["location"]
         state.severity = incident_data["severity"]
 

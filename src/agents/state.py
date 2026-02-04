@@ -115,7 +115,7 @@ class SearchAttempt(BaseModel):
     query: str
     strategy: SearchStrategyType
     num_results: int = 0
-    avg_relevance_score: float = 0.0
+    avg_relevance_score: float | None
     timestamp: datetime = Field(default_factory=datetime.now)
 
 
