@@ -9,16 +9,16 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from src.agents.state import (
+    Article,
     DatasetType,
     EnrichmentState,
     PipelineStage,
+    SearchAttempt,
     SearchStrategyType,
 )
-
 from src.retrieval.search_node import (
     build_search_query,
     search_node,
-    _convert_tavily_result,
 )
 
 # --- Fixtures ---
@@ -184,8 +184,6 @@ class TestBuildSearchQueryEntityDropped:
 
 # --- search_node tests ---
 
-from src.agents.state import Article, SearchAttempt
-
 
 class TestSearchNode:
     """Tests for the search_node function."""
@@ -198,7 +196,6 @@ class TestSearchNode:
         tavily_response: dict,
     ) -> None:
         """Tavily results should be converted to Article objects."""
-
         mock_instance = mock_client_cls.return_value
         mock_instance.search.return_value = tavily_response
 
@@ -220,7 +217,6 @@ class TestSearchNode:
         tavily_response: dict,
     ) -> None:
         """A SearchAttempt should be appended to state.search_attempts."""
-
         mock_client_cls.return_value.search.return_value = tavily_response
         result = search_node(base_state)
         current_search_attempt = result.search_attempts[0]

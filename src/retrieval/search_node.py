@@ -9,7 +9,6 @@ a single search. Retry decisions are made by the Coordinator, not here.
 """
 
 import os
-from datetime import datetime
 
 from tavily import TavilyClient
 
