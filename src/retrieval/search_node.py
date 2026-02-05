@@ -10,6 +10,7 @@ a single search. Retry decisions are made by the Coordinator, not here.
 
 import os
 
+from dateutil import parser
 from tavily import TavilyClient
 
 from src.agents.state import (
@@ -92,17 +93,24 @@ def _convert_tavily_result(result: dict) -> Article:
 
     Args:
         result: A dictionary from the Tavily response "results" array
-            with keys: url, title, content, score.
+            with keys: url, title, content, score, published_date
 
     Returns:
         Article instance populated from the Tavily result.
     """
+    published_date = result.get("published_date")
+    try:
+        parsed_date = parser.parse(published_date).date()
+    except (ValueError, TypeError):
+        parsed_date = None
+
     tavily_article = Article(
         url=result["url"],
         title=result["title"],
         snippet=result["content"][:500],
         content=result["content"],
         relevance_score=result["score"],
+        published_date=parsed_date,
     )
 
     return tavily_article

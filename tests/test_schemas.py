@@ -12,7 +12,6 @@ Test coverage includes:
 - Schema definitions: Validating schema structure and completeness
 """
 
-
 import pandas as pd
 import pytest
 
@@ -97,13 +96,15 @@ class TestApplySchema:
             ("field5", clean_date),
         ]
 
-        row = pd.Series({
-            "field1": "A",
-            "field2": "1",
-            "field3": "B",
-            "field4": "true",
-            "field5": "2020-01-15",
-        })
+        row = pd.Series(
+            {
+                "field1": "A",
+                "field2": "1",
+                "field3": "B",
+                "field4": "true",
+                "field5": "2020-01-15",
+            }
+        )
 
         result = apply_schema(row, schema)
 
@@ -122,11 +123,13 @@ class TestCleanEntityFields:
         """Test basic field extraction with prefix."""
         schema = [("age", clean_integer), ("race", clean_text), ("gender", clean_text)]
 
-        row = pd.Series({
-            "civilian_age": "30",
-            "civilian_race": "Hispanic",
-            "civilian_gender": "M",
-        })
+        row = pd.Series(
+            {
+                "civilian_age": "30",
+                "civilian_race": "Hispanic",
+                "civilian_gender": "M",
+            }
+        )
 
         result = clean_entity_fields(row, "civilian_", schema)
 
@@ -181,11 +184,13 @@ class TestCleanEntityFieldsWithSuffix:
         """Test field extraction with prefix and suffix pattern."""
         schema = [("age", clean_integer), ("race", clean_text), ("gender", clean_text)]
 
-        row = pd.Series({
-            "civilian_age_1": "25",
-            "civilian_race_1": "White",
-            "civilian_gender_1": "F",
-        })
+        row = pd.Series(
+            {
+                "civilian_age_1": "25",
+                "civilian_race_1": "White",
+                "civilian_gender_1": "F",
+            }
+        )
 
         result = clean_entity_fields_with_suffix(row, "civilian_", "_1", schema)
 
@@ -344,30 +349,32 @@ class TestSchemaIntegration:
     def test_realistic_civilians_shot_row(self):
         """Test applying civilians_shot schema to realistic row data."""
         # Simulate a real CSV row
-        row = pd.Series({
-            "ois_report_no": "OIS-2020-001",
-            "date_ag_received": "2020-01-10",
-            "date_incident": "2020-01-15",
-            "time_incident": "14:30",
-            "incident_address": "123 Main St",
-            "incident_city": "Austin",
-            "incident_county": "Travis",
-            "incident_zip": "78701",
-            "incident_result_of": "Call for service",
-            "incident_call_other": "",
-            "weapon_reported_by_media": "Handgun",
-            "weapon_reported_by_media_category": "Firearm",
-            "deadly_weapon": "true",
-            "num_officers_recorded": "2",
-            "multiple_officers_involved": "true",
-            "officer_on_duty": "true",
-            "num_reports_filed": "1",
-            "num_rows_about_this_incident": "1",
-            "cdr_narrative": "Incident description...",
-            "custodial_death_report": "false",
-            "lea_narrative_published": "Published narrative...",
-            "lea_narrative_shorter": "Short narrative...",
-        })
+        row = pd.Series(
+            {
+                "ois_report_no": "OIS-2020-001",
+                "date_ag_received": "2020-01-10",
+                "date_incident": "2020-01-15",
+                "time_incident": "14:30",
+                "incident_address": "123 Main St",
+                "incident_city": "Austin",
+                "incident_county": "Travis",
+                "incident_zip": "78701",
+                "incident_result_of": "Call for service",
+                "incident_call_other": "",
+                "weapon_reported_by_media": "Handgun",
+                "weapon_reported_by_media_category": "Firearm",
+                "deadly_weapon": "true",
+                "num_officers_recorded": "2",
+                "multiple_officers_involved": "true",
+                "officer_on_duty": "true",
+                "num_reports_filed": "1",
+                "num_rows_about_this_incident": "1",
+                "cdr_narrative": "Incident description...",
+                "custodial_death_report": "false",
+                "lea_narrative_published": "Published narrative...",
+                "lea_narrative_shorter": "Short narrative...",
+            }
+        )
 
         result = apply_schema(row, CIVILIANS_SHOT_INCIDENT_SCHEMA)
 
@@ -382,15 +389,17 @@ class TestSchemaIntegration:
 
     def test_realistic_entity_extraction(self):
         """Test extracting entity fields from realistic row."""
-        row = pd.Series({
-            "civilian_age": "30",
-            "civilian_race": "Hispanic",
-            "civilian_gender": "M",
-            "civilian_name_first": "John",
-            "civilian_name_last": "Doe",
-            "civilian_name_full": "John Doe",
-            "other_field": "ignored",
-        })
+        row = pd.Series(
+            {
+                "civilian_age": "30",
+                "civilian_race": "Hispanic",
+                "civilian_gender": "M",
+                "civilian_name_first": "John",
+                "civilian_name_last": "Doe",
+                "civilian_name_full": "John Doe",
+                "other_field": "ignored",
+            }
+        )
 
         result = clean_entity_fields(row, "civilian_", CIVILIAN_ENTITY_SCHEMA)
 
@@ -404,17 +413,19 @@ class TestSchemaIntegration:
 
     def test_multiple_numbered_entities(self):
         """Test extracting multiple numbered entities (e.g., officer_1, officer_2)."""
-        row = pd.Series({
-            "officer_age_1": "35",
-            "officer_race_1": "White",
-            "officer_gender_1": "M",
-            "officer_age_2": "42",
-            "officer_race_2": "Black",
-            "officer_gender_2": "F",
-            "officer_age_3": "28",
-            "officer_race_3": "Asian",
-            "officer_gender_3": "M",
-        })
+        row = pd.Series(
+            {
+                "officer_age_1": "35",
+                "officer_race_1": "White",
+                "officer_gender_1": "M",
+                "officer_age_2": "42",
+                "officer_race_2": "Black",
+                "officer_gender_2": "F",
+                "officer_age_3": "28",
+                "officer_race_3": "Asian",
+                "officer_gender_3": "M",
+            }
+        )
 
         # Schema for officers (no names in civilians_shot dataset)
         schema = [("age", clean_integer), ("race", clean_text), ("gender", clean_text)]
