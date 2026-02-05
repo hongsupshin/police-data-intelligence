@@ -93,9 +93,9 @@ class TestBuildSearchQueryExactMatch:
         """Query should contain location, exact date, and names."""
         search_query = build_search_query(base_state, SearchStrategyType.EXACT_MATCH)
         assert base_state.location in search_query, "Location missing."
-        assert (
-            base_state.incident_date.strftime("%Y-%m-%d") in search_query
-        ), "Date missing."
+        assert base_state.incident_date.strftime("%Y-%m-%d") in search_query, (
+            "Date missing."
+        )
         assert base_state.officer_name in search_query, "Officer name missing."
         assert base_state.civilian_name in search_query, "Civilian name missing."
 
@@ -114,12 +114,12 @@ class TestBuildSearchQueryExactMatch:
         search_query = build_search_query(
             state_missing_names, SearchStrategyType.EXACT_MATCH
         )
-        assert (
-            str(state_missing_names.civilian_name) not in search_query
-        ), "'None' present in query"
-        assert (
-            str(state_missing_names.officer_name) not in search_query
-        ), "'None' present in query"
+        assert str(state_missing_names.civilian_name) not in search_query, (
+            "'None' present in query"
+        )
+        assert str(state_missing_names.officer_name) not in search_query, (
+            "'None' present in query"
+        )
 
     def test_non_fatal_excludes_fatal_keyword(
         self, state_missing_names: EnrichmentState
@@ -128,9 +128,9 @@ class TestBuildSearchQueryExactMatch:
         search_query = build_search_query(
             state_missing_names, SearchStrategyType.EXACT_MATCH
         )
-        assert (
-            state_missing_names.severity not in search_query
-        ), "'non-fatal' severity present in query"
+        assert state_missing_names.severity not in search_query, (
+            "'non-fatal' severity present in query"
+        )
 
 
 class TestBuildSearchQueryTemporalExpanded:
@@ -141,12 +141,12 @@ class TestBuildSearchQueryTemporalExpanded:
         search_query = build_search_query(
             base_state, SearchStrategyType.TEMPORAL_EXPANDED
         )
-        assert (
-            base_state.incident_date.strftime("%B %Y") in search_query
-        ), "Date format is incorrect."
-        assert (
-            base_state.incident_date.strftime("%Y-%m-%d") not in search_query
-        ), "Date format is incorrect."
+        assert base_state.incident_date.strftime("%B %Y") in search_query, (
+            "Date format is incorrect."
+        )
+        assert base_state.incident_date.strftime("%Y-%m-%d") not in search_query, (
+            "Date format is incorrect."
+        )
 
     def test_names_still_included(self, base_state: EnrichmentState) -> None:
         """Names should still be present in temporal expanded queries."""
@@ -163,23 +163,23 @@ class TestBuildSearchQueryEntityDropped:
     def test_names_excluded(self, base_state: EnrichmentState) -> None:
         """Officer and civilian names should not appear even when available."""
         search_query = build_search_query(base_state, SearchStrategyType.ENTITY_DROPPED)
-        assert (
-            base_state.officer_name not in search_query
-        ), "Officer name still present in query."
-        assert (
-            base_state.civilian_name not in search_query
-        ), "Civilian name still present in query."
+        assert base_state.officer_name not in search_query, (
+            "Officer name still present in query."
+        )
+        assert base_state.civilian_name not in search_query, (
+            "Civilian name still present in query."
+        )
 
     def test_location_and_date_kept(self, base_state: EnrichmentState) -> None:
         """Location and date range should still be present."""
         search_query = build_search_query(base_state, SearchStrategyType.ENTITY_DROPPED)
         assert base_state.location in search_query, "Location missing."
-        assert (
-            base_state.incident_date.strftime("%B %Y") in search_query
-        ), "Expanded date missing."
-        assert (
-            base_state.incident_date.strftime("%Y-%m-%d") not in search_query
-        ), "Incorrect date format."
+        assert base_state.incident_date.strftime("%B %Y") in search_query, (
+            "Expanded date missing."
+        )
+        assert base_state.incident_date.strftime("%Y-%m-%d") not in search_query, (
+            "Incorrect date format."
+        )
 
 
 # --- search_node tests ---
@@ -200,14 +200,14 @@ class TestSearchNode:
         mock_instance.search.return_value = tavily_response
 
         result = search_node(base_state)
-        assert isinstance(
-            result.retrieved_articles, list
-        ), "Articles are not in a list."
+        assert isinstance(result.retrieved_articles, list), (
+            "Articles are not in a list."
+        )
         for article in result.retrieved_articles:
             assert isinstance(article, Article), "Wrong article format."
-        assert (
-            len(result.retrieved_articles) == 2
-        ), "Incorrect number of retrieved articles."
+        assert len(result.retrieved_articles) == 2, (
+            "Incorrect number of retrieved articles."
+        )
 
     @patch("src.retrieval.search_node.TavilyClient")
     def test_records_search_attempt(
@@ -220,12 +220,12 @@ class TestSearchNode:
         mock_client_cls.return_value.search.return_value = tavily_response
         result = search_node(base_state)
         current_search_attempt = result.search_attempts[0]
-        assert (
-            len(result.search_attempts) == 1
-        ), "Wrong number of search attempts."  # Called once
-        assert isinstance(
-            current_search_attempt, SearchAttempt
-        ), "Incorrect search attempt type."
+        assert len(result.search_attempts) == 1, (
+            "Wrong number of search attempts."
+        )  # Called once
+        assert isinstance(current_search_attempt, SearchAttempt), (
+            "Incorrect search attempt type."
+        )
 
         # Using the exact values from the fixture, tavily_response
         assert (

@@ -60,9 +60,7 @@ class TestGetOrCreateOfficer:
         cursor = Mock()
         cursor.fetchone.return_value = (456,)
 
-        result = get_or_create_officer(
-            cursor, age=None, race="Hispanic", gender="F"
-        )
+        result = get_or_create_officer(cursor, age=None, race="Hispanic", gender="F")
 
         assert result == 456
         params = cursor.execute.call_args[0][1]
@@ -75,9 +73,7 @@ class TestGetOrCreateCivilian:
     def test_all_none_returns_none(self):
         """Test that function returns None when all parameters are None."""
         cursor = Mock()
-        result = get_or_create_civilian(
-            cursor, None, None, None, None, None, None
-        )
+        result = get_or_create_civilian(cursor, None, None, None, None, None, None)
         assert result is None
         cursor.execute.assert_not_called()
 
