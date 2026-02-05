@@ -55,6 +55,7 @@ python-terraform>=0.10.1
 
 # Data Validation & Quality
 fuzzywuzzy>=0.18.0  # Fuzzy string matching for entity resolution
+rapidfuzz>=3.0.0  # Fast fuzzy matching for validation node
 python-Levenshtein>=0.25.0  # Fast string matching
 
 # Utilities
