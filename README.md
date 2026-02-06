@@ -555,8 +555,8 @@ police-data-intelligence/
 **Timeline**: 8 weeks (January - March 2026)
 
 - ✅ Week 1-2: Architecture design and project setup
-- ⏳ Week 3-4: Core node implementation (Extract, Search, Validate, Merge)
-- ⏳ Week 5-6: Coordinator logic and retry orchestration
+- ✅ Week 3-4: Core node implementation (Extract, Search, Validate)
+- ⏳ Week 5-6: Merge node, Coordinator logic, and retry orchestration
 - ⏳ Week 7-8: Cloud deployment, evaluation, and documentation
 
 ## Why No Planning Agent?
