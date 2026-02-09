@@ -55,12 +55,14 @@ class ConfidenceLevel(str, Enum):
     - MEDIUM: Single source or unclear context
     - LOW: Weak evidence or soft anchor match
     - NONE: No information found
+    - PENDING: confidence level is not determined yet (used in extract_field)
     """
 
     HIGH = "high"
     MEDIUM = "medium"
     LOW = "low"
     NONE = "none"
+    PENDING = "pending"
 
 
 class EscalationReason(str, Enum):
@@ -180,6 +182,19 @@ class FieldExtraction(BaseModel):
     llm_reasoning: str | None = None
 
 
+class MergeExtractionResponse(BaseModel):
+    """Structured LLM response for multi-field extraction.
+
+    Used as the schema for ChatOpenAI.with_structured_output() in the
+    merge node. The LLM returns one FieldExtraction per requested field.
+
+    Attributes:
+        extractions: List of FieldExtraction objects, one per field.
+    """
+
+    extractions: list[FieldExtraction]
+
+
 class ValidationResult(BaseModel):
     """Result of validating an article against incident anchors.
 
@@ -282,3 +297,11 @@ class EnrichmentState(BaseModel):
     # Pipeline metadata
     cost_usd: float = 0.0
     error_message: str | None = None
+
+
+# Mapping for MediaFeatureField and EnrichmentState
+# (only fields that exist on EnrichmentState)
+FIELD_TO_STATE_ATTR = {
+    MediaFeatureField.OFFICER_NAME: "officer_name",
+    MediaFeatureField.CIVILIAN_NAME: "civilian_name",
+}
