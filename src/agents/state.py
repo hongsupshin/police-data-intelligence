@@ -6,12 +6,12 @@ Extract → Search → Validate → Merge → Coordinator
 """
 
 from datetime import date, datetime
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel, Field
 
 
-class DatasetType(str, Enum):
+class DatasetType(StrEnum):
     """Dataset identifier for conditional field mapping.
 
     The two TJI datasets use different field names for the same concepts,
@@ -22,7 +22,7 @@ class DatasetType(str, Enum):
     OFFICERS_SHOT = "officers_shot"
 
 
-class SearchStrategyType(str, Enum):
+class SearchStrategyType(StrEnum):
     """Search strategy for progressive query refinement.
 
     The Coordinator implements an escalating retry strategy:
@@ -36,7 +36,7 @@ class SearchStrategyType(str, Enum):
     ENTITY_DROPPED = "entity_dropped"
 
 
-class PipelineStage(str, Enum):
+class PipelineStage(StrEnum):
     """Current stage in the enrichment pipeline."""
 
     EXTRACT = "extract"
@@ -47,7 +47,7 @@ class PipelineStage(str, Enum):
     ESCALATED = "escalated"
 
 
-class ConfidenceLevel(str, Enum):
+class ConfidenceLevel(StrEnum):
     """Per-field confidence classification.
 
     Based on source agreement and evidence quality:
@@ -65,7 +65,7 @@ class ConfidenceLevel(str, Enum):
     PENDING = "pending"
 
 
-class EscalationReason(str, Enum):
+class EscalationReason(StrEnum):
     """Reasons for escalating to human review.
 
     Escalation triggers include:
@@ -86,7 +86,7 @@ class EscalationReason(str, Enum):
     INSUFFICIENT_SOURCES = "insufficient_sources"
 
 
-class MediaFeatureField(str, Enum):
+class MediaFeatureField(StrEnum):
     """Fields to extract from media articles (media feature set)."""
 
     OFFICER_NAME = "officer_name"
