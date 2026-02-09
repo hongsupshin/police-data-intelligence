@@ -6,12 +6,12 @@ Extract → Search → Validate → Merge → Coordinator
 """
 
 from datetime import date, datetime
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel, Field
 
 
-class DatasetType(str, Enum):
+class DatasetType(StrEnum):
     """Dataset identifier for conditional field mapping.
 
     The two TJI datasets use different field names for the same concepts,
@@ -22,7 +22,7 @@ class DatasetType(str, Enum):
     OFFICERS_SHOT = "officers_shot"
 
 
-class SearchStrategyType(str, Enum):
+class SearchStrategyType(StrEnum):
     """Search strategy for progressive query refinement.
 
     The Coordinator implements an escalating retry strategy:
@@ -36,7 +36,7 @@ class SearchStrategyType(str, Enum):
     ENTITY_DROPPED = "entity_dropped"
 
 
-class PipelineStage(str, Enum):
+class PipelineStage(StrEnum):
     """Current stage in the enrichment pipeline."""
 
     EXTRACT = "extract"
@@ -47,7 +47,7 @@ class PipelineStage(str, Enum):
     ESCALATED = "escalated"
 
 
-class ConfidenceLevel(str, Enum):
+class ConfidenceLevel(StrEnum):
     """Per-field confidence classification.
 
     Based on source agreement and evidence quality:
@@ -55,15 +55,17 @@ class ConfidenceLevel(str, Enum):
     - MEDIUM: Single source or unclear context
     - LOW: Weak evidence or soft anchor match
     - NONE: No information found
+    - PENDING: confidence level is not determined yet (used in extract_field)
     """
 
     HIGH = "high"
     MEDIUM = "medium"
     LOW = "low"
     NONE = "none"
+    PENDING = "pending"
 
 
-class EscalationReason(str, Enum):
+class EscalationReason(StrEnum):
     """Reasons for escalating to human review.
 
     Escalation triggers include:
@@ -84,7 +86,7 @@ class EscalationReason(str, Enum):
     INSUFFICIENT_SOURCES = "insufficient_sources"
 
 
-class MediaFeatureField(str, Enum):
+class MediaFeatureField(StrEnum):
     """Fields to extract from media articles (media feature set)."""
 
     OFFICER_NAME = "officer_name"
@@ -178,6 +180,19 @@ class FieldExtraction(BaseModel):
     source_quotes: list[str] = Field(default_factory=list)
     extraction_method: str = "llm"
     llm_reasoning: str | None = None
+
+
+class MergeExtractionResponse(BaseModel):
+    """Structured LLM response for multi-field extraction.
+
+    Used as the schema for ChatOpenAI.with_structured_output() in the
+    merge node. The LLM returns one FieldExtraction per requested field.
+
+    Attributes:
+        extractions: List of FieldExtraction objects, one per field.
+    """
+
+    extractions: list[FieldExtraction]
 
 
 class ValidationResult(BaseModel):
@@ -282,3 +297,11 @@ class EnrichmentState(BaseModel):
     # Pipeline metadata
     cost_usd: float = 0.0
     error_message: str | None = None
+
+
+# Mapping for MediaFeatureField and EnrichmentState
+# (only fields that exist on EnrichmentState)
+FIELD_TO_STATE_ATTR = {
+    MediaFeatureField.OFFICER_NAME: "officer_name",
+    MediaFeatureField.CIVILIAN_NAME: "civilian_name",
+}

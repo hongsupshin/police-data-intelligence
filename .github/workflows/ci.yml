@@ -28,9 +28,9 @@ jobs:
       - name: Lint with ruff
         run: |
           # Check for syntax errors and undefined names
-          ruff check data/ tests/ --select F,E9
+          ruff check data/ src/ tests/ --select F,E9
           # Check code style (uses pyproject.toml config)
-          ruff check data/ tests/
+          ruff check data/ src/ tests/
 
       - name: Run unit tests
         run: |
