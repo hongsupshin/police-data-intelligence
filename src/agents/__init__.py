@@ -8,6 +8,14 @@ The pipeline consists of 5 specialized nodes:
 - Coordinator Node (Agentic): Retry orchestration and escalation routing
 """
 
+from src.agents.coordinate_node import (
+    check_extract_results,
+    check_merge_results,
+    check_search_results,
+    check_validate_results,
+    coordinate_node,
+    retry_helper,
+)
 from src.agents.state import (
     Article,
     ConfidenceLevel,
@@ -36,4 +44,10 @@ __all__ = [
     "SearchAttempt",
     "SearchStrategyType",
     "ValidationResult",
+    "check_extract_results",
+    "check_merge_results",
+    "check_search_results",
+    "check_validate_results",
+    "coordinate_node",
+    "retry_helper",
 ]

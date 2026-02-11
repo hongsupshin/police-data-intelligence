@@ -69,6 +69,8 @@ class EscalationReason(StrEnum):
     """Reasons for escalating to human review.
 
     Escalation triggers include:
+    - Extraction failed (e.g., missing information or error message)
+    - Search failed (error message)
     - Confidence below threshold
     - Conflicting information across sources
     - Composite information requiring merge review
@@ -77,6 +79,9 @@ class EscalationReason(StrEnum):
     - Max retries reached without sufficient data
     """
 
+    EXTRACTION_ERROR = "extraction_error"
+    VALIDATION_ERROR = "validation_error"
+    MERGE_ERROR = "merge_error"
     CONFLICT = "conflict"
     COMPOSITE = "composite"
     LOW_CONFIDENCE = "low_confidence"
