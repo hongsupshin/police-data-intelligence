@@ -44,7 +44,7 @@ class PipelineStage(StrEnum):
     VALIDATE = "validate"
     MERGE = "merge"
     COMPLETE = "complete"
-    ESCALATED = "escalated"
+    ESCALATE = "escalate"
 
 
 class ConfidenceLevel(StrEnum):
@@ -254,7 +254,7 @@ class EnrichmentState(BaseModel):
         next_strategy: Next search strategy to try on retry.
         current_stage: Current pipeline stage.
 
-        escalation_reason: Why record was escalated if applicable.
+        escalation_reason: Why record was ESCALATE if applicable.
         requires_human_review: Whether human review is needed.
 
         output_file_path: Path to output CSV for human review.
@@ -290,6 +290,7 @@ class EnrichmentState(BaseModel):
     max_retries: int = 3
     next_strategy: SearchStrategyType = SearchStrategyType.EXACT_MATCH
     current_stage: PipelineStage = PipelineStage.EXTRACT
+    next_stage: PipelineStage = PipelineStage.EXTRACT
 
     # Escalation
     escalation_reason: EscalationReason | None = None

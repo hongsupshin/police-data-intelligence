@@ -148,21 +148,21 @@ def test_check_extract_results_happy_path(base_state: EnrichmentState) -> None:
     """All identity fields present, proceed to SEARCH."""
     extract_state = base_state.model_copy()
     state = check_extract_results(extract_state)
-    assert state.current_stage == PipelineStage.SEARCH
+    assert state.next_stage == PipelineStage.SEARCH
 
 
 def test_check_extract_results_error(base_state: EnrichmentState) -> None:
-    """Extract error message triggers ESCALATED with EXTRACTION_ERROR."""
+    """Extract error message triggers ESCALATE with EXTRACTION_ERROR."""
     extract_state = base_state.model_copy()
     extract_state.error_message = "Extract failed..."
     state = check_extract_results(extract_state)
     assert state.escalation_reason == EscalationReason.EXTRACTION_ERROR
     assert state.requires_human_review
-    assert state.current_stage == PipelineStage.ESCALATED
+    assert state.next_stage == PipelineStage.ESCALATE
 
 
 def test_check_extract_results_all_missing(base_state: EnrichmentState) -> None:
-    """All identity fields missing triggers ESCALATED with INSUFFICIENT_SOURCES."""
+    """All identity fields missing triggers ESCALATE with INSUFFICIENT_SOURCES."""
     extract_state = base_state.model_copy()
     extract_state.civilian_name = None
     extract_state.officer_name = None
@@ -170,7 +170,7 @@ def test_check_extract_results_all_missing(base_state: EnrichmentState) -> None:
     state = check_extract_results(extract_state)
     assert state.escalation_reason == EscalationReason.INSUFFICIENT_SOURCES
     assert state.requires_human_review
-    assert state.current_stage == PipelineStage.ESCALATED
+    assert state.next_stage == PipelineStage.ESCALATE
 
 
 def test_check_extract_results_partial_missing(base_state: EnrichmentState) -> None:
@@ -178,7 +178,7 @@ def test_check_extract_results_partial_missing(base_state: EnrichmentState) -> N
     extract_state = base_state.model_copy()
     extract_state.civilian_name = None
     state = check_extract_results(extract_state)
-    assert state.current_stage == PipelineStage.SEARCH
+    assert state.next_stage == PipelineStage.SEARCH
 
 
 # --- retry_helper tests ---
@@ -189,7 +189,7 @@ def test_retry_helper_happy_path(search_state: EnrichmentState) -> None:
     state = retry_helper(search_state.model_copy())
     assert state.retry_count == 1
     assert state.next_strategy == STRATEGY_ORDER[1]
-    assert state.current_stage == PipelineStage.SEARCH
+    assert state.next_stage == PipelineStage.SEARCH
 
 
 def test_retry_helper_exhausted_strategies(search_state: EnrichmentState) -> None:
@@ -197,7 +197,7 @@ def test_retry_helper_exhausted_strategies(search_state: EnrichmentState) -> Non
     updated_search_state = search_state.model_copy()
     updated_search_state.next_strategy = STRATEGY_ORDER[-1]
     state = retry_helper(updated_search_state)
-    assert state.current_stage == PipelineStage.ESCALATED
+    assert state.next_stage == PipelineStage.ESCALATE
     assert state.escalation_reason == EscalationReason.MAX_RETRIES
     assert state.requires_human_review
 
@@ -208,7 +208,7 @@ def test_retry_helper_exhausted_strategies(search_state: EnrichmentState) -> Non
 def test_check_search_results_happy_path(search_state: EnrichmentState) -> None:
     """Good relevance score, proceed to VALIDATE."""
     state = check_search_results(search_state.model_copy())
-    assert state.current_stage == PipelineStage.VALIDATE
+    assert state.next_stage == PipelineStage.VALIDATE
 
 
 def test_check_search_results_exhausted_retries(search_state: EnrichmentState) -> None:
@@ -216,7 +216,7 @@ def test_check_search_results_exhausted_retries(search_state: EnrichmentState) -
     updated_search_state = search_state.model_copy()
     updated_search_state.retry_count = updated_search_state.max_retries + 1
     state = check_search_results(updated_search_state)
-    assert state.current_stage == PipelineStage.ESCALATED
+    assert state.next_stage == PipelineStage.ESCALATE
     assert state.escalation_reason == EscalationReason.MAX_RETRIES
     assert state.requires_human_review
 
@@ -227,7 +227,7 @@ def test_check_search_results_low_score_retry(search_state: EnrichmentState) -> 
     updated_search_state.search_attempts[-1].avg_relevance_score = 0.1
     state = check_search_results(updated_search_state)
     assert state.retry_count == 1
-    assert state.current_stage == PipelineStage.SEARCH
+    assert state.next_stage == PipelineStage.SEARCH
 
 
 def test_check_search_results_error_retry(search_state: EnrichmentState) -> None:
@@ -236,7 +236,7 @@ def test_check_search_results_error_retry(search_state: EnrichmentState) -> None
     updated_search_state.error_message = "Search failed..."
     state = check_search_results(updated_search_state)
     assert state.retry_count == 1
-    assert state.current_stage == PipelineStage.SEARCH
+    assert state.next_stage == PipelineStage.SEARCH
 
 
 # --- check_validate_results tests ---
@@ -245,7 +245,7 @@ def test_check_search_results_error_retry(search_state: EnrichmentState) -> None
 def test_check_validate_results_happy_path(validate_state: EnrichmentState) -> None:
     """At least one article passed validation, proceed to MERGE."""
     state = check_validate_results(validate_state)
-    assert state.current_stage == PipelineStage.MERGE
+    assert state.next_stage == PipelineStage.MERGE
 
 
 def test_check_validate_results_all_failed(validate_state: EnrichmentState) -> None:
@@ -254,7 +254,7 @@ def test_check_validate_results_all_failed(validate_state: EnrichmentState) -> N
     for vr in updated_state.validation_results:
         vr.passed = False
     state = check_validate_results(updated_state)
-    assert state.current_stage == PipelineStage.ESCALATED
+    assert state.next_stage == PipelineStage.ESCALATE
     assert state.escalation_reason == EscalationReason.VALIDATION_ERROR
     assert state.requires_human_review
 
@@ -264,7 +264,7 @@ def test_check_validate_results_empty(validate_state: EnrichmentState) -> None:
     updated_state = validate_state.model_copy()
     updated_state.validation_results = []
     state = check_validate_results(updated_state)
-    assert state.current_stage == PipelineStage.ESCALATED
+    assert state.next_stage == PipelineStage.ESCALATE
     assert state.escalation_reason == EscalationReason.VALIDATION_ERROR
 
 
@@ -274,7 +274,7 @@ def test_check_validate_results_empty(validate_state: EnrichmentState) -> None:
 def test_check_merge_results_happy_path(merge_state: EnrichmentState) -> None:
     """No errors or conflicts, proceed to COMPLETE."""
     state = check_merge_results(merge_state)
-    assert state.current_stage == PipelineStage.COMPLETE
+    assert state.next_stage == PipelineStage.COMPLETE
 
 
 def test_check_merge_results_error(merge_state: EnrichmentState) -> None:
@@ -282,7 +282,7 @@ def test_check_merge_results_error(merge_state: EnrichmentState) -> None:
     updated_state = merge_state.model_copy()
     updated_state.error_message = "Merge failed: LLM timeout"
     state = check_merge_results(updated_state)
-    assert state.current_stage == PipelineStage.ESCALATED
+    assert state.next_stage == PipelineStage.ESCALATE
     assert state.escalation_reason == EscalationReason.MERGE_ERROR
     assert state.requires_human_review
 
@@ -292,7 +292,7 @@ def test_check_merge_results_conflict(merge_state: EnrichmentState) -> None:
     updated_state = merge_state.model_copy()
     updated_state.conflicting_fields = [MediaFeatureField.WEAPON]
     state = check_merge_results(updated_state)
-    assert state.current_stage == PipelineStage.ESCALATED
+    assert state.next_stage == PipelineStage.ESCALATE
     assert state.escalation_reason == EscalationReason.CONFLICT
     assert state.requires_human_review
 
@@ -302,7 +302,7 @@ def test_check_merge_results_empty_extractions(merge_state: EnrichmentState) -> 
     updated_state = merge_state.model_copy()
     updated_state.extracted_fields = []
     state = check_merge_results(updated_state)
-    assert state.current_stage == PipelineStage.ESCALATED
+    assert state.next_stage == PipelineStage.ESCALATE
     assert state.escalation_reason == EscalationReason.INSUFFICIENT_SOURCES
     assert state.requires_human_review
 
@@ -313,25 +313,25 @@ def test_check_merge_results_empty_extractions(merge_state: EnrichmentState) -> 
 def test_coordinate_node_extract_stage(base_state: EnrichmentState) -> None:
     """Dispatches to check_extract_results when stage is EXTRACT."""
     state = coordinate_node(base_state.model_copy())
-    assert state.current_stage == PipelineStage.SEARCH
+    assert state.next_stage == PipelineStage.SEARCH
 
 
 def test_coordinate_node_search_stage(search_state: EnrichmentState) -> None:
     """Dispatches to check_search_results when stage is SEARCH."""
     state = coordinate_node(search_state.model_copy())
-    assert state.current_stage == PipelineStage.VALIDATE
+    assert state.next_stage == PipelineStage.VALIDATE
 
 
 def test_coordinate_node_validate_stage(validate_state: EnrichmentState) -> None:
     """Dispatches to check_validate_results when stage is VALIDATE."""
     state = coordinate_node(validate_state)
-    assert state.current_stage == PipelineStage.MERGE
+    assert state.next_stage == PipelineStage.MERGE
 
 
 def test_coordinate_node_merge_stage(merge_state: EnrichmentState) -> None:
     """Dispatches to check_merge_results when stage is MERGE."""
     state = coordinate_node(merge_state)
-    assert state.current_stage == PipelineStage.COMPLETE
+    assert state.next_stage == PipelineStage.COMPLETE
 
 
 def test_coordinate_node_unexpected_stage(base_state: EnrichmentState) -> None:
@@ -342,9 +342,9 @@ def test_coordinate_node_unexpected_stage(base_state: EnrichmentState) -> None:
     assert state.current_stage == PipelineStage.COMPLETE
 
 
-def test_coordinate_node_escalated_stage(base_state: EnrichmentState) -> None:
-    """ESCALATED stage returns state unchanged."""
+def test_coordinate_node_escalate_stage(base_state: EnrichmentState) -> None:
+    """ESCALATE stage returns state unchanged."""
     updated_state = base_state.model_copy()
-    updated_state.current_stage = PipelineStage.ESCALATED
+    updated_state.current_stage = PipelineStage.ESCALATE
     state = coordinate_node(updated_state)
-    assert state.current_stage == PipelineStage.ESCALATED
+    assert state.current_stage == PipelineStage.ESCALATE
