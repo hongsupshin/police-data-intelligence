@@ -2,7 +2,8 @@
 
 Defines Pydantic models for tracking state across nodes in the
 LangGraph-based enrichment workflow. The pipeline consists of:
-Extract → Search → Validate → Merge → Coordinator
+Extract → Coordinator → Search → Coordinator → Validate →
+Coordinator → Merge → Coordinator → Complete | Escalate
 """
 
 from datetime import date, datetime
@@ -225,8 +226,9 @@ class ValidationResult(BaseModel):
 class EnrichmentState(BaseModel):
     """Complete state for enrichment pipeline.
 
-    Tracks all data as a record moves through the 5-node pipeline:
-    Extract → Search → Validate → Merge → Coordinator
+    Tracks all data as a record moves through the pipeline:
+    Extract → Coordinator → Search → Coordinator → Validate →
+    Coordinator → Merge → Coordinator → Complete | Escalate
 
     The Coordinator orchestrates retry logic and escalation routing
     based on intermediate results from each node.
@@ -252,7 +254,8 @@ class EnrichmentState(BaseModel):
         retry_count: Number of retry attempts made.
         max_retries: Maximum retries before escalation (default 3).
         next_strategy: Next search strategy to try on retry.
-        current_stage: Current pipeline stage.
+        current_stage: Which node just ran (set by processing nodes).
+        next_stage: Where to route next (set by coordinator).
 
         escalation_reason: Why record was ESCALATE if applicable.
         requires_human_review: Whether human review is needed.
