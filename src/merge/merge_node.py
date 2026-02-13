@@ -3,6 +3,7 @@
 from collections import Counter, defaultdict
 from datetime import date
 
+from langchain_core.runnables import RunnableConfig
 from langchain_openai import ChatOpenAI
 from rapidfuzz import fuzz
 
@@ -181,7 +182,7 @@ def check_reference_match(
         return (True, extracted_field)
 
 
-def merge_node(state: EnrichmentState, llm_client: ChatOpenAI) -> EnrichmentState:
+def merge_node(state: EnrichmentState, config: RunnableConfig) -> EnrichmentState:
     """Orchestrate field extraction, cross-article consistency, and reference matching.
 
     Extracts fields from all retrieved articles using an LLM, groups
@@ -191,12 +192,15 @@ def merge_node(state: EnrichmentState, llm_client: ChatOpenAI) -> EnrichmentStat
 
     Args:
         state: Current enrichment pipeline state with retrieved articles.
-        llm_client: LangChain ChatOpenAI client for structured extraction.
+        config: LangGraph RunnableConfig containing the LLM client at
+            ``config["configurable"]["llm_client"]``.
 
     Returns:
         Updated EnrichmentState with extracted_fields, conflicting_fields,
         and current_stage set to MERGE.
     """
+    llm_client = config["configurable"]["llm_client"]
+
     # Extract from all articles
     try:
         all_extractions = []

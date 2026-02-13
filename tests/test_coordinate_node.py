@@ -185,11 +185,12 @@ def test_check_extract_results_partial_missing(base_state: EnrichmentState) -> N
 
 
 def test_retry_helper_happy_path(search_state: EnrichmentState) -> None:
-    """Strategies remaining: advance to next strategy and stay in SEARCH."""
+    """Strategies remaining: advance strategy, clear articles, stay in SEARCH."""
     state = retry_helper(search_state.model_copy())
     assert state.retry_count == 1
     assert state.next_strategy == STRATEGY_ORDER[1]
     assert state.next_stage == PipelineStage.SEARCH
+    assert state.retrieved_articles == []
 
 
 def test_retry_helper_exhausted_strategies(search_state: EnrichmentState) -> None:

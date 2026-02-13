@@ -46,15 +46,17 @@ def check_extract_results(state: EnrichmentState) -> EnrichmentState:
 def retry_helper(state: EnrichmentState) -> EnrichmentState:
     """Advance search strategy or escalate if retries exhausted.
 
-    Advances to the next strategy in STRATEGY_ORDER. If no strategies
-    remain, escalates with MAX_RETRIES reason.
+    Advances to the next strategy in STRATEGY_ORDER and clears
+    retrieved_articles for a fresh search. If no strategies remain,
+    escalates with MAX_RETRIES reason.
 
     Args:
         state: Pipeline state requiring a retry decision.
 
     Returns:
-        Updated state with next_strategy advanced and current_stage
-        set to SEARCH (retry) or ESCALATE (no strategies left).
+        Updated state with next_strategy advanced, retrieved_articles
+        cleared, and next_stage set to SEARCH (retry) or ESCALATE
+        (no strategies left).
     """
     current_index = STRATEGY_ORDER.index(state.next_strategy)
     next_index = current_index + 1
@@ -66,6 +68,7 @@ def retry_helper(state: EnrichmentState) -> EnrichmentState:
         state.retry_count += 1
         state.next_strategy = STRATEGY_ORDER[next_index]
         state.next_stage = PipelineStage.SEARCH
+        state.retrieved_articles = []
     return state
 
 

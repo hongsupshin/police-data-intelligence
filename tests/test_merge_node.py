@@ -9,6 +9,7 @@ from datetime import date
 from unittest.mock import MagicMock
 
 import pytest
+from langchain_core.runnables import RunnableConfig
 
 from src.agents.state import (
     Article,
@@ -418,7 +419,8 @@ class TestMergeNode:
         ]
         mock_llm = _build_mock_llm([shared_extractions, shared_extractions])
 
-        result = merge_node(base_state, mock_llm)
+        config = RunnableConfig({"configurable": {"llm_client": mock_llm}})
+        result = merge_node(base_state, config)
 
         assert result.current_stage == PipelineStage.MERGE
         assert result.error_message is None
@@ -450,7 +452,8 @@ class TestMergeNode:
         ]
         mock_llm = _build_mock_llm([shared_extractions, shared_extractions])
 
-        result = merge_node(base_state, mock_llm)
+        config = RunnableConfig({"configurable": {"llm_client": mock_llm}})
+        result = merge_node(base_state, config)
 
         assert result.current_stage == PipelineStage.MERGE
         # officer_name should be in conflicting_fields (doesn't match DB)
@@ -471,7 +474,8 @@ class TestMergeNode:
         ]
         mock_llm = _build_mock_llm([article1_extractions, article2_extractions])
 
-        result = merge_node(base_state, mock_llm)
+        config = RunnableConfig({"configurable": {"llm_client": mock_llm}})
+        result = merge_node(base_state, config)
 
         assert result.current_stage == PipelineStage.MERGE
         assert MediaFeatureField.WEAPON in result.conflicting_fields
@@ -488,7 +492,8 @@ class TestMergeNode:
             "API error"
         )
 
-        result = merge_node(base_state, mock_llm)
+        config = RunnableConfig({"configurable": {"llm_client": mock_llm}})
+        result = merge_node(base_state, config)
 
         # Helpers catch the error -- orchestrator completes normally
         assert result.current_stage == PipelineStage.MERGE
