@@ -4,7 +4,15 @@ Defines the conditional routing logic after the coordinator node and
 the two terminal nodes (complete, escalate) that end the pipeline.
 """
 
+from langgraph.checkpoint.sqlite import SqliteSaver
+from langgraph.graph.state import END, START, CompiledStateGraph, StateGraph
+
+from src.agents.coordinate_node import coordinate_node
+from src.agents.extract_node import extract_node
 from src.agents.state import EnrichmentState, PipelineStage
+from src.merge.merge_node import merge_node
+from src.retrieval.search_node import search_node
+from src.validation.validate_node import validate_node
 
 
 def route_after_coordinator(state: EnrichmentState) -> str:
@@ -71,3 +79,42 @@ def escalate_node(state: EnrichmentState) -> EnrichmentState:
     state.output_file_path = "pending"
     state.reasoning_summary = "pending"
     return state
+
+
+def build_graph(checkpointer: SqliteSaver | None = None) -> CompiledStateGraph:
+    """Build and compile the enrichment pipeline graph.
+
+    Assembles a hub-and-spoke StateGraph where every processing node
+    (extract, search, validate, merge) feeds into the coordinator,
+    which conditionally routes to the next stage or a terminal node.
+
+    Args:
+        checkpointer: Optional SqliteSaver for persistent checkpointing.
+            Pass None to compile without checkpointing.
+
+    Returns:
+        Compiled graph ready for invocation via ``graph.invoke(state)``.
+    """
+    workflow = StateGraph(EnrichmentState)
+    workflow.add_node("extract", extract_node)
+    workflow.add_node("search", search_node)
+    workflow.add_node("validate", validate_node)
+    workflow.add_node("merge", merge_node)
+    workflow.add_node("complete", complete_node)
+    workflow.add_node("escalate", escalate_node)
+    workflow.add_node("coordinate", coordinate_node)
+
+    # Normal nodes
+    workflow.add_edge(START, "extract")
+    workflow.add_edge("extract", "coordinate")
+    workflow.add_edge("search", "coordinate")
+    workflow.add_edge("validate", "coordinate")
+    workflow.add_edge("merge", "coordinate")
+    workflow.add_edge("complete", END)
+    workflow.add_edge("escalate", END)
+
+    # Conditional nodes
+    workflow.add_conditional_edges("coordinate", route_after_coordinator)
+
+    app = workflow.compile(checkpointer=checkpointer)
+    return app
