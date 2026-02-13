@@ -5,11 +5,11 @@ check_articles_match, extract_fields) and the merge_node orchestrator.
 LLM calls are mocked via MagicMock.
 """
 
-from langchain_core.runnables import RunnableConfig
 from datetime import date
 from unittest.mock import MagicMock
 
 import pytest
+from langchain_core.runnables import RunnableConfig
 
 from src.agents.state import (
     Article,
