@@ -1,4 +1,12 @@
+"""Tests for graph wiring, routing, terminal nodes, and end-to-end paths.
+
+Unit tests verify the router edge function, terminal nodes, and graph
+compilation. Integration tests run the compiled graph with patched node
+functions to verify routing through happy and escalation paths.
+"""
+
 from datetime import date
+from unittest.mock import patch
 
 import pytest
 from langgraph.graph.state import CompiledStateGraph
@@ -10,11 +18,59 @@ from src.agents.graph import (
     route_after_coordinator,
 )
 from src.agents.state import (
+    Article,
+    ConfidenceLevel,
     DatasetType,
     EnrichmentState,
+    FieldExtraction,
     PipelineStage,
+    SearchAttempt,
     SearchStrategyType,
+    ValidationResult,
 )
+
+# --- Fake node helpers for integration tests ---
+
+_STUB_ARTICLE = Article(url="https://stub.com", title="stub", snippet="stub")
+
+
+def _fake_extract(state: EnrichmentState) -> EnrichmentState:
+    state.current_stage = PipelineStage.EXTRACT
+    return state
+
+
+def _fake_search(state: EnrichmentState) -> EnrichmentState:
+    state.current_stage = PipelineStage.SEARCH
+    state.search_attempts = [
+        SearchAttempt(
+            query="stub query",
+            strategy=state.next_strategy,
+            num_results=1,
+            avg_relevance_score=0.9,
+        )
+    ]
+    state.retrieved_articles = [_STUB_ARTICLE]
+    return state
+
+
+def _fake_validate(state: EnrichmentState) -> EnrichmentState:
+    state.current_stage = PipelineStage.VALIDATE
+    state.validation_results = [ValidationResult(article=_STUB_ARTICLE, passed=True)]
+    return state
+
+
+def _fake_merge(state: EnrichmentState) -> EnrichmentState:
+    state.current_stage = PipelineStage.MERGE
+    state.extracted_fields = [
+        FieldExtraction(
+            field_name="weapon",
+            value="handgun",
+            confidence=ConfidenceLevel.HIGH,
+        )
+    ]
+    state.conflicting_fields = []
+    return state
+
 
 # --- Fixtures ---
 
@@ -33,6 +89,9 @@ def base_state() -> EnrichmentState:
         current_stage=PipelineStage.EXTRACT,
         next_strategy=SearchStrategyType.EXACT_MATCH,
     )
+
+
+# --- Unit tests ---
 
 
 @pytest.mark.parametrize(
@@ -90,3 +149,152 @@ def test_build_graph_none() -> None:
     ]
     for node_name in node_names:
         assert node_name in compiled_graph.nodes
+
+
+# --- Integration tests ---
+
+
+@pytest.mark.integration
+@patch("src.agents.graph.validate_node")
+@patch("src.agents.graph.search_node")
+@patch("src.agents.graph.merge_node")
+@patch("src.agents.graph.extract_node")
+def test_happy_path(
+    mock_extract,
+    mock_merge,
+    mock_search,
+    mock_validate,
+    base_state: EnrichmentState,
+) -> None:
+    """Happy path: extract → search → validate → merge → complete."""
+    mock_extract.side_effect = _fake_extract
+    mock_search.side_effect = _fake_search
+    mock_validate.side_effect = _fake_validate
+    mock_merge.side_effect = _fake_merge
+
+    graph = build_graph(None)
+    result = graph.invoke(base_state)
+
+    assert result["current_stage"] == PipelineStage.COMPLETE
+    assert len(result["search_attempts"]) > 0
+    assert len(result["validation_results"]) > 0
+    assert len(result["extracted_fields"]) > 0
+    assert not result["requires_human_review"]
+
+
+@pytest.mark.integration
+@patch("src.agents.graph.extract_node")
+def test_escalate_after_extract(
+    mock_extract,
+    base_state: EnrichmentState,
+) -> None:
+    """Escalate when extract produces no identity fields."""
+
+    def _fake_extract_empty(state: EnrichmentState) -> EnrichmentState:
+        state.current_stage = PipelineStage.EXTRACT
+        state.civilian_name = None
+        state.officer_name = None
+        state.incident_date = None
+        return state
+
+    mock_extract.side_effect = _fake_extract_empty
+
+    graph = build_graph(None)
+    result = graph.invoke(base_state)
+
+    assert result["current_stage"] == PipelineStage.ESCALATE
+    assert result["requires_human_review"]
+
+
+@pytest.mark.integration
+@patch("src.agents.graph.search_node")
+@patch("src.agents.graph.extract_node")
+def test_escalate_after_search(
+    mock_extract,
+    mock_search,
+    base_state: EnrichmentState,
+) -> None:
+    """Escalate when search exhausts all retry strategies."""
+
+    def _fake_search_low_score(state: EnrichmentState) -> EnrichmentState:
+        state.current_stage = PipelineStage.SEARCH
+        state.search_attempts = [
+            SearchAttempt(
+                query="stub",
+                strategy=state.next_strategy,
+                num_results=0,
+                avg_relevance_score=0.1,
+            )
+        ]
+        return state
+
+    mock_extract.side_effect = _fake_extract
+    mock_search.side_effect = _fake_search_low_score
+
+    graph = build_graph(None)
+    result = graph.invoke(base_state)
+
+    assert result["current_stage"] == PipelineStage.ESCALATE
+    assert result["requires_human_review"]
+
+
+@pytest.mark.integration
+@patch("src.agents.graph.validate_node")
+@patch("src.agents.graph.search_node")
+@patch("src.agents.graph.extract_node")
+def test_escalate_after_validate(
+    mock_extract,
+    mock_search,
+    mock_validate,
+    base_state: EnrichmentState,
+) -> None:
+    """Escalate when all articles fail validation."""
+
+    def _fake_validate_fail(state: EnrichmentState) -> EnrichmentState:
+        state.current_stage = PipelineStage.VALIDATE
+        state.validation_results = [
+            ValidationResult(article=_STUB_ARTICLE, passed=False)
+        ]
+        return state
+
+    mock_extract.side_effect = _fake_extract
+    mock_search.side_effect = _fake_search
+    mock_validate.side_effect = _fake_validate_fail
+
+    graph = build_graph(None)
+    result = graph.invoke(base_state)
+
+    assert result["current_stage"] == PipelineStage.ESCALATE
+    assert result["requires_human_review"]
+
+
+@pytest.mark.integration
+@patch("src.agents.graph.validate_node")
+@patch("src.agents.graph.search_node")
+@patch("src.agents.graph.merge_node")
+@patch("src.agents.graph.extract_node")
+def test_escalate_after_merge(
+    mock_extract,
+    mock_merge,
+    mock_search,
+    mock_validate,
+    base_state: EnrichmentState,
+) -> None:
+    """Escalate when merge detects conflicting fields."""
+
+    def _fake_merge_conflict(state: EnrichmentState) -> EnrichmentState:
+        state.current_stage = PipelineStage.MERGE
+        state.extracted_fields = []
+        state.conflicting_fields = ["weapon"]
+        return state
+
+    mock_extract.side_effect = _fake_extract
+    mock_search.side_effect = _fake_search
+    mock_validate.side_effect = _fake_validate
+    mock_merge.side_effect = _fake_merge_conflict
+
+    graph = build_graph(None)
+    result = graph.invoke(base_state)
+
+    assert result["current_stage"] == PipelineStage.ESCALATE
+    assert result["requires_human_review"]
