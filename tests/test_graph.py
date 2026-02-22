@@ -5,10 +5,13 @@ compilation. Integration tests run the compiled graph with patched node
 functions to verify routing through happy and escalation paths.
 """
 
+import json
 from datetime import date
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
+from langchain_core.runnables import RunnableConfig
 from langgraph.graph.state import CompiledStateGraph
 
 from src.agents.graph import (
@@ -28,6 +31,7 @@ from src.agents.state import (
     SearchStrategyType,
     ValidationResult,
 )
+from src.config import Settings
 
 # --- Fake node helpers for integration tests ---
 
@@ -120,18 +124,48 @@ def test_route_after_coordinator_fallback(base_state: EnrichmentState) -> None:
     assert route_after_coordinator(state) == "escalate"
 
 
-def test_complete_node(base_state: EnrichmentState) -> None:
+def test_complete_node(base_state: EnrichmentState, tmp_path: Path) -> None:
     """Complete node sets COMPLETE stage and no human review."""
-    state = complete_node(base_state.model_copy())
+    config = RunnableConfig(
+        {"configurable": {"settings": Settings(output_dir=str(tmp_path))}}
+    )
+    state = complete_node(base_state.model_copy(), config)
     assert state.current_stage == PipelineStage.COMPLETE
     assert not state.requires_human_review
 
+    file_path = tmp_path / f"{state.dataset_type}_{state.incident_id}_complete.json"
+    assert file_path.exists()
 
-def test_escalate_node(base_state: EnrichmentState) -> None:
+    data = json.loads(file_path.read_text())
+    assert data["incident_id"] == state.incident_id
+    assert data["dataset_type"] == state.dataset_type
+    assert data["search_strategy"] == state.next_strategy
+    assert (
+        data["outcome_summary"]
+        == f"Enriched {len(state.extracted_fields)} fields for incident {state.incident_id} ({state.dataset_type})"
+    )
+
+
+def test_escalate_node(base_state: EnrichmentState, tmp_path: Path) -> None:
     """Escalate node sets ESCALATE stage and requires human review."""
-    state = escalate_node(base_state.model_copy())
+    config = RunnableConfig(
+        {"configurable": {"settings": Settings(output_dir=str(tmp_path))}}
+    )
+    state = escalate_node(base_state.model_copy(), config)
     assert state.current_stage == PipelineStage.ESCALATE
     assert state.requires_human_review
+
+    file_path = tmp_path / f"{state.dataset_type}_{state.incident_id}_escalate.json"
+    assert file_path.exists()
+
+    data = json.loads(file_path.read_text())
+    assert data["incident_id"] == state.incident_id
+    assert data["dataset_type"] == state.dataset_type
+    assert data["search_strategy"] == state.next_strategy
+    assert (
+        data["outcome_summary"]
+        == f"Escalated incident {state.incident_id}: {state.escalation_reason} after {state.retry_count} retries"
+    )
 
 
 def test_build_graph_none() -> None:
@@ -173,7 +207,8 @@ def test_happy_path(
     mock_merge.side_effect = _fake_merge
 
     graph = build_graph(None)
-    result = graph.invoke(base_state)
+    config = RunnableConfig({"configurable": {"settings": Settings()}})
+    result = graph.invoke(base_state, config)
 
     assert result["current_stage"] == PipelineStage.COMPLETE
     assert len(result["search_attempts"]) > 0
@@ -200,7 +235,8 @@ def test_escalate_after_extract(
     mock_extract.side_effect = _fake_extract_empty
 
     graph = build_graph(None)
-    result = graph.invoke(base_state)
+    config = RunnableConfig({"configurable": {"settings": Settings()}})
+    result = graph.invoke(base_state, config)
 
     assert result["current_stage"] == PipelineStage.ESCALATE
     assert result["requires_human_review"]
@@ -232,7 +268,8 @@ def test_escalate_after_search(
     mock_search.side_effect = _fake_search_low_score
 
     graph = build_graph(None)
-    result = graph.invoke(base_state)
+    config = RunnableConfig({"configurable": {"settings": Settings()}})
+    result = graph.invoke(base_state, config)
 
     assert result["current_stage"] == PipelineStage.ESCALATE
     assert result["requires_human_review"]
@@ -262,7 +299,8 @@ def test_escalate_after_validate(
     mock_validate.side_effect = _fake_validate_fail
 
     graph = build_graph(None)
-    result = graph.invoke(base_state)
+    config = RunnableConfig({"configurable": {"settings": Settings()}})
+    result = graph.invoke(base_state, config)
 
     assert result["current_stage"] == PipelineStage.ESCALATE
     assert result["requires_human_review"]
@@ -294,7 +332,141 @@ def test_escalate_after_merge(
     mock_merge.side_effect = _fake_merge_conflict
 
     graph = build_graph(None)
-    result = graph.invoke(base_state)
+    config = RunnableConfig({"configurable": {"settings": Settings()}})
+    result = graph.invoke(base_state, config)
 
     assert result["current_stage"] == PipelineStage.ESCALATE
     assert result["requires_human_review"]
+
+
+def test_nested_serialization(base_state: EnrichmentState, tmp_path: Path) -> None:
+    """Nested Pydantic models serialize correctly in complete node JSON output."""
+    state = base_state.model_copy()
+    state.extracted_fields = [
+        FieldExtraction(
+            field_name="weapon",
+            value="handgun",
+            confidence=ConfidenceLevel.HIGH,
+        )
+    ]
+    state.validation_results = [ValidationResult(article=_STUB_ARTICLE, passed=True)]
+    state.current_stage = PipelineStage.MERGE
+    config = RunnableConfig(
+        {"configurable": {"settings": Settings(output_dir=str(tmp_path))}}
+    )
+    updated_stage = complete_node(state, config)
+
+    file_path = Path(updated_stage.output_file_path)
+    assert file_path.exists()
+
+    data = json.loads(file_path.read_text())
+    assert data["extracted_fields"][0]["field_name"] == "weapon"
+    assert data["extracted_fields"][0]["value"] == "handgun"
+    assert data["extracted_fields"][0]["confidence"] == "high"
+    assert data["validation_results"][0]["article"] == _STUB_ARTICLE.model_dump()
+    assert data["validation_results"][0]["passed"]
+
+
+def test_complete_node_creates_nested_directory(
+    base_state: EnrichmentState, tmp_path: Path
+) -> None:
+    """Complete node creates output directory if it doesn't exist."""
+    nested_dir = tmp_path / "nested" / "subdir"
+    config = RunnableConfig(
+        {"configurable": {"settings": Settings(output_dir=str(nested_dir))}}
+    )
+    state = complete_node(base_state.model_copy(), config)
+
+    assert nested_dir.exists()
+    assert Path(state.output_file_path).exists()
+
+
+def test_escalate_node_creates_nested_directory(
+    base_state: EnrichmentState, tmp_path: Path
+) -> None:
+    """Escalate node creates output directory if it doesn't exist."""
+    nested_dir = tmp_path / "deep" / "path"
+    config = RunnableConfig(
+        {"configurable": {"settings": Settings(output_dir=str(nested_dir))}}
+    )
+    state = escalate_node(base_state.model_copy(), config)
+
+    assert nested_dir.exists()
+    assert Path(state.output_file_path).exists()
+
+
+def test_complete_node_output_file_path(
+    base_state: EnrichmentState, tmp_path: Path
+) -> None:
+    """Complete node sets output_file_path to the correct full path."""
+    config = RunnableConfig(
+        {"configurable": {"settings": Settings(output_dir=str(tmp_path))}}
+    )
+    state = complete_node(base_state.model_copy(), config)
+
+    expected = str(
+        tmp_path / f"{state.dataset_type}_{state.incident_id}_complete.json"
+    )
+    assert state.output_file_path == expected
+
+
+def test_escalate_node_output_file_path(
+    base_state: EnrichmentState, tmp_path: Path
+) -> None:
+    """Escalate node sets output_file_path to the correct full path."""
+    config = RunnableConfig(
+        {"configurable": {"settings": Settings(output_dir=str(tmp_path))}}
+    )
+    state = escalate_node(base_state.model_copy(), config)
+
+    expected = str(
+        tmp_path / f"{state.dataset_type}_{state.incident_id}_escalate.json"
+    )
+    assert state.output_file_path == expected
+
+
+def test_complete_node_json_keys(
+    base_state: EnrichmentState, tmp_path: Path
+) -> None:
+    """Complete node JSON output contains all expected keys."""
+    config = RunnableConfig(
+        {"configurable": {"settings": Settings(output_dir=str(tmp_path))}}
+    )
+    state = complete_node(base_state.model_copy(), config)
+
+    data = json.loads(Path(state.output_file_path).read_text())
+    expected_keys = {
+        "incident_id",
+        "dataset_type",
+        "extracted_fields",
+        "validation_results",
+        "search_strategy",
+        "retry_count",
+        "outcome_summary",
+    }
+    assert set(data.keys()) == expected_keys
+
+
+def test_escalate_node_json_keys(
+    base_state: EnrichmentState, tmp_path: Path
+) -> None:
+    """Escalate node JSON output contains all expected keys."""
+    config = RunnableConfig(
+        {"configurable": {"settings": Settings(output_dir=str(tmp_path))}}
+    )
+    state = escalate_node(base_state.model_copy(), config)
+
+    data = json.loads(Path(state.output_file_path).read_text())
+    expected_keys = {
+        "incident_id",
+        "dataset_type",
+        "escalation_reason",
+        "error_message",
+        "current_stage",
+        "search_strategy",
+        "retry_count",
+        "retrieved_articles",
+        "extracted_fields",
+        "outcome_summary",
+    }
+    assert set(data.keys()) == expected_keys
