@@ -261,7 +261,7 @@ class EnrichmentState(BaseModel):
         requires_human_review: Whether human review is needed.
 
         output_file_path: Path to output CSV for human review.
-        reasoning_summary: Brief summary for flagged items.
+        outcome_summary: Brief summary for flagged items.
         cost_usd: Cumulative API cost for this record.
         error_message: Error details if processing failed.
     """
@@ -301,7 +301,7 @@ class EnrichmentState(BaseModel):
 
     # Output (for human review)
     output_file_path: str | None = None
-    reasoning_summary: str | None = None
+    outcome_summary: str | None = None
 
     # Pipeline metadata
     cost_usd: float = 0.0

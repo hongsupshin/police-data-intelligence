@@ -4,6 +4,11 @@ Defines the conditional routing logic after the coordinator node and
 the two terminal nodes (complete, escalate) that end the pipeline.
 """
 
+import json
+import logging
+from pathlib import Path
+
+from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.sqlite import SqliteSaver
 from langgraph.graph.state import END, START, CompiledStateGraph, StateGraph
 
@@ -13,6 +18,8 @@ from src.agents.state import EnrichmentState, PipelineStage
 from src.merge.merge_node import merge_node
 from src.retrieval.search_node import search_node
 from src.validation.validate_node import validate_node
+
+logger = logging.getLogger(__name__)
 
 
 def route_after_coordinator(state: EnrichmentState) -> str:
@@ -38,46 +45,108 @@ def route_after_coordinator(state: EnrichmentState) -> str:
     return state.next_stage.value
 
 
-def complete_node(state: EnrichmentState) -> EnrichmentState:
+def complete_node(state: EnrichmentState, config: RunnableConfig) -> EnrichmentState:
     """Terminal node for successfully enriched records.
 
-    Marks the pipeline as complete with no human review needed.
-    File writing, reasoning summary generation, and logging are
-    planned for future implementation.
+    Marks the pipeline as complete, generates an outcome summary,
+    writes enrichment results to a JSON file, and logs success.
 
     Args:
         state: Pipeline state after all enrichment stages pass.
+        config: RunnableConfig containing Settings under
+            ``configurable.settings``.
 
     Returns:
         Updated state with current_stage set to COMPLETE.
     """
-    # TODO: file writing (I/O), reasoning summary generation, logging
+    settings = config["configurable"]["settings"]
+
+    Path(settings.output_dir).mkdir(parents=True, exist_ok=True)
+    state.output_file_path = str(
+        Path(settings.output_dir)
+        / f"{state.dataset_type}_{state.incident_id}_complete.json"
+    )
+
+    state.outcome_summary = f"Enriched {len(state.extracted_fields)} fields for incident {state.incident_id} ({state.dataset_type})"
+
+    output = {
+        "incident_id": state.incident_id,
+        "dataset_type": state.dataset_type,
+        "extracted_fields": [f.model_dump() for f in state.extracted_fields],
+        "validation_results": [r.model_dump() for r in state.validation_results],
+        "search_strategy": state.next_strategy,
+        "retry_count": state.retry_count,
+        "outcome_summary": state.outcome_summary,
+    }
+
     state.current_stage = PipelineStage.COMPLETE
     state.requires_human_review = False
-    state.output_file_path = "pending"
-    state.reasoning_summary = "pending"
+
+    with open(state.output_file_path, "w") as f:
+        json.dump(output, f)
+
+    logger.info(
+        "Complete: incident_id=%s, dataset_type=%s, number of extracted_fields=%d",
+        state.incident_id,
+        state.dataset_type,
+        len(state.extracted_fields),
+    )
+
     return state
 
 
-def escalate_node(state: EnrichmentState) -> EnrichmentState:
+def escalate_node(state: EnrichmentState, config: RunnableConfig) -> EnrichmentState:
     """Terminal node for records requiring human review.
 
-    Marks the pipeline as escalated so the record is routed to
-    human-in-the-loop review. File writing, reasoning summary
-    generation, and logging are planned for future implementation.
+    Marks the pipeline as escalated, generates an outcome summary,
+    writes an escalation report to a JSON file, and logs the
+    escalation details.
 
     Args:
         state: Pipeline state after coordinator triggers escalation.
+        config: RunnableConfig containing Settings under
+            ``configurable.settings``.
 
     Returns:
         Updated state with current_stage set to ESCALATE and
         requires_human_review set to True.
     """
-    # TODO: file writing (I/O), reasoning summary generation, logging
+    settings = config["configurable"]["settings"]
+
+    Path(settings.output_dir).mkdir(parents=True, exist_ok=True)
+    state.output_file_path = str(
+        Path(settings.output_dir)
+        / f"{state.dataset_type}_{state.incident_id}_escalate.json"
+    )
+
+    state.outcome_summary = f"Escalated incident {state.incident_id}: {state.escalation_reason} after {state.retry_count} retries"
+
+    output = {
+        "incident_id": state.incident_id,
+        "dataset_type": state.dataset_type,
+        "escalation_reason": state.escalation_reason,
+        "error_message": state.error_message,
+        "current_stage": state.current_stage,
+        "search_strategy": state.next_strategy,
+        "retry_count": state.retry_count,
+        "retrieved_articles": [a.model_dump() for a in state.retrieved_articles],
+        "extracted_fields": [f.model_dump() for f in state.extracted_fields],
+        "outcome_summary": state.outcome_summary,
+    }
+
     state.current_stage = PipelineStage.ESCALATE
     state.requires_human_review = True
-    state.output_file_path = "pending"
-    state.reasoning_summary = "pending"
+
+    with open(state.output_file_path, "w") as f:
+        json.dump(output, f)
+
+    logger.info(
+        "Escalated: incident_id=%s, escalation_reason=%s, error_message=%s",
+        state.incident_id,
+        state.escalation_reason,
+        state.error_message,
+    )
+
     return state
 
 
@@ -93,7 +162,7 @@ def build_graph(checkpointer: SqliteSaver | None = None) -> CompiledStateGraph:
             Pass None to compile without checkpointing.
 
     Returns:
-        Compiled graph ready for invocation via ``graph.invoke(state)``.
+        Compiled graph ready for invocation via graph.invoke(state).
     """
     workflow = StateGraph(EnrichmentState)
     workflow.add_node("extract", extract_node)
