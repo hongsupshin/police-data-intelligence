@@ -115,13 +115,14 @@ def check_articles_match(
     Returns:
         Tuple of (matched, converged_extraction). If matched is True,
         converged_extraction contains the winning FieldExtraction with
-        updated confidence. If False, returns None.
+        updated confidence. Returns (True, None) when all extractions
+        are null (no data, not a conflict). If False, returns None.
     """
     non_null_results = [r for r in extracted_results if r.value is not None]
     non_null_values = [r.value for r in non_null_results]
     if len(non_null_results) == 0:
         # TODO: warning
-        return (False, None)
+        return (True, None)
 
     # Single extraction
     if len(non_null_results) == 1:
@@ -233,7 +234,8 @@ def merge_node(state: EnrichmentState, config: RunnableConfig) -> EnrichmentStat
                         # Log conflict btw reference and extraction
                         state.conflicting_fields.append(field_name)
                 # Regardless of the merge success, log extracted fields
-                state.extracted_fields.append(articles_match[1])
+                if articles_match[1]:
+                    state.extracted_fields.append(articles_match[1])
             else:
                 # Log conflicting fields
                 state.conflicting_fields.append(field_name)

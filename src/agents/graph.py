@@ -83,7 +83,7 @@ def complete_node(state: EnrichmentState, config: RunnableConfig) -> EnrichmentS
     state.requires_human_review = False
 
     with open(state.output_file_path, "w") as f:
-        json.dump(output, f)
+        json.dump(output, f, indent=2, default=str)
 
     logger.info(
         "Complete: incident_id=%s, dataset_type=%s, number of extracted_fields=%d",
@@ -131,6 +131,7 @@ def escalate_node(state: EnrichmentState, config: RunnableConfig) -> EnrichmentS
         "retry_count": state.retry_count,
         "retrieved_articles": [a.model_dump() for a in state.retrieved_articles],
         "extracted_fields": [f.model_dump() for f in state.extracted_fields],
+        "conflicting_fields": state.conflicting_fields,
         "outcome_summary": state.outcome_summary,
     }
 
@@ -138,7 +139,7 @@ def escalate_node(state: EnrichmentState, config: RunnableConfig) -> EnrichmentS
     state.requires_human_review = True
 
     with open(state.output_file_path, "w") as f:
-        json.dump(output, f)
+        json.dump(output, f, indent=2, default=str)
 
     logger.info(
         "Escalated: incident_id=%s, escalation_reason=%s, error_message=%s",

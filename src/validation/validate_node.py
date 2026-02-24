@@ -106,7 +106,8 @@ def validate_node(state: EnrichmentState) -> EnrichmentState:
     Loops through each article in state.retrieved_articles and checks
     date, location, and (optionally) name against the incident record.
     An article passes validation if both date_match and location_match
-    are True.
+    are True. When published_date is None, the date check is skipped
+    and the article passes on location_match alone.
 
     Args:
         state: Current enrichment state with incident fields and
@@ -148,10 +149,10 @@ def validate_node(state: EnrichmentState) -> EnrichmentState:
                     article_text, state.civilian_name
                 )
 
-            if result.date_match and result.location_match:
-                result.passed = True
+            if article.published_date is not None:
+                result.passed = result.date_match and result.location_match
             else:
-                result.passed = False
+                result.passed = result.location_match
             validation_results.append(result)
 
         state.validation_results = validation_results

@@ -467,6 +467,7 @@ def test_escalate_node_json_keys(
         "retry_count",
         "retrieved_articles",
         "extracted_fields",
+        "conflicting_fields",
         "outcome_summary",
     }
     assert set(data.keys()) == expected_keys

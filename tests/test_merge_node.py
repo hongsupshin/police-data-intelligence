@@ -224,16 +224,16 @@ def test_check_reference_match(base_field_extraction: FieldExtraction) -> None:
 def test_check_articles_match_no_articles(
     base_field_extraction_none: FieldExtraction,
 ) -> None:
-    """Empty list and all-None values both return (False, None)."""
+    """Empty list and all-None values both return (True, None) — no data, not conflict."""
     result = check_articles_match(MediaFeatureField.WEAPON, [])
-    assert result[0] is False
+    assert result[0] is True
     assert result[1] is None
 
     result = check_articles_match(
         MediaFeatureField.WEAPON,
         [base_field_extraction_none, base_field_extraction_none],
     )
-    assert result[0] is False
+    assert result[0] is True
     assert result[1] is None
 
 
