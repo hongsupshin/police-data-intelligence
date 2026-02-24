@@ -131,7 +131,7 @@ def escalate_node(state: EnrichmentState, config: RunnableConfig) -> EnrichmentS
         "retry_count": state.retry_count,
         "retrieved_articles": [a.model_dump() for a in state.retrieved_articles],
         "extracted_fields": [f.model_dump() for f in state.extracted_fields],
-        "conflicting_fields": state.conflicting_fields,
+        "conflicting_fields": [c.model_dump() for c in state.conflicting_fields] if state.conflicting_fields else state.conflicting_fields,
         "outcome_summary": state.outcome_summary,
     }
 

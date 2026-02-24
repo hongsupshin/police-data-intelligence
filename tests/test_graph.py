@@ -23,8 +23,10 @@ from src.agents.graph import (
 from src.agents.state import (
     Article,
     ConfidenceLevel,
+    ConflictType,
     DatasetType,
     EnrichmentState,
+    FieldConflict,
     FieldExtraction,
     PipelineStage,
     SearchAttempt,
@@ -323,7 +325,14 @@ def test_escalate_after_merge(
     def _fake_merge_conflict(state: EnrichmentState) -> EnrichmentState:
         state.current_stage = PipelineStage.MERGE
         state.extracted_fields = []
-        state.conflicting_fields = ["weapon"]
+        state.conflicting_fields = [
+            FieldConflict(
+                field_name="weapon",
+                conflict_type=ConflictType.ARTICLES_DISAGREE,
+                values=["handgun", "knife"],
+                sources=[["https://a.com"], ["https://b.com"]],
+            )
+        ]
         return state
 
     mock_extract.side_effect = _fake_extract
