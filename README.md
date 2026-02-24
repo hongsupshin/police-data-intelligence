@@ -76,17 +76,24 @@ The Coordinator routes to human review when:
 
 ### Validation Logic
 
-Articles pass validation when:
+Articles pass validation using three-tier logic:
 
-- **Date + location both match** (when `published_date` is available)
-- **Location matches alone** (when `published_date` is null — common with Tavily results)
+| Condition | Criteria | Rationale |
+|-----------|----------|-----------|
+| Has `published_date` | date + location | Standard check |
+| No date, has `civilian_name` | location + name | Compensates for missing date |
+| No date, no name | location only | Last resort fallback |
 
-This relaxed date handling prevents false rejections when Tavily returns articles
-without parsed dates.
+This prevents false positives from articles about different incidents that happen
+to match on location alone, while still handling Tavily results that lack parsed
+dates.
 
 ### Merge Logic
 
-For each field extracted from articles:
+The merge node only processes **validated articles** (those that passed
+validation), filtering out unrelated articles before extraction.
+
+For each field extracted from validated articles:
 
 - **Articles agree** → add to `extracted_fields` with confidence level
 - **Articles disagree** → add `FieldConflict` to `conflicting_fields`, escalate
@@ -267,6 +274,7 @@ principles:
 - [x] LangGraph wiring with conditional routing
 - [x] Terminal nodes with JSON output and logging
 - [x] CLI entrypoint for single-incident enrichment
+- [ ] Semantic synonym resolution in merge (e.g., "black" vs "African American" should not conflict)
 - [ ] Batch processing across all records
 - [ ] Cloud deployment (AWS Lambda)
 - [ ] Human review UI

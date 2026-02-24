@@ -137,8 +137,10 @@ class TestValidateNode:
         assert result.validation_results == []
         assert "Validation failed" in result.error_message
 
-    def test_article_with_missing_date(self, base_state: EnrichmentState) -> None:
-        """Missing published_date skips date check; passes on location alone."""
+    def test_article_with_missing_date_and_name_match(
+        self, base_state: EnrichmentState
+    ) -> None:
+        """Missing date + name match → passes (location + name required)."""
         base_state.retrieved_articles = [
             Article(
                 url="https://example.com/date_missing",
@@ -151,6 +153,49 @@ class TestValidateNode:
         result = validate_node(base_state)
         for vr in result.validation_results:
             assert not vr.date_match
+            assert vr.location_match
+            assert vr.victim_name_match
+            assert vr.passed
+
+    def test_article_with_missing_date_and_name_mismatch(
+        self, base_state: EnrichmentState
+    ) -> None:
+        """Missing date + name mismatch → fails even with location match."""
+        base_state.retrieved_articles = [
+            Article(
+                url="https://example.com/date_missing_name_mismatch",
+                title="Houston police shooting Jane Smith",
+                snippet="Police in Houston, TX confirmed a fatal officer-involved shooting.",
+                content="Police in Houston, TX confirmed a fatal officer-involved shooting. The victim was identified as Jane Smith.",
+                published_date=None,
+            )
+        ]
+        result = validate_node(base_state)
+        for vr in result.validation_results:
+            assert not vr.date_match
+            assert vr.location_match
+            assert not vr.victim_name_match
+            assert not vr.passed
+
+    def test_article_with_missing_date_and_no_civilian_name(
+        self, base_state: EnrichmentState
+    ) -> None:
+        """Missing date + no civilian_name in state → passes on location alone (fallback)."""
+        base_state.civilian_name = None
+        base_state.retrieved_articles = [
+            Article(
+                url="https://example.com/date_missing_no_name",
+                title="Houston police shooting",
+                snippet="Police in Houston, TX confirmed a fatal officer-involved shooting.",
+                content="Police in Houston, TX confirmed a fatal officer-involved shooting near downtown.",
+                published_date=None,
+            )
+        ]
+        result = validate_node(base_state)
+        for vr in result.validation_results:
+            assert not vr.date_match
+            assert vr.location_match
+            assert vr.victim_name_match is None
             assert vr.passed
 
     def test_article_with_missing_date_and_location_mismatch(

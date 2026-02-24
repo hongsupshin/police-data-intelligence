@@ -177,7 +177,7 @@ def check_reference_match(
         # TODO: warning
         return (True, extracted_field)
 
-    if fuzz.ratio(str(reference), extracted_field.value) < RAPIDFUZZ_THRESHOLD:
+    if fuzz.ratio(str(reference).lower(), extracted_field.value.lower()) < RAPIDFUZZ_THRESHOLD:
         # TODO: logging
         return (False, None)
     else:
@@ -188,10 +188,10 @@ def check_reference_match(
 def merge_node(state: EnrichmentState, config: RunnableConfig) -> EnrichmentState:
     """Orchestrate field extraction, cross-article consistency, and reference matching.
 
-    Extracts fields from all retrieved articles using an LLM, groups
-    results by field, checks consistency across articles, and validates
-    against database reference values. Populates extracted_fields and
-    conflicting_fields on the state.
+    Filters to only validated articles (those that passed validation),
+    extracts fields using an LLM, groups results by field, checks
+    consistency across articles, and validates against database reference
+    values. Populates extracted_fields and conflicting_fields on the state.
 
     Args:
         state: Current enrichment pipeline state with retrieved articles.
@@ -204,10 +204,18 @@ def merge_node(state: EnrichmentState, config: RunnableConfig) -> EnrichmentStat
     """
     llm_client = config["configurable"]["llm_client"]
 
-    # Extract from all articles
+    # Filter to only validated articles
+    validated_urls = {
+        vr.article.url for vr in state.validation_results if vr.passed
+    }
+    validated_articles = [
+        a for a in state.retrieved_articles if a.url in validated_urls
+    ]
+
+    # Extract from validated articles
     try:
         all_extractions = []
-        for article in state.retrieved_articles:
+        for article in validated_articles:
             result = extract_fields(article, llm_client, list(MediaFeatureField))
             all_extractions.append(result)
 
