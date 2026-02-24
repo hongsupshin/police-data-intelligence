@@ -21,7 +21,7 @@ from src.agents.graph import build_graph
 from src.agents.state import DatasetType, EnrichmentState
 from src.config import Settings
 
-load_dotenv()
+load_dotenv(override=True)
 
 logging.basicConfig(
     level=os.getenv("LOG_LEVEL", "INFO"),
@@ -47,8 +47,11 @@ def run(incident_id: str, dataset_type: str) -> dict:
         KeyError: If OPENAI_API_KEY is not set in the environment.
     """
     state = EnrichmentState(incident_id=incident_id, dataset_type=dataset_type)
-    llm_client = ChatOpenAI(api_key=os.environ["OPENAI_API_KEY"])
-    conn = sqlite3.connect("./checkpoints.db")
+    llm_client = ChatOpenAI(
+        model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
+        api_key=os.environ["OPENAI_API_KEY"],
+    )
+    conn = sqlite3.connect("./checkpoints.db", check_same_thread=False)
 
     checkpointer = SqliteSaver(conn=conn)
     graph = build_graph(checkpointer=checkpointer)

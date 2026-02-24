@@ -138,7 +138,7 @@ class TestValidateNode:
         assert "Validation failed" in result.error_message
 
     def test_article_with_missing_date(self, base_state: EnrichmentState) -> None:
-        """Missing published_date causes date_match=False and passed=False."""
+        """Missing published_date skips date check; passes on location alone."""
         base_state.retrieved_articles = [
             Article(
                 url="https://example.com/date_missing",
@@ -151,6 +151,25 @@ class TestValidateNode:
         result = validate_node(base_state)
         for vr in result.validation_results:
             assert not vr.date_match
+            assert vr.passed
+
+    def test_article_with_missing_date_and_location_mismatch(
+        self, base_state: EnrichmentState
+    ) -> None:
+        """Missing published_date with location mismatch still fails."""
+        base_state.retrieved_articles = [
+            Article(
+                url="https://example.com/date_missing_loc_mismatch",
+                title="Dallas police shooting",
+                snippet="A shooting in Dallas, TX.",
+                content="A shooting occurred in Dallas, TX. No further details.",
+                published_date=None,
+            )
+        ]
+        result = validate_node(base_state)
+        for vr in result.validation_results:
+            assert not vr.date_match
+            assert not vr.location_match
             assert not vr.passed
 
     def test_article_with_missing_location(self, base_state: EnrichmentState) -> None:
