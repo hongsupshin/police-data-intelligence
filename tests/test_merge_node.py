@@ -212,6 +212,13 @@ def test_check_reference_match(base_field_extraction: FieldExtraction) -> None:
     assert result[0] is False
     assert result[1] is None
 
+    # case-insensitive match
+    result = check_reference_match(
+        MediaFeatureField.WEAPON, base_field_extraction.model_copy(), "HANDGUN"
+    )
+    assert result[0] is True
+    assert result[1].value == "HANDGUN"
+
     # reference is not string
     result = check_reference_match(
         MediaFeatureField.WEAPON, base_field_extraction.model_copy(), date(2025, 3, 18)
@@ -516,3 +523,53 @@ class TestMergeNode:
         assert result.error_message is None
         assert result.extracted_fields == []
         assert result.conflicting_fields == []
+
+    def test_only_validated_articles_processed(
+        self, base_state: EnrichmentState
+    ) -> None:
+        """Merge skips articles that did not pass validation."""
+        # Add a third unvalidated article to retrieved_articles
+        unvalidated_article = Article(
+            url="https://example.com/unvalidated",
+            title="Completely unrelated article",
+            snippet="This article is about a different incident.",
+            content="This article is about a completely different incident in another state.",
+            source_name="FOX",
+            relevance_score=0.3,
+            published_date=date(2018, 3, 20),
+        )
+        base_state.retrieved_articles.append(unvalidated_article)
+        # validation_results still only has 2 passed entries (article1, article2)
+
+        shared_extractions = [
+            _make_extraction("weapon", "handgun"),
+            _make_extraction("civilian_name", "John Doe"),
+        ]
+        # Only 2 LLM calls expected (validated articles), NOT 3
+        mock_llm = _build_mock_llm([shared_extractions, shared_extractions])
+
+        config = RunnableConfig({"configurable": {"llm_client": mock_llm}})
+        result = merge_node(base_state, config)
+
+        assert result.current_stage == PipelineStage.MERGE
+        assert result.error_message is None
+        # LLM was called exactly 2 times (once per validated article)
+        assert mock_llm.with_structured_output.return_value.invoke.call_count == 2
+
+    def test_no_validated_articles_produces_empty(
+        self, base_state: EnrichmentState
+    ) -> None:
+        """When no articles pass validation, merge produces empty results."""
+        # Mark all validation results as failed
+        for vr in base_state.validation_results:
+            vr.passed = False
+
+        mock_llm = MagicMock()
+        config = RunnableConfig({"configurable": {"llm_client": mock_llm}})
+        result = merge_node(base_state, config)
+
+        assert result.current_stage == PipelineStage.MERGE
+        assert result.extracted_fields == []
+        assert result.conflicting_fields == []
+        # LLM should never be called
+        mock_llm.with_structured_output.return_value.invoke.assert_not_called()
