@@ -188,6 +188,39 @@ class FieldExtraction(BaseModel):
     llm_reasoning: str | None = None
 
 
+class ConflictType(StrEnum):
+    """Type of field conflict detected during merge.
+
+    Two conflict scenarios exist:
+    - articles_disagree: Extracted values differ across articles beyond
+      fuzzy-match tolerance.
+    - reference_mismatch: Articles agree with each other but disagree
+      with the existing database value.
+    """
+
+    ARTICLES_DISAGREE = "articles_disagree"
+    REFERENCE_MISMATCH = "reference_mismatch"
+
+
+class FieldConflict(BaseModel):
+    """Details of a field conflict detected during merge.
+
+    Attributes:
+        field_name: Name of the conflicting field.
+        conflict_type: Type of conflict detected.
+        values: Distinct values found across sources.
+        sources: Source URLs for each value (parallel to values).
+        reference_value: Database value when conflict_type is
+            REFERENCE_MISMATCH, None otherwise.
+    """
+
+    field_name: str
+    conflict_type: ConflictType
+    values: list[str]
+    sources: list[list[str]]
+    reference_value: str | None = None
+
+
 class MergeExtractionResponse(BaseModel):
     """Structured LLM response for multi-field extraction.
 
@@ -286,7 +319,7 @@ class EnrichmentState(BaseModel):
 
     # Merge outputs (Merge Node)
     extracted_fields: list[FieldExtraction] = Field(default_factory=list)
-    conflicting_fields: list[str] | None = None
+    conflicting_fields: list[FieldConflict] | None = None
 
     # Coordinator control
     retry_count: int = 0

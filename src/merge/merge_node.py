@@ -11,7 +11,9 @@ from src.agents.state import (
     FIELD_TO_STATE_ATTR,
     Article,
     ConfidenceLevel,
+    ConflictType,
     EnrichmentState,
+    FieldConflict,
     FieldExtraction,
     MediaFeatureField,
     MergeExtractionResponse,
@@ -231,14 +233,35 @@ def merge_node(state: EnrichmentState, config: RunnableConfig) -> EnrichmentStat
                         field_name, articles_match[1], reference
                     )
                     if not reference_match[0]:
-                        # Log conflict btw reference and extraction
-                        state.conflicting_fields.append(field_name)
+                        converged = articles_match[1]
+                        state.conflicting_fields.append(
+                            FieldConflict(
+                                field_name=field_name,
+                                conflict_type=ConflictType.REFERENCE_MISMATCH,
+                                values=[converged.value],
+                                sources=[converged.sources],
+                                reference_value=str(reference),
+                            )
+                        )
                 # Regardless of the merge success, log extracted fields
                 if articles_match[1]:
                     state.extracted_fields.append(articles_match[1])
             else:
                 # Log conflicting fields
-                state.conflicting_fields.append(field_name)
+                non_null = [e for e in extraction if e.value is not None]
+                seen: dict[str, list[str]] = {}
+                for e in non_null:
+                    if e.value not in seen:
+                        seen[e.value] = []
+                    seen[e.value].extend(e.sources)
+                state.conflicting_fields.append(
+                    FieldConflict(
+                        field_name=field_name,
+                        conflict_type=ConflictType.ARTICLES_DISAGREE,
+                        values=list(seen.keys()),
+                        sources=[srcs for srcs in seen.values()],
+                    )
+                )
 
         state.current_stage = PipelineStage.MERGE
     except Exception as e:

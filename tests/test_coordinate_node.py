@@ -21,9 +21,11 @@ from src.agents.coordinate_node import (
 from src.agents.state import (
     Article,
     ConfidenceLevel,
+    ConflictType,
     DatasetType,
     EnrichmentState,
     EscalationReason,
+    FieldConflict,
     FieldExtraction,
     MediaFeatureField,
     PipelineStage,
@@ -291,7 +293,14 @@ def test_check_merge_results_error(merge_state: EnrichmentState) -> None:
 def test_check_merge_results_conflict(merge_state: EnrichmentState) -> None:
     """Conflicting fields triggers escalation with CONFLICT."""
     updated_state = merge_state.model_copy()
-    updated_state.conflicting_fields = [MediaFeatureField.WEAPON]
+    updated_state.conflicting_fields = [
+        FieldConflict(
+            field_name=MediaFeatureField.WEAPON,
+            conflict_type=ConflictType.ARTICLES_DISAGREE,
+            values=["handgun", "knife"],
+            sources=[["https://a.com"], ["https://b.com"]],
+        )
+    ]
     state = check_merge_results(updated_state)
     assert state.next_stage == PipelineStage.ESCALATE
     assert state.escalation_reason == EscalationReason.CONFLICT

@@ -14,8 +14,10 @@ from langchain_core.runnables import RunnableConfig
 from src.agents.state import (
     Article,
     ConfidenceLevel,
+    ConflictType,
     DatasetType,
     EnrichmentState,
+    FieldConflict,
     FieldExtraction,
     MediaFeatureField,
     MergeExtractionResponse,
@@ -457,7 +459,13 @@ class TestMergeNode:
 
         assert result.current_stage == PipelineStage.MERGE
         # officer_name should be in conflicting_fields (doesn't match DB)
-        assert MediaFeatureField.OFFICER_NAME in result.conflicting_fields
+        assert len(result.conflicting_fields) == 1
+        conflict = result.conflicting_fields[0]
+        assert isinstance(conflict, FieldConflict)
+        assert conflict.field_name == MediaFeatureField.OFFICER_NAME
+        assert conflict.conflict_type == ConflictType.REFERENCE_MISMATCH
+        assert conflict.values == ["Mike Thompson"]
+        assert conflict.reference_value == "James Rodriguez"
         # officer_name should still be in extracted_fields
         extracted_names = [e.field_name for e in result.extracted_fields]
         assert "officer_name" in extracted_names
@@ -478,7 +486,15 @@ class TestMergeNode:
         result = merge_node(base_state, config)
 
         assert result.current_stage == PipelineStage.MERGE
-        assert MediaFeatureField.WEAPON in result.conflicting_fields
+        conflict_names = [c.field_name for c in result.conflicting_fields]
+        assert MediaFeatureField.WEAPON in conflict_names
+        weapon_conflict = next(
+            c for c in result.conflicting_fields
+            if c.field_name == MediaFeatureField.WEAPON
+        )
+        assert weapon_conflict.conflict_type == ConflictType.ARTICLES_DISAGREE
+        assert set(weapon_conflict.values) == {"handgun", "rifle"}
+        assert weapon_conflict.reference_value is None
         # weapon should NOT be in extracted_fields (conflict)
         extracted_names = [e.field_name for e in result.extracted_fields]
         assert "weapon" not in extracted_names
