@@ -9,6 +9,12 @@ description = "ETL and analysis system for police shooting incident data"
 readme = "README.md"
 requires-python = ">=3.11"
 
+[project.scripts]
+enrich = "src.run:main"
+
+[tool.setuptools.packages.find]
+include = ["src*"]
+
 [tool.ruff]
 line-length = 88
 target-version = "py311"
