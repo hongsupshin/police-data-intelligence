@@ -121,6 +121,9 @@ The database is treated as immutable ground truth (official government data).
 # Install dependencies
 pip install -r requirements.txt
 
+# Install the package (enables the `enrich` CLI command)
+pip install -e .
+
 # Configure environment
 cp .env.example .env
 # Edit .env with your API keys and database credentials
@@ -130,11 +133,14 @@ cp .env.example .env
 
 ```bash
 # Enrich a single incident
-python -m src.run <incident_id> <dataset_type>
+enrich <incident_id> <dataset_type>
 
 # Examples
+enrich 10 civilians_shot
+enrich 42 officers_shot
+
+# Or without installing the package
 python -m src.run 10 civilians_shot
-python -m src.run 42 officers_shot
 ```
 
 Results are written to `output/enrichment/` as pretty-printed JSON files:
@@ -252,6 +258,17 @@ class EnrichmentState:
     extracted_fields: list[FieldExtraction]
     conflicting_fields: list[FieldConflict] | None
 ```
+
+## Excluded Domains
+
+The Search node filters out certain websites that degrade enrichment quality:
+
+| Domain | Reason |
+|--------|--------|
+| `wikipedia.org` | Aggregation pages (e.g., "List of killings by law enforcement officers") contain many incidents in a single page, confusing the LLM extraction and causing false conflicts between unrelated records |
+
+Exclusions are passed via Tavily's `exclude_domains` parameter in
+`src/retrieval/search_node.py`.
 
 ## Responsible AI
 

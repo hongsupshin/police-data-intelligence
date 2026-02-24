@@ -4,6 +4,7 @@ Invokes the enrichment graph on a single incident, wiring up LLM client,
 checkpointer, and settings from environment variables.
 
 Usage:
+    enrich <incident_id> <dataset_type>
     python -m src.run <incident_id> <dataset_type>
 """
 
