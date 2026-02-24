@@ -89,9 +89,13 @@ without parsed dates.
 For each field extracted from articles:
 
 - **Articles agree** → add to `extracted_fields` with confidence level
-- **Articles disagree** → add to `conflicting_fields`, escalate
+- **Articles disagree** → add `FieldConflict` to `conflicting_fields`, escalate
 - **All articles return null** → skip (no data, not a conflict)
 - **Articles agree but conflict with database** → add to both lists, escalate
+
+Each `FieldConflict` captures the field name, conflict type
+(`articles_disagree` or `reference_mismatch`), the conflicting values with
+source URLs, and the database reference value when applicable.
 
 The database is treated as immutable ground truth (official government data).
 
@@ -239,7 +243,7 @@ class EnrichmentState:
 
     # Merge outputs
     extracted_fields: list[FieldExtraction]
-    conflicting_fields: list[str] | None
+    conflicting_fields: list[FieldConflict] | None
 ```
 
 ## Responsible AI
