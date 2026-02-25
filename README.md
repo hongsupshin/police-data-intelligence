@@ -442,7 +442,7 @@ principles:
 
 MIT License — see [LICENSE](LICENSE) for details.
 
-## Appreciation
+## Acknowledgment
 
 The author appreciates
 **[Texas Justice Initiative](https://texasjusticeinitiative.org/)** (TJI) for
