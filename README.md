@@ -43,26 +43,26 @@ nodes update state fields, graph edges handle transitions.
 
 ### Pipeline Nodes
 
-| Node | Type | Purpose |
-|------|------|---------|
-| **Extract** | Deterministic | Reads incident record from PostgreSQL, populates state fields |
-| **Search** | Deterministic | Constructs query from incident fields, calls Tavily API for news articles |
-| **Validate** | Rule-based | Checks date proximity (±3 days), location match, and optional name match |
-| **Merge** | LLM-powered | Extracts structured fields from articles, checks cross-article consistency |
-| **Coordinator** | Rule-based | Gates after each stage — decides retry, proceed, or escalate |
-| **Complete** | Terminal | Writes enrichment results to JSON |
-| **Escalate** | Terminal | Writes escalation report to JSON for human review |
+| Node            | Type          | Purpose                                                                    |
+| --------------- | ------------- | -------------------------------------------------------------------------- |
+| **Extract**     | Deterministic | Reads incident record from PostgreSQL, populates state fields              |
+| **Search**      | Deterministic | Constructs query from incident fields, calls Tavily API for news articles  |
+| **Validate**    | Rule-based    | Checks date proximity (±3 days), location match, and optional name match   |
+| **Merge**       | LLM-powered   | Extracts structured fields from articles, checks cross-article consistency |
+| **Coordinator** | Rule-based    | Gates after each stage — decides retry, proceed, or escalate               |
+| **Complete**    | Terminal      | Writes enrichment results to JSON                                          |
+| **Escalate**    | Terminal      | Writes escalation report to JSON for human review                          |
 
 ### Search Strategies
 
 The Coordinator implements an escalating retry strategy:
 
-| Retry | Strategy | Description |
-|-------|----------|-------------|
-| 0 | `exact_match` | All fields, exact date |
-| 1 | `temporal_expanded` | Date range ±2 days |
-| 2 | `entity_dropped` | Drop officer name, keep location + date |
-| 3 | Escalate | Flag for human review |
+| Retry | Strategy            | Description                             |
+| ----- | ------------------- | --------------------------------------- |
+| 0     | `exact_match`       | All fields, exact date                  |
+| 1     | `temporal_expanded` | Date range ±2 days                      |
+| 2     | `entity_dropped`    | Drop officer name, keep location + date |
+| 3     | Escalate            | Flag for human review                   |
 
 ### Escalation Triggers
 
@@ -78,15 +78,15 @@ The Coordinator routes to human review when:
 
 Articles pass validation using three-tier logic:
 
-| Condition | Criteria | Rationale |
-|-----------|----------|-----------|
-| Has `published_date` | date + location | Standard check |
+| Condition                    | Criteria        | Rationale                    |
+| ---------------------------- | --------------- | ---------------------------- |
+| Has `published_date`         | date + location | Standard check               |
 | No date, has `civilian_name` | location + name | Compensates for missing date |
-| No date, no name | location only | Last resort fallback |
+| No date, no name             | location only   | Last resort fallback         |
 
-This prevents false positives from articles about different incidents that happen
-to match on location alone, while still handling Tavily results that lack parsed
-dates.
+This prevents false positives from articles about different incidents that
+happen to match on location alone, while still handling Tavily results that lack
+parsed dates.
 
 ### Merge Logic
 
@@ -100,9 +100,9 @@ For each field extracted from validated articles:
 - **All articles return null** → skip (no data, not a conflict)
 - **Articles agree but conflict with database** → add to both lists, escalate
 
-Each `FieldConflict` captures the field name, conflict type
-(`articles_disagree` or `reference_mismatch`), the conflicting values with
-source URLs, and the database reference value when applicable.
+Each `FieldConflict` captures the field name, conflict type (`articles_disagree`
+or `reference_mismatch`), the conflicting values with source URLs, and the
+database reference value when applicable.
 
 The database is treated as immutable ground truth (official government data).
 
@@ -148,19 +148,135 @@ Results are written to `output/enrichment/` as pretty-printed JSON files:
 - `civilians_shot_10_complete.json` — successful enrichment
 - `civilians_shot_10_escalate.json` — flagged for human review
 
+### Example Output
+
+<details>
+<summary>Successful enrichment (civilians_shot_4_complete.json)</summary>
+
+```json
+{
+  "incident_id": "4",
+  "dataset_type": "civilians_shot",
+  "extracted_fields": [
+    {
+      "field_name": "officer_name",
+      "value": "Tyler Forsberg",
+      "confidence": "medium",
+      "sources": [
+        "https://fatalencounters.org/view/person-csv/csv/?pagenum=87"
+      ],
+      "source_quotes": [
+        "Payson Officer Tyler Forsberg was fired for giving false statements regarding the chase."
+      ],
+      "extraction_method": "ner",
+      "llm_reasoning": "Tyler Forsberg is explicitly mentioned as a police officer involved in the incident."
+    },
+    {
+      "field_name": "weapon",
+      "value": "firearm",
+      "confidence": "medium",
+      "sources": [
+        "https://fatalencounters.org/view/person-csv/csv/?pagenum=87"
+      ],
+      "source_quotes": ["he was in possession of a firearm."],
+      "extraction_method": "ner",
+      "llm_reasoning": "The article confirms that Sully Lanier was in possession of a firearm during the incident."
+    }
+    // ... 5 more extracted fields
+  ],
+  "validation_results": [
+    {
+      "article": {
+        "url": "https://fatalencounters.org/view/person-csv/csv/?pagenum=87",
+        "title": "https://fatalencounters.org/view/person-csv/csv/?p..."
+      },
+      "date_match": false,
+      "location_match": true,
+      "victim_name_match": true,
+      "passed": true
+    }
+    // ... 4 more validation results
+  ],
+  "search_strategy": "entity_dropped",
+  "retry_count": 2,
+  "outcome_summary": "Enriched 7 fields for incident 4 (civilians_shot)"
+}
+```
+
+</details>
+
+<details>
+<summary>Escalated for human review (civilians_shot_10_escalate.json)</summary>
+
+```json
+{
+  "incident_id": "10",
+  "dataset_type": "civilians_shot",
+  "escalation_reason": "conflict",
+  "error_message": null,
+  "current_stage": "merge",
+  "search_strategy": "exact_match",
+  "retry_count": 0,
+  "retrieved_articles": [
+    {
+      "url": "https://www.nbcdfw.com/news/local/officer-shoots-armed-man-at-dallas-apartment-complex-police/143469/",
+      "title": "Officers Shoot Armed Man at Dallas Apartment Complex: Police",
+      "snippet": "Dallas police identified the armed man as 24-year-old Gerardo Ramirez..."
+    }
+    // ... 4 more retrieved articles
+  ],
+  "extracted_fields": [
+    {
+      "field_name": "weapon",
+      "value": "semi-automatic handgun",
+      "confidence": "high",
+      "sources": [
+        "https://www.nbcdfw.com/news/local/officer-shoots-armed-man-at-dallas-apartment-complex-police/143469/"
+      ],
+      "source_quotes": [
+        "At the scene, officers recovered Ramirez's semi-automatic handgun and a box of ammunition."
+      ],
+      "extraction_method": "ner",
+      "llm_reasoning": "The article explicitly states that officers recovered a semi-automatic handgun from the scene."
+    }
+    // ... 4 more extracted fields
+  ],
+  "conflicting_fields": [
+    {
+      "field_name": "civilian_name",
+      "conflict_type": "articles_disagree",
+      "values": ["Gerardo Ramirez", "Philip Quinn"],
+      "sources": [
+        [
+          "https://www.nbcdfw.com/news/local/...",
+          "https://www.chron.com/news/houston-texas/texas/...",
+          "https://dpdbeat.com/2015/09/23/..."
+        ],
+        ["https://en.wikipedia.org/wiki/..."]
+      ],
+      "reference_value": null
+    }
+    // ... 2 more conflicting fields
+  ],
+  "outcome_summary": "Escalated incident 10: conflict after 0 retries"
+}
+```
+
+</details>
+
 ### Configuration
 
 Environment variables (see `.env.example`):
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `OPENAI_API_KEY` | (required) | OpenAI API key |
-| `OPENAI_MODEL` | `gpt-4o-mini` | OpenAI model for LLM-powered nodes |
-| `TAVILY_API_KEY` | (required) | Tavily API key for news search |
-| `DB_HOST` | `localhost` | PostgreSQL host |
-| `LOG_LEVEL` | `INFO` | Logging level |
-| `ENRICHMENT_OUTPUT_DIR` | `output/enrichment` | Output directory for JSON results |
-| `ENRICHMENT_MAX_SEARCH_RESULTS` | `5` | Max articles per search |
+| Variable                        | Default             | Description                        |
+| ------------------------------- | ------------------- | ---------------------------------- |
+| `OPENAI_API_KEY`                | (required)          | OpenAI API key                     |
+| `OPENAI_MODEL`                  | `gpt-4o-mini`       | OpenAI model for LLM-powered nodes |
+| `TAVILY_API_KEY`                | (required)          | Tavily API key for news search     |
+| `DB_HOST`                       | `localhost`         | PostgreSQL host                    |
+| `LOG_LEVEL`                     | `INFO`              | Logging level                      |
+| `ENRICHMENT_OUTPUT_DIR`         | `output/enrichment` | Output directory for JSON results  |
+| `ENRICHMENT_MAX_SEARCH_RESULTS` | `5`                 | Max articles per search            |
 
 ## Development
 
@@ -263,8 +379,8 @@ class EnrichmentState:
 
 The Search node filters out certain websites that degrade enrichment quality:
 
-| Domain | Reason |
-|--------|--------|
+| Domain          | Reason                                                                                                                                                                                               |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `wikipedia.org` | Aggregation pages (e.g., "List of killings by law enforcement officers") contain many incidents in a single page, confusing the LLM extraction and causing false conflicts between unrelated records |
 
 Exclusions are passed via Tavily's `exclude_domains` parameter in
@@ -291,7 +407,8 @@ principles:
 - [x] LangGraph wiring with conditional routing
 - [x] Terminal nodes with JSON output and logging
 - [x] CLI entrypoint for single-incident enrichment
-- [ ] Semantic synonym resolution in merge (e.g., "black" vs "African American" should not conflict)
+- [ ] Semantic synonym resolution in merge (e.g., "black" vs "African American"
+      should not conflict)
 - [ ] Batch processing across all records
 - [ ] Cloud deployment (AWS Lambda)
 - [ ] Human review UI
