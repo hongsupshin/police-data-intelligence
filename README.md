@@ -325,6 +325,16 @@ principles:
 
 MIT License — see [LICENSE](LICENSE) for details.
 
-## Acknowledgments
+## Appreciation
 
-- **Texas Justice Initiative** for providing data and real-world context
+The author appreciates
+**[Texas Justice Initiative](https://texasjusticeinitiative.org/)** (TJI) for
+collecting, analyzing, and publishing criminal justice data in Texas. TJI
+maintains publicly available databases on officer-involved shootings and deaths
+in law enforcement custody, making this data accessible to reporters,
+researchers, policymakers, and the public. The author contributed to TJI's
+[Officer-Involved Shootings in Texas](https://texasjusticeinitiative.org/publications/officer-involved-shootings-in-texas)
+report (covering 2016–2019). This project extends
+that work using TJI's updated datasets (2014–2024, 1,956 records) to automate
+the labor-intensive process of enriching incident records with information from
+news sources.
