@@ -270,6 +270,31 @@ The Search node filters out certain websites that degrade enrichment quality:
 Exclusions are passed via Tavily's `exclude_domains` parameter in
 `src/retrieval/search_node.py`.
 
+## Performance
+
+Measured across 23 incidents (warm connections, gpt-4o-mini):
+
+| Metric | Range | Mean |
+|--------|-------|------|
+| **Total per incident** | **2.3s – 13.5s** | **7.0s** |
+| Search (Tavily API) | 2.2s – 13.4s | 6.5s |
+| Merge (LLM call) | 0.13s – 0.82s | 0.4s |
+| Extract + Validate + Coordinate | <0.1s | ~0s |
+
+The primary driver of variance is retry count — each retry adds a Tavily search
+call (~3–5s). Tavily search accounts for ~93% of total runtime; the LLM merge
+call is ~0.4s; all deterministic nodes (extract, validate, coordinate) are
+effectively instant.
+
+| Retries | Searches | Typical Time |
+|---------|----------|--------------|
+| 0 | 1 | 2–5s |
+| 1 | 2 | 5–9s |
+| 2 | 3 | 9–13s |
+
+**Projected at scale** (1,956 records, sequential): ~3.5 hours. With async
+parallelism (e.g., 10 concurrent workers): ~20 minutes.
+
 ## Responsible AI
 
 This system operates in a sensitive domain (police accountability). Key design
