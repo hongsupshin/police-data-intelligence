@@ -434,6 +434,10 @@ principles:
 - [x] CLI entrypoint for single-incident enrichment
 - [ ] Semantic synonym resolution in merge (e.g., "black" vs "African American"
       should not conflict)
+- [ ] Evaluation framework for extraction accuracy (precision, coverage, entity
+      resolution against holdout set)
+- [ ] LLM provider comparison (e.g., Anthropic vs OpenAI) on extraction quality,
+      conflict rate, reasoning detail, and cost
 - [ ] Batch processing across all records
 - [ ] Cloud deployment (AWS Lambda)
 - [ ] Human review UI
