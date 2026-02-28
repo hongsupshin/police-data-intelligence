@@ -224,7 +224,7 @@ class FieldConflict(BaseModel):
 class MergeExtractionResponse(BaseModel):
     """Structured LLM response for multi-field extraction.
 
-    Used as the schema for ChatOpenAI.with_structured_output() in the
+    Used as the schema for ChatAnthropic.with_structured_output() in the
     merge node. The LLM returns one FieldExtraction per requested field.
 
     Attributes:

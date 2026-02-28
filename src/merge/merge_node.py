@@ -3,8 +3,8 @@
 from collections import Counter, defaultdict
 from datetime import date
 
+from langchain_anthropic import ChatAnthropic
 from langchain_core.runnables import RunnableConfig
-from langchain_openai import ChatOpenAI
 from rapidfuzz import fuzz
 
 from src.agents.state import (
@@ -41,7 +41,7 @@ RAPIDFUZZ_THRESHOLD = 80
 
 # helper functions
 def extract_fields(
-    article: Article, llm_client: ChatOpenAI, fields: list[MediaFeatureField]
+    article: Article, llm_client: ChatAnthropic, fields: list[MediaFeatureField]
 ) -> dict[str, FieldExtraction]:
     """Extract structured fields from a single article using an LLM.
 
@@ -51,7 +51,7 @@ def extract_fields(
 
     Args:
         article: Article object containing content to extract from.
-        llm_client: LangChain ChatOpenAI client for structured extraction.
+        llm_client: LangChain ChatAnthropic client for structured extraction.
         fields: List of MediaFeatureField enums to extract.
 
     Returns:
