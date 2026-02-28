@@ -112,7 +112,7 @@ The database is treated as immutable ground truth (official government data).
 
 - Python 3.10+
 - PostgreSQL with TJI data loaded
-- OpenAI API key
+- Anthropic API key
 - Tavily API key
 
 ### Setup
@@ -270,8 +270,8 @@ Environment variables (see `.env.example`):
 
 | Variable                        | Default             | Description                        |
 | ------------------------------- | ------------------- | ---------------------------------- |
-| `OPENAI_API_KEY`                | (required)          | OpenAI API key                     |
-| `OPENAI_MODEL`                  | `gpt-4o-mini`       | OpenAI model for LLM-powered nodes |
+| `ANTHROPIC_API_KEY`             | (required)          | Anthropic API key                  |
+| `ANTHROPIC_MODEL`               | `claude-sonnet-4-6` | Anthropic model for LLM-powered nodes |
 | `TAVILY_API_KEY`                | (required)          | Tavily API key for news search     |
 | `DB_HOST`                       | `localhost`         | PostgreSQL host                    |
 | `LOG_LEVEL`                     | `INFO`              | Logging level                      |
@@ -388,7 +388,7 @@ Exclusions are passed via Tavily's `exclude_domains` parameter in
 
 ## Performance
 
-Measured across 23 incidents (warm connections, gpt-4o-mini):
+Measured across 23 incidents (warm connections, claude-sonnet-4-6):
 
 | Metric | Range | Mean |
 |--------|-------|------|

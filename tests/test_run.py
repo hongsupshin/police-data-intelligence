@@ -21,12 +21,12 @@ def test_invalid_dataset_type() -> None:
         main()
 
 
-@patch("src.run.os.environ", {"OPENAI_API_KEY": "fake-key"})
+@patch("src.run.os.environ", {"ANTHROPIC_API_KEY": "fake-key"})
 @patch("src.run.Settings")
 @patch("src.run.build_graph")
 @patch("src.run.SqliteSaver")
 @patch("src.run.sqlite3")
-@patch("src.run.ChatOpenAI")
+@patch("src.run.ChatAnthropic")
 def test_run(mock_chat, mock_sqlite3, mock_saver, mock_build, mock_settings) -> None:
 
     mock_build.return_value.invoke.return_value = {"outcome_summary": "done"}

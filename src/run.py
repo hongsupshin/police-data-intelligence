@@ -14,8 +14,8 @@ import os
 import sqlite3
 
 from dotenv import load_dotenv
+from langchain_anthropic import ChatAnthropic
 from langchain_core.runnables import RunnableConfig
-from langchain_openai.chat_models import ChatOpenAI
 from langgraph.checkpoint.sqlite import SqliteSaver
 
 from src.agents.graph import build_graph
@@ -45,12 +45,12 @@ def run(incident_id: str, dataset_type: str) -> dict:
         Final graph state as a dict, including 'outcome_summary'.
 
     Raises:
-        KeyError: If OPENAI_API_KEY is not set in the environment.
+        KeyError: If ANTHROPIC_API_KEY is not set in the environment.
     """
     state = EnrichmentState(incident_id=incident_id, dataset_type=dataset_type)
-    llm_client = ChatOpenAI(
-        model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
-        api_key=os.environ["OPENAI_API_KEY"],
+    llm_client = ChatAnthropic(
+        model=os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-6"),
+        api_key=os.environ["ANTHROPIC_API_KEY"],
     )
     conn = sqlite3.connect("./checkpoints.db", check_same_thread=False)
 
