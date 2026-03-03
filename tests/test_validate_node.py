@@ -17,6 +17,7 @@ from src.agents.state import (
     SearchStrategyType,
 )
 from src.validation.validate_node import (
+    _is_excluded_source,
     check_date_match,
     check_location_match,
     check_name_match,
@@ -84,6 +85,26 @@ def test_check_date_match() -> None:
     assert not check_date_match(date(2018, 3, 8), date(2018, 3, 12))
     assert not check_date_match(None, date(2018, 3, 12))
     assert not check_date_match(date(2018, 3, 12), None)
+
+
+def test_is_excluded_source_pdf() -> None:
+    """PDF URLs are excluded."""
+    assert _is_excluded_source("https://gov.texas.gov/uploads/report.pdf")
+
+
+def test_is_excluded_source_csv() -> None:
+    """CSV URLs are excluded."""
+    assert _is_excluded_source("https://data.gov/shootings.csv")
+
+
+def test_is_excluded_source_fatalencounters() -> None:
+    """fatalencounters.org URLs are excluded."""
+    assert _is_excluded_source("https://fatalencounters.org/people-search/")
+
+
+def test_is_excluded_source_normal_url() -> None:
+    """Regular news URLs are not excluded."""
+    assert not _is_excluded_source("https://cbs.com/news/shooting")
 
 
 class TestValidateNode:
@@ -233,3 +254,69 @@ class TestValidateNode:
             assert not vr.location_match
             assert vr.date_match
             assert not vr.passed
+
+    def test_pdf_url_excluded(self, base_state: EnrichmentState) -> None:
+        """Article with .pdf URL is auto-rejected without running checks."""
+        base_state.retrieved_articles = [
+            Article(
+                url="https://gov.texas.gov/uploads/files/victims_report.pdf",
+                title="Houston police shooting John Doe",
+                snippet="",
+                content="Houston police officer shot John Doe on March 15.",
+                published_date=date(2018, 3, 15),
+            )
+        ]
+        result = validate_node(base_state)
+        assert len(result.validation_results) == 1
+        vr = result.validation_results[0]
+        assert not vr.passed
+        assert not vr.date_match
+        assert not vr.location_match
+
+    def test_csv_url_excluded(self, base_state: EnrichmentState) -> None:
+        """Article with .csv URL is auto-rejected."""
+        base_state.retrieved_articles = [
+            Article(
+                url="https://data.gov/shootings.csv",
+                title="Houston shooting data",
+                snippet="",
+                content="Houston data",
+                published_date=date(2018, 3, 15),
+            )
+        ]
+        result = validate_node(base_state)
+        assert len(result.validation_results) == 1
+        assert not result.validation_results[0].passed
+
+    def test_fatalencounters_url_excluded(self, base_state: EnrichmentState) -> None:
+        """Article from fatalencounters.org is auto-rejected."""
+        base_state.retrieved_articles = [
+            Article(
+                url="https://fatalencounters.org/people-search/?name=doe",
+                title="John Doe - Fatal Encounters",
+                snippet="",
+                content="John Doe, Houston, TX, March 15, 2018",
+                published_date=None,
+            )
+        ]
+        result = validate_node(base_state)
+        assert len(result.validation_results) == 1
+        assert not result.validation_results[0].passed
+
+    def test_normal_url_not_excluded(self, base_state: EnrichmentState) -> None:
+        """Regular news URL is still validated normally (not excluded)."""
+        base_state.retrieved_articles = [
+            Article(
+                url="https://cbs.com/news/houston-shooting",
+                title="Houston police shooting John Doe",
+                snippet="",
+                content="Houston police officer shot John Doe on March 15.",
+                published_date=date(2018, 3, 15),
+            )
+        ]
+        result = validate_node(base_state)
+        assert len(result.validation_results) == 1
+        vr = result.validation_results[0]
+        assert vr.passed
+        assert vr.date_match
+        assert vr.location_match

@@ -1,5 +1,6 @@
 """Merge node for enrichment pipeline."""
 
+import re
 from collections import Counter, defaultdict
 from datetime import date
 
@@ -37,6 +38,43 @@ assert set(FIELD_DEFINITIONS.keys()) == set(
 ), "Field definitions and MediaFeatureField do not match."
 
 RAPIDFUZZ_THRESHOLD = 80
+
+_HONORIFICS = re.compile(
+    r"\b(mr|mrs|ms|dr|sgt|master sgt|cpl|lt|capt|"
+    r"officer|detective|deputy|chief|trooper|corporal|sergeant|"
+    r"lieutenant|captain|colonel|private|specialist|major|general)\b\.?",
+    re.IGNORECASE,
+)
+
+
+def normalize_name(value: str) -> str:
+    """Strip honorifics, quotes, and extra whitespace from a name.
+
+    Used before fuzzy matching to prevent rank prefixes and nickname
+    quotes from diluting similarity scores.
+
+    Args:
+        value: Raw name string (e.g., ``"Master Sgt. Alva Joe Gwinn"``).
+
+    Returns:
+        Lowercased name with honorifics, quotes, and extra whitespace
+        removed.
+
+    Examples:
+        >>> normalize_name("Master Sgt. Alva Joe Gwinn")
+        'alva joe gwinn'
+        >>> normalize_name("Alva 'Joe' Gwinn")
+        'alva joe gwinn'
+        >>> normalize_name("John Doe")
+        'john doe'
+    """
+    # Strip quotes (single, double, smart)
+    result = re.sub(r"['\u2018\u2019\u201c\u201d\"']", "", value)
+    # Strip honorifics/titles
+    result = _HONORIFICS.sub("", result)
+    # Collapse whitespace
+    result = " ".join(result.split()).strip()
+    return result.lower()
 
 
 # helper functions
@@ -141,6 +179,19 @@ def check_articles_match(
     counts = Counter(non_null_values)
     most_common = counts.most_common(1)[0][0]
     others = [v for v in set(non_null_values) if v != most_common]
+
+    # Name fields: normalize before fuzzy comparison to handle
+    # honorifics ("Master Sgt.") and nickname quotes ("'Joe'")
+    if field in (MediaFeatureField.OFFICER_NAME, MediaFeatureField.CIVILIAN_NAME):
+        normalized_common = normalize_name(most_common)
+        if all(
+            fuzz.ratio(normalized_common, normalize_name(other))
+            >= RAPIDFUZZ_THRESHOLD
+            for other in others
+        ):
+            winner = next(r for r in non_null_results if r.value == most_common)
+            winner.confidence = ConfidenceLevel.MEDIUM
+            return (True, winner)
 
     if all(fuzz.ratio(most_common, other) >= RAPIDFUZZ_THRESHOLD for other in others):
         # Minor difference: return the most common

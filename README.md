@@ -3,11 +3,12 @@
 **An agentic AI system for enriching missing data in police shooting databases**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![CI](https://github.com/hongsupshin/police-data-intelligence/actions/workflows/ci.yml/badge.svg)](https://github.com/hongsupshin/police-data-intelligence/actions/workflows/ci.yml)
 
 ## Overview
 
-This project builds a multi-agent system that **automatically enriches missing
+This project builds an agentic pipeline that **automatically enriches missing
 data** in two Texas Justice Initiative (TJI) databases through intelligent web
 search and extraction. The system's core purpose is data augmentation, not
 analysis.
@@ -28,8 +29,7 @@ while keeping humans in the loop, reducing volunteer time by 75%.
 
 ## Architecture
 
-The system uses **5 specialized nodes** orchestrated by a Coordinator in
-LangGraph:
+The system uses **7 nodes** orchestrated by a Coordinator in LangGraph:
 
 ```
 Extract → Search → Validate → Merge → Complete
@@ -57,12 +57,12 @@ nodes update state fields, graph edges handle transitions.
 
 The Coordinator implements an escalating retry strategy:
 
-| Retry | Strategy            | Description                             |
-| ----- | ------------------- | --------------------------------------- |
-| 0     | `exact_match`       | All fields, exact date                  |
-| 1     | `temporal_expanded` | Date range ±2 days                      |
-| 2     | `entity_dropped`    | Drop officer name, keep location + date |
-| 3     | Escalate            | Flag for human review                   |
+| Retry | Strategy            | Description                                 |
+| ----- | ------------------- | ------------------------------------------- |
+| 0     | `exact_match`       | All fields, exact date                      |
+| 1     | `temporal_expanded` | Month + year format, keep names             |
+| 2     | `entity_dropped`    | Drop both names, keep location + date range |
+| 3     | Escalate            | Flag for human review                       |
 
 ### Escalation Triggers
 
@@ -110,7 +110,7 @@ The database is treated as immutable ground truth (official government data).
 
 ### Prerequisites
 
-- Python 3.10+
+- Python 3.11+
 - PostgreSQL with TJI data loaded
 - Anthropic API key
 - Tavily API key
@@ -151,55 +151,67 @@ Results are written to `output/enrichment/` as pretty-printed JSON files:
 ### Example Output
 
 <details>
-<summary>Successful enrichment (civilians_shot_4_complete.json)</summary>
+<summary>Successful enrichment (civilians_shot_792_complete.json)</summary>
 
 ```json
 {
-  "incident_id": "4",
+  "incident_id": "792",
   "dataset_type": "civilians_shot",
   "extracted_fields": [
     {
-      "field_name": "officer_name",
-      "value": "Tyler Forsberg",
+      "field_name": "weapon",
+      "value": "Knife (possessed by civilian Donnavan Hart); firearms (used by the off-duty HPD commander and the Precinct 4 deputy)",
       "confidence": "medium",
       "sources": [
-        "https://fatalencounters.org/view/person-csv/csv/?pagenum=87"
+        "https://www.click2houston.com/news/local/2020/02/19/deputy-off-duty-hpd-commander-shoot-suspect-near-popeyes-restaurant-in-spring-officials-say/"
       ],
       "source_quotes": [
-        "Payson Officer Tyler Forsberg was fired for giving false statements regarding the chase."
+        "An off-duty HPD commander was working out at the gym when he saw the suspect, armed with a knife, run in and 'cause a disturbance'",
+        "Deputies said Hart lunged at them with the knife in his hand. The commander and the deputy both shot the suspect multiple times."
       ],
-      "extraction_method": "ner",
-      "llm_reasoning": "Tyler Forsberg is explicitly mentioned as a police officer involved in the incident."
+      "extraction_method": "llm",
+      "llm_reasoning": "The article clearly states the civilian was armed with a knife, and the officers responded by shooting the suspect multiple times, indicating use of firearms."
     },
     {
-      "field_name": "weapon",
-      "value": "firearm",
+      "field_name": "time_of_day",
+      "value": "5:16 p.m.",
       "confidence": "medium",
       "sources": [
-        "https://fatalencounters.org/view/person-csv/csv/?pagenum=87"
+        "https://www.click2houston.com/news/local/2020/02/19/deputy-off-duty-hpd-commander-shoot-suspect-near-popeyes-restaurant-in-spring-officials-say/"
       ],
-      "source_quotes": ["he was in possession of a firearm."],
-      "extraction_method": "ner",
-      "llm_reasoning": "The article confirms that Sully Lanier was in possession of a firearm during the incident."
+      "source_quotes": [
+        "At 5:16 p.m., Hermann wrote on Facebook that deputies responded to a report of a suspicious person at the Popeye's restaurant"
+      ],
+      "extraction_method": "llm",
+      "llm_reasoning": "The article explicitly states the time as 5:16 p.m."
+    },
+    {
+      "field_name": "circumstance",
+      "value": "Donnavan Hart was reported as a suspicious person at a Popeyes restaurant. He entered a nearby LA Fitness gym armed with a knife and caused a disturbance. An off-duty HPD commander who was at the gym joined a Precinct 4 deputy in pursuing Hart, who then lunged at the officers with the knife, prompting both to open fire.",
+      "confidence": "medium",
+      "sources": [
+        "https://www.click2houston.com/news/local/2020/02/19/deputy-off-duty-hpd-commander-shoot-suspect-near-popeyes-restaurant-in-spring-officials-say/"
+      ],
+      "extraction_method": "llm"
     }
-    // ... 5 more extracted fields
+    // ... 4 more extracted fields (officer_name, civilian_name, location_detail, outcome)
   ],
   "validation_results": [
     {
       "article": {
-        "url": "https://fatalencounters.org/view/person-csv/csv/?pagenum=87",
-        "title": "https://fatalencounters.org/view/person-csv/csv/?p..."
+        "url": "https://www.click2houston.com/news/local/2020/02/19/...",
+        "title": "Authorities identify the man shot by deputy, off-duty HPD ..."
       },
       "date_match": false,
       "location_match": true,
       "victim_name_match": true,
       "passed": true
     }
-    // ... 4 more validation results
+    // ... 4 more validation results (4 failed, 1 passed)
   ],
   "search_strategy": "entity_dropped",
   "retry_count": 2,
-  "outcome_summary": "Enriched 7 fields for incident 4 (civilians_shot)"
+  "outcome_summary": "Enriched 7 fields for incident 792 (civilians_shot)"
 }
 ```
 
@@ -220,43 +232,48 @@ Results are written to `output/enrichment/` as pretty-printed JSON files:
   "retrieved_articles": [
     {
       "url": "https://www.nbcdfw.com/news/local/officer-shoots-armed-man-at-dallas-apartment-complex-police/143469/",
-      "title": "Officers Shoot Armed Man at Dallas Apartment Complex: Police",
-      "snippet": "Dallas police identified the armed man as 24-year-old Gerardo Ramirez..."
+      "title": "Officers Shoot Armed Man at Dallas Apartment Complex: Police"
+    },
+    {
+      "url": "https://www.cbsnews.com/texas/news/police-kill-suspect-at-dallas-apartment-complex/",
+      "title": "Police Kill Suspect At Dallas Apartment Complex - CBS News"
+    },
+    {
+      "url": "https://www.dallasnews.com/news/crime/2015/09/22/man-killed-by-police-told-girlfriend-he-didnt-want-to-live/",
+      "title": "Man killed by police told girlfriend he didn't want to live"
     }
-    // ... 4 more retrieved articles
+    // ... 2 more articles
   ],
   "extracted_fields": [
     {
-      "field_name": "weapon",
-      "value": "semi-automatic handgun",
+      "field_name": "officer_name",
+      "value": "Rob Sherwin",
       "confidence": "high",
       "sources": [
         "https://www.nbcdfw.com/news/local/officer-shoots-armed-man-at-dallas-apartment-complex-police/143469/"
       ],
-      "source_quotes": [
-        "At the scene, officers recovered Ramirez's semi-automatic handgun and a box of ammunition."
-      ],
-      "extraction_method": "ner",
-      "llm_reasoning": "The article explicitly states that officers recovered a semi-automatic handgun from the scene."
+      "extraction_method": "llm",
+      "llm_reasoning": "Rob Sherwin is mentioned as the Deputy Chief who held the news conference, not as one of the officers who fired."
     }
-    // ... 4 more extracted fields
   ],
   "conflicting_fields": [
     {
       "field_name": "civilian_name",
       "conflict_type": "articles_disagree",
-      "values": ["Gerardo Ramirez", "Philip Quinn"],
+      "values": [
+        "Gerardo Ramirez",
+        "Gerardo Ramirez (plus unrelated names from compilation sources)"
+      ],
       "sources": [
         [
           "https://www.nbcdfw.com/news/local/...",
-          "https://www.chron.com/news/houston-texas/texas/...",
-          "https://dpdbeat.com/2015/09/23/..."
+          "https://www.cbsnews.com/texas/..."
         ],
-        ["https://en.wikipedia.org/wiki/..."]
+        ["https://www.dallasnews.com/news/crime/2015/09/22/..."]
       ],
       "reference_value": null
     }
-    // ... 2 more conflicting fields
+    // ... 7 more conflicting fields (age, race, weapon, location, time, outcome, circumstance)
   ],
   "outcome_summary": "Escalated incident 10: conflict after 0 retries"
 }
@@ -264,19 +281,38 @@ Results are written to `output/enrichment/` as pretty-printed JSON files:
 
 </details>
 
+### Evaluation
+
+The holdout evaluation measures pipeline accuracy by comparing extracted fields
+against ground truth values already in the database (age, race, weapon,
+location, time, outcome). These fields exist in the DB but are never seen by the
+pipeline during enrichment, creating a natural holdout.
+
+```bash
+python -m src.eval.run_eval civilians_shot --limit 10 --min-fields 2
+```
+
+Reports are saved to `output/eval/` as JSON.
+
 ### Configuration
 
 Environment variables (see `.env.example`):
 
-| Variable                        | Default             | Description                        |
-| ------------------------------- | ------------------- | ---------------------------------- |
-| `ANTHROPIC_API_KEY`             | (required)          | Anthropic API key                  |
-| `ANTHROPIC_MODEL`               | `claude-sonnet-4-6` | Anthropic model for LLM-powered nodes |
-| `TAVILY_API_KEY`                | (required)          | Tavily API key for news search     |
-| `DB_HOST`                       | `localhost`         | PostgreSQL host                    |
-| `LOG_LEVEL`                     | `INFO`              | Logging level                      |
-| `ENRICHMENT_OUTPUT_DIR`         | `output/enrichment` | Output directory for JSON results  |
-| `ENRICHMENT_MAX_SEARCH_RESULTS` | `5`                 | Max articles per search            |
+| Variable                               | Default             | Description                           |
+| -------------------------------------- | ------------------- | ------------------------------------- |
+| `ANTHROPIC_API_KEY`                    | (required)          | Anthropic API key                     |
+| `ANTHROPIC_MODEL`                      | `claude-sonnet-4-6` | Model for LLM-powered nodes           |
+| `TAVILY_API_KEY`                       | (required)          | Tavily API key for news search        |
+| `LOG_LEVEL`                            | `INFO`              | Logging level                         |
+| `ENRICHMENT_OUTPUT_DIR`                | `output/enrichment` | Output directory for JSON results     |
+| `ENRICHMENT_MAX_SEARCH_RESULTS`        | `5`                 | Max articles per search               |
+| `ENRICHMENT_SEARCH_DEPTH`              | `advanced`          | Tavily search depth                   |
+| `ENRICHMENT_RELEVANCE_SCORE_THRESHOLD` | `0.5`               | Min avg relevance to proceed          |
+| `ENRICHMENT_FUZZY_MATCH_THRESHOLD`     | `80`                | Min rapidfuzz score for name matching |
+| `ENRICHMENT_DATE_PROXIMITY_DAYS`       | `3`                 | Max days between article and incident |
+
+PostgreSQL connection variables (`DB_HOST`, `DB_PORT`, etc.) are configured in
+`.env.example` and used by the ETL pipeline (`data/`).
 
 ## Development
 
@@ -298,6 +334,9 @@ police-data-intelligence/
 │   │   └── merge_node.py        # Merge node (LLM extraction + consistency)
 │   ├── database/
 │   │   └── connection.py        # PostgreSQL connection
+│   ├── eval/
+│   │   ├── holdout.py           # Holdout evaluation (compare vs DB ground truth)
+│   │   └── run_eval.py          # Eval CLI entrypoint
 │   ├── config.py                # Settings (pydantic-settings, from env vars)
 │   └── run.py                   # CLI entrypoint
 ├── data/
@@ -310,9 +349,11 @@ police-data-intelligence/
 │   ├── test_coordinate_node.py
 │   ├── test_graph.py            # Graph wiring + terminal node tests
 │   ├── test_run.py
+│   ├── test_holdout.py
 │   └── ...                      # ETL tests (cleaners, loaders, schemas)
 ├── output/
-│   └── enrichment/              # Pipeline JSON output
+│   ├── enrichment/              # Pipeline JSON output
+│   └── eval/                    # Holdout evaluation reports
 ├── .env.example
 └── requirements.txt
 ```
@@ -375,27 +416,32 @@ class EnrichmentState:
     conflicting_fields: list[FieldConflict] | None
 ```
 
-## Excluded Domains
+## Source Filtering
 
-The Search node filters out certain websites that degrade enrichment quality:
+### Search-level (Tavily `exclude_domains`)
 
-| Domain          | Reason                                                                                                                                                                                               |
-| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `wikipedia.org` | Aggregation pages (e.g., "List of killings by law enforcement officers") contain many incidents in a single page, confusing the LLM extraction and causing false conflicts between unrelated records |
+| Domain                | Reason                                          |
+| --------------------- | ----------------------------------------------- |
+| `wikipedia.org`       | Aggregation pages confuse LLM extraction        |
+| `fatalencounters.org` | Compilation dataset, not incident-specific news |
 
-Exclusions are passed via Tavily's `exclude_domains` parameter in
-`src/retrieval/search_node.py`.
+### Validation-level (URL pattern filtering in `validate_node.py`)
+
+| Pattern | Reason                                                 |
+| ------- | ------------------------------------------------------ |
+| `.pdf`  | Compilation documents (e.g., statewide victim reports) |
+| `.csv`  | Raw datasets with many unrelated records               |
 
 ## Performance
 
 Measured across 23 incidents (warm connections, claude-sonnet-4-6):
 
-| Metric | Range | Mean |
-|--------|-------|------|
-| **Total per incident** | **2.3s – 13.5s** | **7.0s** |
-| Search (Tavily API) | 2.2s – 13.4s | 6.5s |
-| Merge (LLM call) | 0.13s – 0.82s | 0.4s |
-| Extract + Validate + Coordinate | <0.1s | ~0s |
+| Metric                          | Range            | Mean     |
+| ------------------------------- | ---------------- | -------- |
+| **Total per incident**          | **2.3s – 13.5s** | **7.0s** |
+| Search (Tavily API)             | 2.2s – 13.4s     | 6.5s     |
+| Merge (LLM call)                | 0.13s – 0.82s    | 0.4s     |
+| Extract + Validate + Coordinate | <0.1s            | ~0s      |
 
 The primary driver of variance is retry count — each retry adds a Tavily search
 call (~3–5s). Tavily search accounts for ~93% of total runtime; the LLM merge
@@ -403,10 +449,10 @@ call is ~0.4s; all deterministic nodes (extract, validate, coordinate) are
 effectively instant.
 
 | Retries | Searches | Typical Time |
-|---------|----------|--------------|
-| 0 | 1 | 2–5s |
-| 1 | 2 | 5–9s |
-| 2 | 3 | 9–13s |
+| ------- | -------- | ------------ |
+| 0       | 1        | 2–5s         |
+| 1       | 2        | 5–9s         |
+| 2       | 3        | 9–13s        |
 
 **Projected at scale** (1,956 records, sequential): ~3.5 hours. With async
 parallelism (e.g., 10 concurrent workers): ~20 minutes.
@@ -427,20 +473,17 @@ principles:
 
 ## Roadmap
 
-- [x] ETL pipeline (CSV → PostgreSQL)
-- [x] Core pipeline nodes (Extract, Search, Validate, Merge, Coordinator)
-- [x] LangGraph wiring with conditional routing
-- [x] Terminal nodes with JSON output and logging
-- [x] CLI entrypoint for single-incident enrichment
-- [ ] Semantic synonym resolution in merge (e.g., "black" vs "African American"
-      should not conflict)
-- [ ] Evaluation framework for extraction accuracy (precision, coverage, entity
-      resolution against holdout set)
-- [ ] LLM provider comparison (e.g., Anthropic vs OpenAI) on extraction quality,
-      conflict rate, reasoning detail, and cost
-- [ ] Batch processing across all records
-- [ ] Cloud deployment (AWS Lambda)
-- [ ] Human review UI
+**Built:**
+
+- ETL pipeline (CSV → PostgreSQL)
+- 7-node LangGraph pipeline with conditional routing and retry strategies
+- CLI entrypoint for single-incident enrichment
+- Holdout evaluation framework (precision, coverage against DB ground truth)
+
+**Next:**
+
+- Batch processing across all records
+- Human review UI
 
 ## License
 
@@ -455,7 +498,6 @@ maintains publicly available databases on officer-involved shootings and deaths
 in law enforcement custody, making this data accessible to reporters,
 researchers, policymakers, and the public. The author contributed to TJI's
 [Officer-Involved Shootings in Texas](https://texasjusticeinitiative.org/publications/officer-involved-shootings-in-texas)
-report (covering 2016–2019). This project extends
-that work using TJI's updated datasets (2014–2024, 1,956 records) to automate
-the labor-intensive process of enriching incident records with information from
-news sources.
+report (covering 2016–2019). This project extends that work using TJI's updated
+datasets (2014–2024, 1,956 records) to automate the labor-intensive process of
+enriching incident records with information from news sources.

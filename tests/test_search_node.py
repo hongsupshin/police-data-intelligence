@@ -284,18 +284,18 @@ class TestSearchNode:
         assert result.search_attempts[0].avg_relevance_score == (0.92 + 0.85) / 2
 
     @patch("src.retrieval.search_node.TavilyClient")
-    def test_excludes_wikipedia(
+    def test_excludes_wikipedia_and_fatalencounters(
         self,
         mock_client_cls: MagicMock,
         base_state: EnrichmentState,
         tavily_response: dict,
     ) -> None:
-        """Tavily search should exclude wikipedia.org to filter aggregation pages."""
+        """Tavily search should exclude wikipedia.org and fatalencounters.org."""
         mock_client_cls.return_value.search.return_value = tavily_response
         search_node(base_state)
         mock_client_cls.return_value.search.assert_called_once_with(
             build_search_query(base_state, SearchStrategyType.EXACT_MATCH),
             max_results=5,
             search_depth="advanced",
-            exclude_domains=["wikipedia.org"],
+            exclude_domains=["wikipedia.org", "fatalencounters.org"],
         )
