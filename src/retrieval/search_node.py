@@ -186,7 +186,7 @@ def search_node(state: EnrichmentState) -> EnrichmentState:
         state.retrieved_articles = tavily_articles
 
     # Error handling
-    except (ValueError, KeyError, Exception) as e:
+    except Exception as e:
         # Handle errors and populate error_message
         state.error_message = f"Search failed: {str(e)}"
         state.current_stage = PipelineStage.SEARCH

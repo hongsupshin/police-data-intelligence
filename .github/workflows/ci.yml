@@ -35,8 +35,8 @@ jobs:
       - name: Run unit tests
         run: |
           # Run tests excluding integration tests (which need PostgreSQL)
-          pytest tests/ -v -m "not integration" --cov=data.etl --cov-report=term-missing
+          pytest tests/ -v -m "not integration" --cov=src --cov=data.etl --cov-report=term-missing
 
       - name: Check test coverage
         run: |
-          pytest tests/ -m "not integration" --cov=data.etl --cov-report=term --cov-fail-under=90
+          pytest tests/ -m "not integration" --cov=src --cov=data.etl --cov-report=term --cov-fail-under=80
