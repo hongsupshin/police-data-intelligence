@@ -13,6 +13,7 @@ Modules:
 import json
 import re
 from collections import defaultdict
+from collections.abc import Callable
 from datetime import datetime, time
 from enum import StrEnum
 from pathlib import Path
@@ -487,7 +488,7 @@ def compare_outcome(
 # Field-to-Comparator Mapping
 # ---------------------------------------------------------------------------
 
-FIELD_COMPARATORS: dict[MediaFeatureField, callable] = {
+FIELD_COMPARATORS: dict[MediaFeatureField, Callable] = {
     MediaFeatureField.CIVILIAN_AGE: compare_age,
     MediaFeatureField.CIVILIAN_RACE: compare_race,
     MediaFeatureField.WEAPON: compare_weapon,

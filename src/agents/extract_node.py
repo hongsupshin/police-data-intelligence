@@ -238,7 +238,7 @@ def extract_node(state: EnrichmentState) -> EnrichmentState:
         # Close connection
         conn.close()
 
-    except (ValueError, KeyError, Exception) as e:
+    except Exception as e:
         # Handle errors and populate error_message
         state.error_message = f"Extract failed: {str(e)}"
         state.current_stage = PipelineStage.EXTRACT

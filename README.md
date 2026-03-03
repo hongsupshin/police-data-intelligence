@@ -31,10 +31,28 @@ while keeping humans in the loop, reducing volunteer time by 75%.
 
 The system uses **7 nodes** orchestrated by a Coordinator in LangGraph:
 
-```
-Extract → Search → Validate → Merge → Complete
-            ↑         |         |
-            └─ Coordinator (retry/escalate) ─┘
+```mermaid
+flowchart TD
+    Start([Start]) --> Extract
+
+    Extract[Extract<br/><i>DB → state fields</i>]
+    Search[Search<br/><i>Tavily API</i>]
+    Validate[Validate<br/><i>date + location + name</i>]
+    Merge[Merge<br/><i>LLM extraction</i>]
+    Coord{Coordinator}
+    Complete([Complete<br/><i>write JSON</i>])
+    Escalate([Escalate<br/><i>human review</i>])
+
+    Extract --> Coord
+    Coord -- "fields OK" --> Search
+    Search --> Coord
+    Coord -- "relevance ≥ 0.5" --> Validate
+    Coord -- "retry: next strategy" --> Search
+    Validate --> Coord
+    Coord -- "articles valid" --> Merge
+    Merge --> Coord
+    Coord -- "no conflicts" --> Complete
+    Coord -- "conflict / error / max retries" --> Escalate
 ```
 
 Each node accepts and returns `EnrichmentState` (defined in

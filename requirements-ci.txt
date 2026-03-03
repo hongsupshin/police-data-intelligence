@@ -13,7 +13,6 @@ rapidfuzz>=3.0.0
 langchain-anthropic>=1.0.0
 langgraph>=1.0.0
 langgraph-checkpoint-sqlite>=3.0.0
-numpy>=1.26.0,<2.1
 
 # Testing dependencies
 pytest>=8.3.0

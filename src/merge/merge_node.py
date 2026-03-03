@@ -1,5 +1,6 @@
 """Merge node for enrichment pipeline."""
 
+import logging
 import re
 from collections import Counter, defaultdict
 from datetime import date
@@ -20,6 +21,8 @@ from src.agents.state import (
     MergeExtractionResponse,
     PipelineStage,
 )
+
+logger = logging.getLogger(__name__)
 
 FIELD_DEFINITIONS = {
     MediaFeatureField.OFFICER_NAME: "Name of the police officer involved in the shooting. This person can be the shooter or the victim.",
@@ -97,7 +100,7 @@ def extract_fields(
         Empty dict if extraction fails or article content is None.
     """
     if article.content is None:
-        # TODO: warning message
+        logger.warning("Article content is None for %s", article.url)
         return {}
 
     prompt = """
@@ -127,7 +130,7 @@ def extract_fields(
     try:
         results = structured_llm.invoke(prompt)
     except Exception:
-        # TODO: warning message
+        logger.warning("LLM extraction failed for %s", article.url)
         return {}
     extractions = {}
     for extraction in results.extractions:
@@ -161,7 +164,7 @@ def check_articles_match(
     non_null_results = [r for r in extracted_results if r.value is not None]
     non_null_values = [r.value for r in non_null_results]
     if len(non_null_results) == 0:
-        # TODO: warning
+        logger.debug("All extractions null for field %s", field)
         return (True, None)
 
     # Single extraction
@@ -199,7 +202,7 @@ def check_articles_match(
         winner.confidence = ConfidenceLevel.MEDIUM
         return (True, winner)
     else:
-        # TODO: warning message
+        logger.warning("Articles disagree on field %s", field)
         return (False, None)
 
 
@@ -225,11 +228,11 @@ def check_reference_match(
         has its value set to the reference. If False, returns None.
     """
     if reference is None:
-        # TODO: warning
+        logger.debug("No reference value for field %s", field)
         return (True, extracted_field)
 
     if fuzz.ratio(str(reference).lower(), extracted_field.value.lower()) < RAPIDFUZZ_THRESHOLD:
-        # TODO: logging
+        logger.warning("Reference mismatch for field %s", field)
         return (False, None)
     else:
         extracted_field.value = str(reference)
