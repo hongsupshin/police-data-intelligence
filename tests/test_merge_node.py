@@ -30,6 +30,7 @@ from src.merge.merge_node import (
     check_reference_match,
     extract_fields,
     merge_node,
+    normalize_name,
 )
 
 # --- Fixtures ---
@@ -318,6 +319,96 @@ def test_check_articles_match_conflict(
     )
     assert result[0] is False
     assert result[1] is None
+
+
+# --- normalize_name tests ---
+
+
+def test_normalize_name_strips_honorific() -> None:
+    """Military rank prefix is removed."""
+    assert normalize_name("Master Sgt. Alva Joe Gwinn") == "alva joe gwinn"
+
+
+def test_normalize_name_strips_quotes() -> None:
+    """Nickname quotes are removed."""
+    assert normalize_name("Alva 'Joe' Gwinn") == "alva joe gwinn"
+
+
+def test_normalize_name_strips_title_and_quotes() -> None:
+    """Both title and quotes are removed together."""
+    assert normalize_name("Officer James 'Jim' Smith") == "james jim smith"
+
+
+def test_normalize_name_plain_name() -> None:
+    """Plain name is just lowercased."""
+    assert normalize_name("John Doe") == "john doe"
+
+
+# --- check_articles_match with name normalization ---
+
+
+def test_check_articles_match_name_with_honorific() -> None:
+    """Name variants with honorifics converge after normalization."""
+    plain = FieldExtraction(
+        field_name="civilian_name",
+        value="Alva Joe Gwinn",
+        confidence=ConfidenceLevel.PENDING,
+        sources=["https://example.com/a1"],
+    )
+    with_rank = FieldExtraction(
+        field_name="civilian_name",
+        value="Master Sgt. Alva Joe Gwinn",
+        confidence=ConfidenceLevel.PENDING,
+        sources=["https://example.com/a2"],
+    )
+    matched, winner = check_articles_match(
+        MediaFeatureField.CIVILIAN_NAME, [plain, with_rank]
+    )
+    assert matched is True
+    assert winner is not None
+    assert winner.confidence == ConfidenceLevel.MEDIUM
+
+
+def test_check_articles_match_name_with_quotes() -> None:
+    """Name variants with nickname quotes converge after normalization."""
+    plain = FieldExtraction(
+        field_name="civilian_name",
+        value="Alva Joe Gwinn",
+        confidence=ConfidenceLevel.PENDING,
+        sources=["https://example.com/a1"],
+    )
+    quoted = FieldExtraction(
+        field_name="civilian_name",
+        value="Alva 'Joe' Gwinn",
+        confidence=ConfidenceLevel.PENDING,
+        sources=["https://example.com/a2"],
+    )
+    matched, winner = check_articles_match(
+        MediaFeatureField.CIVILIAN_NAME, [plain, quoted]
+    )
+    assert matched is True
+    assert winner is not None
+
+
+def test_check_articles_match_genuinely_different_names() -> None:
+    """Genuinely different names still conflict even for name fields."""
+    name_a = FieldExtraction(
+        field_name="civilian_name",
+        value="John Doe",
+        confidence=ConfidenceLevel.PENDING,
+        sources=["https://example.com/a1"],
+    )
+    name_b = FieldExtraction(
+        field_name="civilian_name",
+        value="Jane Smith",
+        confidence=ConfidenceLevel.PENDING,
+        sources=["https://example.com/a2"],
+    )
+    matched, winner = check_articles_match(
+        MediaFeatureField.CIVILIAN_NAME, [name_a, name_b]
+    )
+    assert matched is False
+    assert winner is None
 
 
 # --- extract_fields tests ---

@@ -19,6 +19,37 @@ from src.agents.state import (
     ValidationResult,
 )
 
+# Patterns that indicate compilation/data sources, not incident-specific news
+_EXCLUDED_URL_PATTERNS = (
+    ".pdf",
+    ".csv",
+    "fatalencounters.org",
+)
+
+
+def _is_excluded_source(url: str) -> bool:
+    """Check if a URL matches known non-news source patterns.
+
+    Rejects URLs pointing to PDFs, CSVs, or known compilation sites
+    that are structurally unsuitable for incident-specific extraction.
+
+    Args:
+        url: Article URL to check.
+
+    Returns:
+        True if the URL matches an excluded pattern.
+
+    Examples:
+        >>> _is_excluded_source("https://example.com/report.pdf")
+        True
+        >>> _is_excluded_source("https://fatalencounters.org/data")
+        True
+        >>> _is_excluded_source("https://cbs.com/news/shooting")
+        False
+    """
+    lowered = url.lower()
+    return any(pattern in lowered for pattern in _EXCLUDED_URL_PATTERNS)
+
 
 def check_location_match(article_location: str | None, location: str | None) -> bool:
     """Check if incident location appears in article text.
@@ -135,6 +166,12 @@ def validate_node(state: EnrichmentState) -> EnrichmentState:
     try:
         validation_results = []
         for article in state.retrieved_articles:
+            if _is_excluded_source(article.url):
+                result = ValidationResult(article=article)
+                # Leave all checks as False defaults, passed=False
+                validation_results.append(result)
+                continue
+
             result = ValidationResult(article=article)
 
             result.date_match = check_date_match(

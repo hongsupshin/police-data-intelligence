@@ -172,7 +172,7 @@ def search_node(state: EnrichmentState) -> EnrichmentState:
             search_query,
             max_results=5,
             search_depth="advanced",  # 2 API credits per request
-            exclude_domains=["wikipedia.org"],
+            exclude_domains=["wikipedia.org", "fatalencounters.org"],
         )["results"]
         tavily_articles = [_convert_tavily_result(result) for result in results]
         num_results = len(tavily_articles)
