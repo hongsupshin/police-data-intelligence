@@ -6,7 +6,7 @@ LLM calls are mocked via MagicMock.
 """
 
 from datetime import date
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 from langchain_core.runnables import RunnableConfig
@@ -191,37 +191,44 @@ def base_field_extraction_location_detail() -> FieldExtraction:
 # --- check_reference_match tests ---
 
 
-def test_check_reference_match(base_field_extraction: FieldExtraction) -> None:
-    """Test reference matching: None ref, fuzzy match, mismatch, and non-string ref."""
-    # reference is none
+@patch("src.merge.merge_node.weapons_match")
+def test_check_reference_match(
+    mock_weapons_match: MagicMock, base_field_extraction: FieldExtraction
+) -> None:
+    """Test reference matching: None ref, weapon match, weapon mismatch, and non-string ref."""
+    # reference is none (weapon branch not reached)
     result = check_reference_match(
         MediaFeatureField.WEAPON, base_field_extraction.model_copy(), None
     )
     assert result[0] is True
     assert result[1].value == "handgun"
 
-    # match
+    # weapon match
+    mock_weapons_match.return_value = True
     result = check_reference_match(
         MediaFeatureField.WEAPON, base_field_extraction.model_copy(), "handguns"
     )
     assert result[0] is True
     assert result[1].value == "handguns"
 
-    # no match
+    # weapon mismatch
+    mock_weapons_match.return_value = False
     result = check_reference_match(
         MediaFeatureField.WEAPON, base_field_extraction.model_copy(), "hammer"
     )
     assert result[0] is False
     assert result[1] is None
 
-    # case-insensitive match
+    # weapon case-insensitive match (handled by weapons_match)
+    mock_weapons_match.return_value = True
     result = check_reference_match(
         MediaFeatureField.WEAPON, base_field_extraction.model_copy(), "HANDGUN"
     )
     assert result[0] is True
     assert result[1].value == "HANDGUN"
 
-    # reference is not string
+    # weapon reference is not string (weapons_match still applies)
+    mock_weapons_match.return_value = False
     result = check_reference_match(
         MediaFeatureField.WEAPON, base_field_extraction.model_copy(), date(2025, 3, 18)
     )
@@ -284,12 +291,14 @@ def test_check_articles_match_all_agree(
     assert result[1].value == "handgun"
 
 
+@patch("src.merge.merge_node.weapons_match", return_value=True)
 def test_check_articles_match_minor_diff(
+    mock_weapons_match: MagicMock,
     base_field_extraction: FieldExtraction,
     base_field_extraction_minor_diff: FieldExtraction,
     base_field_extraction_none: FieldExtraction,
 ) -> None:
-    """Fuzzy-similar values resolve to most common with MEDIUM confidence."""
+    """Semantically similar weapons resolve to most common with MEDIUM confidence."""
     result = check_articles_match(
         MediaFeatureField.WEAPON,
         [
@@ -304,7 +313,9 @@ def test_check_articles_match_minor_diff(
     assert result[1].value == "handguns"
 
 
+@patch("src.merge.merge_node.weapons_match", return_value=False)
 def test_check_articles_match_conflict(
+    mock_weapons_match: MagicMock,
     base_field_extraction: FieldExtraction,
     base_field_extraction_conflict: FieldExtraction,
     base_field_extraction_none: FieldExtraction,
@@ -569,7 +580,10 @@ class TestMergeNode:
         extracted_names = [e.field_name for e in result.extracted_fields]
         assert "officer_name" in extracted_names
 
-    def test_articles_conflict(self, base_state: EnrichmentState) -> None:
+    @patch("src.merge.merge_node.weapons_match", return_value=False)
+    def test_articles_conflict(
+        self, mock_weapons_match: MagicMock, base_state: EnrichmentState
+    ) -> None:
         """Articles disagree on a field value."""
         article1_extractions = [
             _make_extraction("weapon", "handgun"),
@@ -767,8 +781,11 @@ def test_check_articles_match_race_genuinely_different() -> None:
 # --- check_articles_match with partial_ratio and field thresholds ---
 
 
-def test_check_articles_match_weapon_partial_ratio() -> None:
-    """Weapon field uses partial_ratio and lower threshold (70)."""
+@patch("src.merge.merge_node.weapons_match", return_value=True)
+def test_check_articles_match_weapon_embedding_similarity(
+    mock_weapons_match: MagicMock,
+) -> None:
+    """Weapon field uses embedding-based similarity instead of rapidfuzz."""
     val_a = FieldExtraction(
         field_name="weapon",
         value="9mm handgun",

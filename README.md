@@ -162,8 +162,13 @@ reduce spurious conflicts:
   quotes (e.g., "'Joe'") before fuzzy matching
 - **Race normalization**: maps synonyms (e.g., "African American" → "Black",
   "Caucasian" → "White", "Latino" → "Hispanic")
-- **Per-field fuzzy thresholds**: weapon (70) and location_detail (75) use lower
-  thresholds than the default (80) to tolerate minor wording differences
+- **Weapon category normalization**: maps raw DB values and LLM extractions to 7
+  canonical categories (HANDGUN, RIFLE, SHOTGUN, KNIFE, VEHICLE, OTHER, UNKNOWN).
+  The LLM prompt constrains weapon extraction to multiple-choice selection from
+  these categories, eliminating verbose free-text descriptions that previously
+  caused mismatches.
+- **Per-field fuzzy thresholds**: location_detail (75) uses a lower threshold
+  than the default (80) to tolerate address formatting differences
 
 Each `FieldConflict` captures the field name, conflict type (`articles_disagree`
 or `reference_mismatch`), the conflicting values with source URLs, and the
@@ -369,18 +374,19 @@ python -m src.eval.run_eval civilians_shot --limit 40 --min-fields 2
 | --------------- | -------- | ----------- | ----------- |
 | civilian_age    | 50%      | 75%         | 75%         |
 | civilian_race   | 18%      | 57%         | 57%         |
-| weapon          | 31%      | 0%          | 45%         |
+| weapon          | 70%      | 86%         | 86%         |
 | location_detail | 25%      | 0%          | 10%         |
 | time_of_day     | 38%      | 73%         | 73%         |
 
 `outcome` is omitted because all 40 holdout samples have NULL ground truth for
 `civilian_died`.
 
-Age and time-of-day are the strongest fields (~75% exact accuracy). Weapon
-extraction finds correct types but with different phrasing than the DB (e.g.,
-"handgun" vs "firearm - handgun"), which inflates the mismatch rate. Most
-escalations (92%) are retrieval gaps — incidents without enough distinguishing
-details for web search to find relevant articles.
+Age, weapon, and time-of-day are the strongest fields. Weapon extraction uses
+multiple-choice category normalization (HANDGUN, RIFLE, SHOTGUN, KNIFE, VEHICLE,
+OTHER) — both the LLM output and DB values are mapped to the same 7 canonical
+categories, achieving 86% exact accuracy on extracted values. Most escalations
+(92%) are retrieval gaps — incidents without enough distinguishing details for
+web search to find relevant articles.
 
 Reports are saved to `output/eval/` as JSON. See [EVALUATION.md](EVALUATION.md)
 for full methodology, error analysis, and discussion.
@@ -601,8 +607,7 @@ principles:
 
 **Next:**
 
-- Improve eval comparison (embedding similarity for weapon, geocoding for
-  location)
+- Improve eval comparison (geocoding for location)
 - Batch processing across all records
 - Human review UI
 

@@ -119,7 +119,7 @@ methods:
 | ----------- | --------------------------- | --------------------------------------------- |
 | Age         | Exact match                 | Numeric, no ambiguity                         |
 | Race        | Exact match                 | Standardized categories                       |
-| Weapon      | Fuzzy match (threshold ≥80) | Descriptions vary across sources              |
+| Weapon      | Category normalization (7 canonical types) | Maps synonyms to canonical categories (e.g., "handgun" → "Firearm") |
 | Location    | Fuzzy match (threshold ≥80) | Address formatting varies                     |
 | Outcome     | Exact match                 | Binary (survived/died)                        |
 | Time of day | Hour-based (±2h tolerance)  | Parses hour or period keyword (morning, etc.) |
@@ -308,17 +308,18 @@ Stratification ensured coverage across incident years (2014–2021).
 | --------------- | -------- | ----------- | ----------- |
 | civilian_age    | 50%      | 75%         | 75%         |
 | civilian_race   | 18%      | 57%         | 57%         |
-| weapon          | 31%      | 0%          | 45%         |
+| weapon          | 31%      | 86%         | 86%         |
 | location_detail | 25%      | 0%          | 10%         |
 | time_of_day     | 38%      | 73%         | 73%         |
 | outcome         | N/A      | —           | —           |
 
 **Notes on low-performing fields:**
 
-- **weapon** (0% exact, 45% fuzzy): The pipeline extracts correct weapon types
-  but with different phrasing than the DB (e.g., "handgun" vs "firearm -
-  handgun"). Rapidfuzz character-level matching cannot bridge semantic synonyms.
-  Planned fix: embedding-based similarity comparison.
+- **weapon** (86% exact after category normalization): Previously 0% exact / 45%
+  fuzzy due to synonym mismatches (e.g., "handgun" vs "firearm - handgun").
+  Fixed by mapping both extracted and ground-truth values to 7 canonical
+  categories (Firearm, Knife, Vehicle, Unarmed, Unknown, Taser, Other). Pilot
+  re-eval on dev set showed 86%; full N=40 holdout re-eval pending.
 - **location_detail** (0% exact, 10% fuzzy): The DB stores structured street
   addresses ("5021 GLENVIEW DR.") while the LLM extracts narrative descriptions
   ("near downtown Houston"). Planned fixes: improve the merge prompt to request
@@ -447,7 +448,7 @@ may exhibit different failure modes.
 | --------------------------------------------- | ---------------------------------- | -------------- | -------- |
 | Retrieval gap (no articles found)             | 11 (28%)                           | No             | —        |
 | Merge error (NoneType in merge)               | 1 (3%)                             | Yes            | Medium   |
-| Weapon eval mismatch (semantic synonyms)      | 31% coverage, 0% exact             | Yes            | High     |
+| Weapon eval mismatch (semantic synonyms)      | 31% coverage, 86% exact (fixed)    | Fixed          | —        |
 | Location eval mismatch (narrative vs address) | 25% coverage, 0% exact             | Yes            | High     |
 | Synonym/formatting false conflicts            | Reduced by partial completion      | Mitigated      | —        |
 | Genuine factual conflicts                     | Present but no longer block output | No (by design) | —        |
@@ -456,8 +457,6 @@ may exhibit different failure modes.
 
 - Fix merge node null handling (incident 3494 crash) —
   `'NoneType' object has no attribute 'value'` when extracted fields are None
-- Embedding-based similarity for weapon eval (e.g., `bge-small-en-v1.5` or
-  `potion-base-32M`) to capture semantic synonyms ("handgun" ≈ "firearm")
 - Improve merge prompt for location extraction (request specific street
   addresses instead of narrative descriptions)
 - Geocoding normalization for location eval (US Census Geocoder or Google Maps

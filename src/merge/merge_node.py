@@ -21,6 +21,7 @@ from src.agents.state import (
     MergeExtractionResponse,
     PipelineStage,
 )
+from src.merge.weapon_similarity import weapons_match
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +30,7 @@ FIELD_DEFINITIONS = {
     MediaFeatureField.CIVILIAN_NAME: "Name of the civilian (non-officer) involved in the shooting. This person can be the shooter or the victim.",
     MediaFeatureField.CIVILIAN_AGE: "Age of the civilian in integers",
     MediaFeatureField.CIVILIAN_RACE: "Race/ethnicity of the civilian",
-    MediaFeatureField.WEAPON: "Weapon involved in the incident, including type (e.g., handgun, rifle, knife, vehicle). Note which party possessed or used it if mentioned.",
+    MediaFeatureField.WEAPON: "Weapon possessed by the civilian. Choose exactly one from: HANDGUN, RIFLE, SHOTGUN, KNIFE, VEHICLE, OTHER. Use OTHER if the weapon doesn't fit these categories or is unclear. Return only the category name, nothing else.",
     MediaFeatureField.LOCATION_DETAIL: "Detailed location information such as street/business/landmark names",
     MediaFeatureField.TIME_OF_DAY: "Time of day when the incident occurred, as described in the article",
     MediaFeatureField.OUTCOME: "Fatal or non-fatal outcome of the victim (police officer or the civilian)",
@@ -43,7 +44,6 @@ assert set(FIELD_DEFINITIONS.keys()) == set(
 RAPIDFUZZ_THRESHOLD = 80
 
 FIELD_FUZZY_THRESHOLDS: dict[MediaFeatureField, int] = {
-    MediaFeatureField.WEAPON: 70,
     MediaFeatureField.LOCATION_DETAIL: 75,
 }
 
@@ -238,6 +238,13 @@ def check_articles_match(
             winner.confidence = ConfidenceLevel.MEDIUM
             return (True, winner)
 
+    # Weapon field: use embedding-based similarity
+    if field == MediaFeatureField.WEAPON:
+        if all(weapons_match(most_common, other) for other in others):
+            winner = next(r for r in non_null_results if r.value == most_common)
+            winner.confidence = ConfidenceLevel.MEDIUM
+            return (True, winner)
+
     threshold = FIELD_FUZZY_THRESHOLDS.get(field, RAPIDFUZZ_THRESHOLD)
     if all(
         max(fuzz.ratio(most_common, other), fuzz.partial_ratio(most_common, other))
@@ -277,6 +284,14 @@ def check_reference_match(
     if reference is None:
         logger.debug("No reference value for field %s", field)
         return (True, extracted_field)
+
+    if field == MediaFeatureField.WEAPON:
+        if weapons_match(extracted_field.value, str(reference)):
+            extracted_field.value = str(reference)
+            return (True, extracted_field)
+        else:
+            logger.warning("Reference mismatch for field %s", field)
+            return (False, None)
 
     if fuzz.ratio(str(reference).lower(), extracted_field.value.lower()) < RAPIDFUZZ_THRESHOLD:
         logger.warning("Reference mismatch for field %s", field)
