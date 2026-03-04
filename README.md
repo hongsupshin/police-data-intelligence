@@ -6,6 +6,35 @@
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![CI](https://github.com/hongsupshin/police-data-intelligence/actions/workflows/ci.yml/badge.svg)](https://github.com/hongsupshin/police-data-intelligence/actions/workflows/ci.yml)
 
+## Table of Contents
+
+- [Overview](#overview)
+- [Architecture](#architecture)
+  - [Pipeline Nodes](#pipeline-nodes)
+  - [Search Strategies](#search-strategies)
+  - [Escalation Triggers](#escalation-triggers)
+  - [Validation Logic](#validation-logic)
+  - [Merge Logic](#merge-logic)
+- [Quick Start](#quick-start)
+  - [Prerequisites](#prerequisites)
+  - [Setup](#setup)
+  - [Run](#run)
+  - [Example Output](#example-output)
+  - [Evaluation](#evaluation)
+  - [Configuration](#configuration)
+- [Development](#development)
+  - [Project Structure](#project-structure)
+  - [Commands](#commands)
+  - [Testing Patterns](#testing-patterns)
+- [Key State Fields](#key-state-fields)
+- [Source Filtering](#source-filtering)
+- [Performance](#performance)
+  - [Cost](#cost)
+- [Responsible AI](#responsible-ai)
+- [Roadmap](#roadmap)
+- [License](#license)
+- [Acknowledgment](#acknowledgment)
+
 ## Overview
 
 This project builds an agentic pipeline that **automatically enriches missing

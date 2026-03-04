@@ -3,6 +3,37 @@
 **Pipeline version**: v1.3 (partial completion, score gating removed)
 **Dataset**: TJI Civilians-Shot (1,674 records, 2014–2021) **Date**: March 2026
 
+## Table of Contents
+
+- [Overview](#overview)
+- [Evaluation Dimensions](#evaluation-dimensions)
+- [Methodology](#methodology)
+  - [Data Splits](#data-splits)
+  - [Stratified Sampling](#stratified-sampling)
+  - [Comparison Functions](#comparison-functions)
+  - [Metrics](#metrics)
+- [Phase 1: Pilot Study (Dev Set)](#phase-1-pilot-study-dev-set)
+  - [Setup](#setup)
+  - [Results](#results)
+  - [Error Analysis](#error-analysis)
+  - [Failure Pattern Summary](#failure-pattern-summary)
+  - [Revised Assessment](#revised-assessment)
+- [Bug Fixes (Between Pilot and Holdout Evaluation)](#bug-fixes-between-pilot-and-holdout-evaluation)
+  - [Fix 1: Aggregation Source Exclusion](#fix-1-aggregation-source-exclusion)
+  - [Fix 2: Merge Normalization](#fix-2-merge-normalization)
+  - [Regression Tests](#regression-tests)
+- [Phase 2: Holdout Evaluation](#phase-2-holdout-evaluation)
+  - [Setup](#setup-1)
+  - [Results](#results-1)
+  - [Error Analysis](#error-analysis-1)
+  - [Cost and Latency](#cost-and-latency)
+- [Discussion](#discussion)
+  - [What Works](#what-works)
+  - [Known Limitations](#known-limitations)
+  - [Failure Mode Taxonomy](#failure-mode-taxonomy)
+- [Roadmap](#roadmap)
+- [Appendix: Excluded Domains](#appendix-excluded-domains)
+
 ## Overview
 
 This document describes the evaluation methodology and results for the police
