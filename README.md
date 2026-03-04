@@ -301,30 +301,32 @@ location, time, outcome). These fields exist in the DB but are never seen by the
 pipeline during enrichment, creating a natural holdout.
 
 ```bash
-python -m src.eval.run_eval civilians_shot --limit 40 --min-fields 2
+python -m src.eval.run_eval civilians_shot --limit 100 --stratified
 ```
 
-**Holdout results (N=40, civilians-shot):**
+**Holdout results (N=100, civilians-shot):**
 
-| Metric             | Value       |
-| ------------------ | ----------- |
-| Completion rate    | 70% (28/40) |
-| Escalation rate    | 30% (12/40) |
-| Reached extraction | 73% (29/40) |
+| Metric             | Value        |
+| ------------------ | ------------ |
+| Completion rate    | 70% (70/100) |
+| Escalation rate    | 30% (30/100) |
+| Reached extraction | 71% (71/100) |
 
 | Field           | Coverage | Exact match | Fuzzy match |
 | --------------- | -------- | ----------- | ----------- |
-| civilian_age    | 50%      | 75%         | 75%         |
-| civilian_race   | 18%      | 57%         | 57%         |
-| weapon          | 31%      | 86%         | 86%         |
-| location_detail | 25%      | 0%          | 10%         |
-| time_of_day     | 38%      | 73%         | 73%         |
+| civilian_age    | 49%      | 90%         | 90%         |
+| time_of_day     | 32%      | 94%         | 94%         |
+| location_detail | 38%      | 18%         | 97%         |
+| outcome         | 68%      | 84%         | 84%         |
+| weapon          | 50%      | 79%         | 79%         |
+| civilian_race   | 17%      | 35%         | 35%         |
 
-Age, weapon, and time-of-day are the strongest fields (86% exact on weapon via
-category normalization). Most escalations (92%) are retrieval gaps. Reports are
-saved to `output/eval/`. See [EVALUATION.md](EVALUATION.md) for full
-methodology, error analysis, caveats (outcome backfill, location ground truth
-changes), and discussion.
+Aggregate precision: 72% exact / 84% fuzzy across 245 extracted values. Age and
+time-of-day are the strongest fields; location is 97% correct by fuzzy match
+(exact gap is formatting only). Most escalations (97%) are retrieval gaps where
+no articles were found. Reports are saved to `output/eval/`. See
+[EVALUATION.md](EVALUATION.md) for full methodology, error analysis, fairness
+metrics, and discussion.
 
 ### Configuration
 
@@ -462,15 +464,13 @@ principles:
 - 4-tier search strategy (exact → temporal → name_partial → entity_dropped)
 - CLI entrypoint for single-incident enrichment
 - Holdout evaluation framework (precision, coverage against DB ground truth)
-- N=40 holdout eval: **70% completion rate**, civilian_age 75% exact accuracy
-- Location extraction fix: structured prompt + city-level eval ground truth
-  (pilot re-eval: location_detail fuzzy 0% → 100%)
-- `civilian_died` backfill migration: updated all 3,518 rows, enabling outcome
-  evaluation (dev-set pilot: 70% coverage, 100% accuracy)
+- N=100 holdout eval: **70% completion, 72% exact / 84% fuzzy precision** across
+  6 fields (age 90%, time 94%, location 97% fuzzy, outcome 84%)
 
 **Next:**
 
 - Batch processing across all records
+- Evaluation of the officers-shot dataset
 - Human review UI
 
 ## License
