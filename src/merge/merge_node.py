@@ -338,20 +338,21 @@ def merge_node(state: EnrichmentState, config: RunnableConfig) -> EnrichmentStat
                 # Only check the fields in FIELD_TO_STATE_ATTR, the rest goes to extracted_fields
                 if field_name in FIELD_TO_STATE_ATTR:
                     reference = getattr(state, FIELD_TO_STATE_ATTR[field_name])
-                    reference_match = check_reference_match(
-                        field_name, articles_match[1], reference
-                    )
-                    if not reference_match[0]:
-                        converged = articles_match[1]
-                        state.conflicting_fields.append(
-                            FieldConflict(
-                                field_name=field_name,
-                                conflict_type=ConflictType.REFERENCE_MISMATCH,
-                                values=[converged.value],
-                                sources=[converged.sources],
-                                reference_value=str(reference),
-                            )
+                    if articles_match[1] is not None:
+                        reference_match = check_reference_match(
+                            field_name, articles_match[1], reference
                         )
+                        if not reference_match[0]:
+                            converged = articles_match[1]
+                            state.conflicting_fields.append(
+                                FieldConflict(
+                                    field_name=field_name,
+                                    conflict_type=ConflictType.REFERENCE_MISMATCH,
+                                    values=[converged.value],
+                                    sources=[converged.sources],
+                                    reference_value=str(reference),
+                                )
+                            )
                 # Regardless of the merge success, log extracted fields
                 if articles_match[1]:
                     state.extracted_fields.append(articles_match[1])
