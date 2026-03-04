@@ -75,13 +75,13 @@ nodes update state fields, graph edges handle transitions.
 
 The Coordinator implements an escalating retry strategy:
 
-| Retry | Strategy            | Description                                      |
-| ----- | ------------------- | ------------------------------------------------ |
-| 0     | `exact_match`       | All fields, exact date                           |
-| 1     | `temporal_expanded` | Month + year format, keep both names             |
+| Retry | Strategy            | Description                                        |
+| ----- | ------------------- | -------------------------------------------------- |
+| 0     | `exact_match`       | All fields, exact date                             |
+| 1     | `temporal_expanded` | Month + year format, keep both names               |
 | 2     | `name_partial`      | Drop officer name, keep civilian name + month-year |
-| 3     | `entity_dropped`    | Drop both names, keep location + date range      |
-| 4     | Escalate            | Flag for human review                            |
+| 3     | `entity_dropped`    | Drop both names, keep location + date range        |
+| 4     | Escalate            | Flag for human review                              |
 
 ### Escalation Triggers
 
@@ -120,10 +120,10 @@ For each field extracted from validated articles:
 - **All articles return null** → skip (no data, not a conflict)
 - **Articles agree but conflict with database** → add to both lists
 
-After merge, the Coordinator applies partial completion logic: if any fields were
-successfully extracted (`extracted_fields` non-empty), route to COMPLETE — even
-if conflicts exist on other fields. Only escalate on conflict when zero fields
-were extracted. Partial completions set `requires_human_review = True` so
+After merge, the Coordinator applies partial completion logic: if any fields
+were successfully extracted (`extracted_fields` non-empty), route to COMPLETE —
+even if conflicts exist on other fields. Only escalate on conflict when zero
+fields were extracted. Partial completions set `requires_human_review = True` so
 conflicts are still surfaced for review.
 
 Before comparing values across articles, the merge node normalizes fields to
@@ -325,29 +325,58 @@ location, time, outcome). These fields exist in the DB but are never seen by the
 pipeline during enrichment, creating a natural holdout.
 
 ```bash
-python -m src.eval.run_eval civilians_shot --limit 10 --min-fields 2
+python -m src.eval.run_eval civilians_shot --limit 40 --min-fields 2
 ```
 
-Reports are saved to `output/eval/` as JSON.
+**Holdout results (N=40, civilians-shot):**
+
+| Metric             | Value       |
+| ------------------ | ----------- |
+| Completion rate    | 70% (28/40) |
+| Escalation rate    | 30% (12/40) |
+| Reached extraction | 73% (29/40) |
+
+| Field           | Coverage | Exact match | Fuzzy match |
+| --------------- | -------- | ----------- | ----------- |
+| civilian_age    | 50%      | 75%         | 75%         |
+| civilian_race   | 18%      | 57%         | 57%         |
+| weapon          | 31%      | 0%          | 45%         |
+| location_detail | 25%      | 0%          | 10%         |
+| time_of_day     | 38%      | 73%         | 73%         |
+
+`outcome` is omitted because all 40 holdout samples have NULL ground truth for
+`civilian_died`.
+
+Age and time-of-day are the strongest fields (~75% exact accuracy). Weapon
+extraction finds correct types but with different phrasing than the DB (e.g.,
+"handgun" vs "firearm - handgun"), which inflates the mismatch rate. Most
+escalations (92%) are retrieval gaps — incidents without enough distinguishing
+details for web search to find relevant articles.
+
+Reports are saved to `output/eval/` as JSON. See [EVALUATION.md](EVALUATION.md)
+for full methodology, error analysis, and discussion.
 
 ### Configuration
 
 Environment variables (see `.env.example`):
 
-| Variable                               | Default             | Description                           |
-| -------------------------------------- | ------------------- | ------------------------------------- |
-| `ANTHROPIC_API_KEY`                    | (required)          | Anthropic API key                     |
-| `ANTHROPIC_MODEL`                      | `claude-sonnet-4-6` | Model for LLM-powered nodes           |
-| `TAVILY_API_KEY`                       | (required)          | Tavily API key for news search        |
-| `LOG_LEVEL`                            | `INFO`              | Logging level                         |
-| `ENRICHMENT_OUTPUT_DIR`                | `output/enrichment` | Output directory for JSON results     |
-| `ENRICHMENT_MAX_SEARCH_RESULTS`        | `10`                | Max articles per search               |
-| `ENRICHMENT_SEARCH_DEPTH`              | `advanced`          | Tavily search depth                   |
-| `ENRICHMENT_FUZZY_MATCH_THRESHOLD`     | `80`                | Min rapidfuzz score for name matching |
-| `ENRICHMENT_DATE_PROXIMITY_DAYS`       | `5`                 | Max days between article and incident |
+| Variable                           | Default             | Description                           |
+| ---------------------------------- | ------------------- | ------------------------------------- |
+| `ANTHROPIC_API_KEY`                | (required)          | Anthropic API key                     |
+| `ANTHROPIC_MODEL`                  | `claude-sonnet-4-6` | Model for LLM-powered nodes           |
+| `TAVILY_API_KEY`                   | (required)          | Tavily API key for news search        |
+| `LOG_LEVEL`                        | `INFO`              | Logging level                         |
+| `ENRICHMENT_OUTPUT_DIR`            | `output/enrichment` | Output directory for JSON results     |
+| `ENRICHMENT_MAX_SEARCH_RESULTS`    | `5`                 | Max articles per search               |
+| `ENRICHMENT_SEARCH_DEPTH`          | `advanced`          | Tavily search depth                   |
+| `ENRICHMENT_FUZZY_MATCH_THRESHOLD` | `80`                | Min rapidfuzz score for name matching |
+| `ENRICHMENT_DATE_PROXIMITY_DAYS`   | `5`                 | Max days between article and incident |
 
 > **Note:** `ENRICHMENT_RELEVANCE_SCORE_THRESHOLD` exists in `Settings` but is
 > not used by any pipeline node. It may be removed in a future release.
+> `ENRICHMENT_MAX_SEARCH_RESULTS` defaults to 5 in `Settings`, but
+> `search_node.py` currently hardcodes `max_results=10` and does not read from
+> Settings.
 
 PostgreSQL connection variables (`DB_HOST`, `DB_PORT`, etc.) are configured in
 `.env.example` and used by the ETL pipeline (`data/`).
@@ -473,7 +502,11 @@ class EnrichmentState:
 
 ## Performance
 
-Measured across 23 incidents (warm connections, claude-sonnet-4-6):
+Measured across 23 incidents (warm connections, claude-sonnet-4-6). These
+timings measure per-incident pipeline execution latency (search + merge), not
+end-to-end evaluation time which includes holdout overhead — see
+[EVALUATION.md](EVALUATION.md) for holdout timing (48.8s mean across 40
+records).
 
 | Metric                          | Range            | Mean     |
 | ------------------------------- | ---------------- | -------- |
@@ -525,7 +558,8 @@ principles:
 
 **Next:**
 
-- Improve eval comparison (embedding similarity for weapon, geocoding for location)
+- Improve eval comparison (embedding similarity for weapon, geocoding for
+  location)
 - Batch processing across all records
 - Human review UI
 
