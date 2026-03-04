@@ -65,7 +65,7 @@ nodes update state fields, graph edges handle transitions.
 | --------------- | ------------- | -------------------------------------------------------------------------- |
 | **Extract**     | Deterministic | Reads incident record from PostgreSQL, populates state fields              |
 | **Search**      | Deterministic | Constructs query from incident fields, calls Tavily API for news articles  |
-| **Validate**    | Rule-based    | Checks date proximity (±3 days), location match, and optional name match   |
+| **Validate**    | Rule-based    | Checks date proximity (±5 days), location match, and optional name match   |
 | **Merge**       | LLM-powered   | Extracts structured fields from articles, checks cross-article consistency |
 | **Coordinator** | Rule-based    | Gates after each stage — decides retry, proceed, or escalate               |
 | **Complete**    | Terminal      | Writes enrichment results to JSON                                          |
@@ -125,6 +125,16 @@ successfully extracted (`extracted_fields` non-empty), route to COMPLETE — eve
 if conflicts exist on other fields. Only escalate on conflict when zero fields
 were extracted. Partial completions set `requires_human_review = True` so
 conflicts are still surfaced for review.
+
+Before comparing values across articles, the merge node normalizes fields to
+reduce spurious conflicts:
+
+- **Name normalization**: strips honorifics (e.g., "Master Sgt.") and nickname
+  quotes (e.g., "'Joe'") before fuzzy matching
+- **Race normalization**: maps synonyms (e.g., "African American" → "Black",
+  "Caucasian" → "White", "Latino" → "Hispanic")
+- **Per-field fuzzy thresholds**: weapon (70) and location_detail (75) use lower
+  thresholds than the default (80) to tolerate minor wording differences
 
 Each `FieldConflict` captures the field name, conflict type (`articles_disagree`
 or `reference_mismatch`), the conflicting values with source URLs, and the
@@ -334,7 +344,10 @@ Environment variables (see `.env.example`):
 | `ENRICHMENT_MAX_SEARCH_RESULTS`        | `10`                | Max articles per search               |
 | `ENRICHMENT_SEARCH_DEPTH`              | `advanced`          | Tavily search depth                   |
 | `ENRICHMENT_FUZZY_MATCH_THRESHOLD`     | `80`                | Min rapidfuzz score for name matching |
-| `ENRICHMENT_DATE_PROXIMITY_DAYS`       | `3`                 | Max days between article and incident |
+| `ENRICHMENT_DATE_PROXIMITY_DAYS`       | `5`                 | Max days between article and incident |
+
+> **Note:** `ENRICHMENT_RELEVANCE_SCORE_THRESHOLD` exists in `Settings` but is
+> not used by any pipeline node. It may be removed in a future release.
 
 PostgreSQL connection variables (`DB_HOST`, `DB_PORT`, etc.) are configured in
 `.env.example` and used by the ETL pipeline (`data/`).
@@ -452,10 +465,11 @@ class EnrichmentState:
 
 ### Validation-level (URL pattern filtering in `validate_node.py`)
 
-| Pattern | Reason                                                 |
-| ------- | ------------------------------------------------------ |
-| `.pdf`  | Compilation documents (e.g., statewide victim reports) |
-| `.csv`  | Raw datasets with many unrelated records               |
+| Pattern               | Reason                                                 |
+| --------------------- | ------------------------------------------------------ |
+| `.pdf`                | Compilation documents (e.g., statewide victim reports) |
+| `.csv`                | Raw datasets with many unrelated records               |
+| `fatalencounters.org` | Compilation dataset, not incident-specific news        |
 
 ## Performance
 
