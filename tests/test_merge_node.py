@@ -666,6 +666,29 @@ class TestMergeNode:
         # LLM should never be called
         mock_llm.with_structured_output.return_value.invoke.assert_not_called()
 
+    def test_all_null_extractions_with_db_reference(
+        self, base_state: EnrichmentState
+    ) -> None:
+        """All-null extractions with non-null DB reference: no crash, no conflict."""
+        null_extractions = [
+            _make_extraction("officer_name", None),
+            _make_extraction("civilian_name", None),
+            _make_extraction("weapon", None),
+        ]
+        mock_llm = _build_mock_llm([null_extractions, null_extractions])
+
+        config = RunnableConfig({"configurable": {"llm_client": mock_llm}})
+        result = merge_node(base_state, config)
+
+        assert result.current_stage == PipelineStage.MERGE
+        assert result.error_message is None
+        # No conflicts — nothing to compare against DB reference
+        assert result.conflicting_fields == []
+        # officer_name should NOT be in extracted_fields (all null)
+        extracted_names = [e.field_name for e in result.extracted_fields]
+        assert "officer_name" not in extracted_names
+        assert "civilian_name" not in extracted_names
+
 
 # --- normalize_race tests ---
 
