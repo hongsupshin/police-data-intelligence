@@ -17,8 +17,10 @@ from src.eval.holdout import (
     EvalResult,
     FieldMetrics,
     HoldoutReport,
+    HoldoutSample,
     MatchResult,
     PipelineOutcome,
+    _infer_stage_reached,
     aggregate_metrics,
     compare_age,
     compare_location,
@@ -26,6 +28,7 @@ from src.eval.holdout import (
     compare_race,
     compare_time,
     compare_weapon,
+    compute_fairness_metrics,
 )
 
 # ---------------------------------------------------------------------------
@@ -575,3 +578,210 @@ class TestAggregateMetrics:
         assert age_metric.exact_accuracy == pytest.approx(0.5)
         assert age_metric.confidence_breakdown.get("high") == 1.0
         assert age_metric.confidence_breakdown.get("medium") == 0.0
+
+
+# ---------------------------------------------------------------------------
+# HoldoutSample
+# ---------------------------------------------------------------------------
+
+
+class TestHoldoutSample:
+    """Test HoldoutSample model."""
+
+    def test_creation(self) -> None:
+        """Test HoldoutSample creation with required fields."""
+        sample = HoldoutSample(
+            incident_id=100, year=2017, race="BLACK", n_eval_fields=5
+        )
+        assert sample.incident_id == 100
+        assert sample.year == 2017
+        assert sample.race == "BLACK"
+        assert sample.n_eval_fields == 5
+
+    def test_race_optional(self) -> None:
+        """Test HoldoutSample with None race."""
+        sample = HoldoutSample(
+            incident_id=100, year=2017, n_eval_fields=3
+        )
+        assert sample.race is None
+
+
+# ---------------------------------------------------------------------------
+# EvalResult new fields
+# ---------------------------------------------------------------------------
+
+
+class TestEvalResultNewFields:
+    """Test new fields on EvalResult."""
+
+    def test_defaults(self) -> None:
+        """Test elapsed_seconds and stage_reached default to 0/None."""
+        er = EvalResult(
+            incident_id=1,
+            dataset_type=DatasetType.CIVILIANS_SHOT,
+            pipeline_outcome=PipelineOutcome.COMPLETE,
+        )
+        assert er.elapsed_seconds == 0.0
+        assert er.stage_reached is None
+
+    def test_explicit_values(self) -> None:
+        """Test explicit elapsed_seconds and stage_reached."""
+        er = EvalResult(
+            incident_id=1,
+            dataset_type=DatasetType.CIVILIANS_SHOT,
+            pipeline_outcome=PipelineOutcome.ESCALATE,
+            elapsed_seconds=45.3,
+            stage_reached="search",
+        )
+        assert er.elapsed_seconds == 45.3
+        assert er.stage_reached == "search"
+
+
+# ---------------------------------------------------------------------------
+# _infer_stage_reached
+# ---------------------------------------------------------------------------
+
+
+class TestInferStageReached:
+    """Test _infer_stage_reached helper."""
+
+    def test_complete(self) -> None:
+        """Completed pipeline returns 'complete'."""
+        assert _infer_stage_reached(PipelineOutcome.COMPLETE, None) == "complete"
+
+    def test_max_retries(self) -> None:
+        """MAX_RETRIES escalation reached 'search'."""
+        assert _infer_stage_reached(PipelineOutcome.ESCALATE, "max_retries") == "search"
+
+    def test_validation_error(self) -> None:
+        """VALIDATION_ERROR escalation reached 'validate'."""
+        assert (
+            _infer_stage_reached(PipelineOutcome.ESCALATE, "validation_error")
+            == "validate"
+        )
+
+    def test_conflict(self) -> None:
+        """CONFLICT escalation reached 'merge'."""
+        assert _infer_stage_reached(PipelineOutcome.ESCALATE, "conflict") == "merge"
+
+    def test_merge_error(self) -> None:
+        """MERGE_ERROR escalation reached 'merge'."""
+        assert _infer_stage_reached(PipelineOutcome.ESCALATE, "merge_error") == "merge"
+
+    def test_insufficient_sources(self) -> None:
+        """INSUFFICIENT_SOURCES escalation reached 'merge'."""
+        assert (
+            _infer_stage_reached(PipelineOutcome.ESCALATE, "insufficient_sources")
+            == "merge"
+        )
+
+    def test_extraction_error(self) -> None:
+        """EXTRACTION_ERROR escalation reached 'extract'."""
+        assert (
+            _infer_stage_reached(PipelineOutcome.ESCALATE, "extraction_error")
+            == "extract"
+        )
+
+    def test_unknown_reason(self) -> None:
+        """Unknown escalation reason returns 'unknown'."""
+        assert (
+            _infer_stage_reached(PipelineOutcome.ESCALATE, "something_else")
+            == "unknown"
+        )
+
+    def test_none_reason_escalate(self) -> None:
+        """Escalation with None reason returns 'unknown'."""
+        assert _infer_stage_reached(PipelineOutcome.ESCALATE, None) == "unknown"
+
+
+# ---------------------------------------------------------------------------
+# compute_fairness_metrics
+# ---------------------------------------------------------------------------
+
+
+class TestComputeFairnessMetrics:
+    """Test compute_fairness_metrics."""
+
+    def _make_eval_result(
+        self,
+        incident_id: int,
+        outcome: PipelineOutcome,
+        field_results: list[MatchResult] | None = None,
+    ) -> EvalResult:
+        """Helper to create EvalResult."""
+        return EvalResult(
+            incident_id=incident_id,
+            dataset_type=DatasetType.CIVILIANS_SHOT,
+            pipeline_outcome=outcome,
+            field_results=field_results or [],
+        )
+
+    def test_single_group(self) -> None:
+        """Single race group computes correct metrics."""
+        samples = [
+            HoldoutSample(incident_id=1, year=2017, race="BLACK", n_eval_fields=5),
+            HoldoutSample(incident_id=2, year=2017, race="BLACK", n_eval_fields=5),
+        ]
+        results = [
+            self._make_eval_result(
+                1,
+                PipelineOutcome.COMPLETE,
+                [MatchResult(field_name="civilian_age", exact_match=True)],
+            ),
+            self._make_eval_result(
+                2,
+                PipelineOutcome.ESCALATE,
+                [MatchResult(field_name="civilian_age", exact_match=False)],
+            ),
+        ]
+        metrics = compute_fairness_metrics(results, samples)
+        assert "black" in metrics
+        assert metrics["black"]["n"] == 2.0
+        assert metrics["black"]["completion_rate"] == pytest.approx(0.5)
+
+    def test_multiple_groups(self) -> None:
+        """Multiple race groups are tracked separately."""
+        samples = [
+            HoldoutSample(incident_id=1, year=2017, race="BLACK", n_eval_fields=5),
+            HoldoutSample(incident_id=2, year=2017, race="WHITE", n_eval_fields=5),
+        ]
+        results = [
+            self._make_eval_result(1, PipelineOutcome.COMPLETE),
+            self._make_eval_result(2, PipelineOutcome.ESCALATE),
+        ]
+        metrics = compute_fairness_metrics(results, samples)
+        assert len(metrics) == 2
+        assert metrics["black"]["completion_rate"] == 1.0
+        assert metrics["white"]["completion_rate"] == 0.0
+
+    def test_none_race_becomes_unknown(self) -> None:
+        """None race is grouped as 'unknown'."""
+        samples = [
+            HoldoutSample(incident_id=1, year=2017, race=None, n_eval_fields=3),
+        ]
+        results = [self._make_eval_result(1, PipelineOutcome.COMPLETE)]
+        metrics = compute_fairness_metrics(results, samples)
+        assert "unknown" in metrics
+
+
+# ---------------------------------------------------------------------------
+# HoldoutReport new fields
+# ---------------------------------------------------------------------------
+
+
+class TestHoldoutReportNewFields:
+    """Test new fields on HoldoutReport."""
+
+    def test_defaults(self) -> None:
+        """Test new fields default to empty/zero."""
+        report = HoldoutReport(
+            dataset_type=DatasetType.CIVILIANS_SHOT,
+            n_incidents=10,
+            n_completed=8,
+            n_escalated=2,
+            completion_rate=0.8,
+        )
+        assert report.samples == []
+        assert report.mean_elapsed_seconds == 0.0
+        assert report.total_elapsed_seconds == 0.0
+        assert report.fairness_metrics == {}

@@ -11,7 +11,7 @@ def test_default_values():
     assert settings.search_depth == "advanced"
     assert settings.relevance_score_threshold == 0.5
     assert settings.fuzzy_match_threshold == 80
-    assert settings.date_proximity_days == 3
+    assert settings.date_proximity_days == 5
 
 
 def test_env_var_override(monkeypatch):

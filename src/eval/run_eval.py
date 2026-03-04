@@ -2,14 +2,20 @@
 
 Usage:
     python -m src.eval.run_eval civilians_shot --limit 20 --min-fields 2
-    python -m src.eval.run_eval officers_shot --limit 10
+    python -m src.eval.run_eval civilians_shot --limit 40 --stratified
+    python -m src.eval.run_eval officers_shot --limit 10 --no-stratified
 """
 
 import argparse
 import logging
 
 from src.agents.state import DatasetType
-from src.eval.holdout import evaluate_holdout, print_report, save_report
+from src.eval.holdout import (
+    evaluate_holdout,
+    evaluate_holdout_stratified,
+    print_report,
+    save_report,
+)
 
 logging.basicConfig(
     level="INFO",
@@ -40,6 +46,18 @@ def main() -> None:
         default=2,
         help="Minimum non-NULL eval fields per incident (default: 2)",
     )
+    parser.add_argument(
+        "--stratified",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Use year-stratified sampling (default: True)",
+    )
+    parser.add_argument(
+        "--exclude-dev-set",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Exclude dev-set incidents from holdout (default: True)",
+    )
     args = parser.parse_args()
 
     try:
@@ -51,13 +69,21 @@ def main() -> None:
         raise SystemExit(1) from None
 
     logger.info(
-        "Starting holdout evaluation: dataset=%s, limit=%d, min_fields=%d",
+        "Starting holdout evaluation: dataset=%s, limit=%d, min_fields=%d, "
+        "stratified=%s, exclude_dev_set=%s",
         dataset_type.value,
         args.limit,
         args.min_fields,
+        args.stratified,
+        args.exclude_dev_set,
     )
 
-    report = evaluate_holdout(dataset_type, args.limit, args.min_fields)
+    if args.stratified:
+        report = evaluate_holdout_stratified(
+            dataset_type, args.limit, args.min_fields, args.exclude_dev_set
+        )
+    else:
+        report = evaluate_holdout(dataset_type, args.limit, args.min_fields)
     print_report(report)
 
     filepath = save_report(report)

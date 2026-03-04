@@ -42,4 +42,4 @@ class Settings(BaseSettings):
     search_depth: str = "advanced"
     relevance_score_threshold: float = 0.5
     fuzzy_match_threshold: int = 80
-    date_proximity_days: int = 3
+    date_proximity_days: int = 5

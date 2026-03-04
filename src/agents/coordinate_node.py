@@ -12,8 +12,30 @@ from src.agents.state import (
     SearchStrategyType,
 )
 
-AVG_RELEVANCE_SCORE_THRESHOLD = 0.5
 STRATEGY_ORDER = list(SearchStrategyType)
+
+
+def _relevance_threshold(strategy: SearchStrategyType) -> float:
+    """Return the minimum avg relevance score for a given search strategy.
+
+    Broader strategies accept lower scores since results are inherently
+    less precise.
+
+    Args:
+        strategy: Current search strategy.
+
+    Returns:
+        Minimum relevance score threshold.
+    """
+    match strategy:
+        case SearchStrategyType.EXACT_MATCH:
+            return 0.65
+        case SearchStrategyType.TEMPORAL_EXPANDED:
+            return 0.55
+        case SearchStrategyType.NAME_PARTIAL:
+            return 0.50
+        case SearchStrategyType.ENTITY_DROPPED:
+            return 0.45
 
 
 def check_extract_results(state: EnrichmentState) -> EnrichmentState:
@@ -92,9 +114,7 @@ def check_search_results(state: EnrichmentState) -> EnrichmentState:
 
         if (
             state.search_attempts
-            and state.search_attempts[-1].avg_relevance_score
-            and state.search_attempts[-1].avg_relevance_score
-            >= AVG_RELEVANCE_SCORE_THRESHOLD
+            and state.search_attempts[-1].num_results > 0
         ):
             state.next_stage = PipelineStage.VALIDATE
         else:
@@ -122,9 +142,7 @@ def check_validate_results(state: EnrichmentState) -> EnrichmentState:
     if any(vr.passed for vr in state.validation_results):
         state.next_stage = PipelineStage.MERGE
     else:
-        state.escalation_reason = EscalationReason.VALIDATION_ERROR
-        state.requires_human_review = True
-        state.next_stage = PipelineStage.ESCALATE
+        return retry_helper(state)
     return state
 
 
@@ -146,9 +164,14 @@ def check_merge_results(state: EnrichmentState) -> EnrichmentState:
         state.requires_human_review = True
         state.next_stage = PipelineStage.ESCALATE
     elif state.conflicting_fields:
-        state.escalation_reason = EscalationReason.CONFLICT
-        state.requires_human_review = True
-        state.next_stage = PipelineStage.ESCALATE
+        if state.extracted_fields:
+            # Accept agreed fields; flag conflicts for human review
+            state.requires_human_review = True
+            state.next_stage = PipelineStage.COMPLETE
+        else:
+            state.escalation_reason = EscalationReason.CONFLICT
+            state.requires_human_review = True
+            state.next_stage = PipelineStage.ESCALATE
     elif not state.extracted_fields:
         state.escalation_reason = EscalationReason.INSUFFICIENT_SOURCES
         state.requires_human_review = True

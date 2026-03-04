@@ -78,11 +78,13 @@ def test_check_name_match() -> None:
 
 
 def test_check_date_match() -> None:
-    """Date match within +/-3 day tolerance, including boundary."""
+    """Date match within +/-5 day tolerance, including boundary."""
     assert check_date_match(date(2018, 3, 10), date(2018, 3, 10))
     assert check_date_match(date(2018, 3, 10), date(2018, 3, 12))
     assert check_date_match(date(2018, 3, 9), date(2018, 3, 12))
-    assert not check_date_match(date(2018, 3, 8), date(2018, 3, 12))
+    assert check_date_match(date(2018, 3, 8), date(2018, 3, 12))  # diff=4, within 5
+    assert check_date_match(date(2018, 3, 7), date(2018, 3, 12))  # diff=5, boundary
+    assert not check_date_match(date(2018, 3, 6), date(2018, 3, 12))  # diff=6, outside
     assert not check_date_match(None, date(2018, 3, 12))
     assert not check_date_match(date(2018, 3, 12), None)
 

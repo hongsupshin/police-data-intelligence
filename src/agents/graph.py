@@ -76,11 +76,14 @@ def complete_node(state: EnrichmentState, config: RunnableConfig) -> EnrichmentS
         "validation_results": [r.model_dump() for r in state.validation_results],
         "search_strategy": state.next_strategy,
         "retry_count": state.retry_count,
+        "conflicting_fields": [c.model_dump() for c in state.conflicting_fields]
+        if state.conflicting_fields
+        else [],
         "outcome_summary": state.outcome_summary,
     }
 
     state.current_stage = PipelineStage.COMPLETE
-    state.requires_human_review = False
+    state.requires_human_review = bool(state.conflicting_fields)
 
     with open(state.output_file_path, "w") as f:
         json.dump(output, f, indent=2, default=str)

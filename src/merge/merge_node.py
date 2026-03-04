@@ -42,6 +42,40 @@ assert set(FIELD_DEFINITIONS.keys()) == set(
 
 RAPIDFUZZ_THRESHOLD = 80
 
+FIELD_FUZZY_THRESHOLDS: dict[MediaFeatureField, int] = {
+    MediaFeatureField.WEAPON: 70,
+    MediaFeatureField.LOCATION_DETAIL: 75,
+}
+
+RACE_SYNONYMS: dict[str, str] = {
+    "african american": "black",
+    "african-american": "black",
+    "caucasian": "white",
+    "latino": "hispanic",
+    "latina": "hispanic",
+    "latin": "hispanic",
+}
+
+
+def normalize_race(value: str) -> str:
+    """Normalize a race/ethnicity string via synonym mapping.
+
+    Args:
+        value: Raw race string (e.g., "African American", "Caucasian").
+
+    Returns:
+        Canonical lowercase form (e.g., "black", "white").
+
+    Examples:
+        >>> normalize_race("African American")
+        'black'
+        >>> normalize_race("White")
+        'white'
+    """
+    lowered = value.strip().lower()
+    return RACE_SYNONYMS.get(lowered, lowered)
+
+
 _HONORIFICS = re.compile(
     r"\b(mr|mrs|ms|dr|sgt|master sgt|cpl|lt|capt|"
     r"officer|detective|deputy|chief|trooper|corporal|sergeant|"
@@ -196,7 +230,20 @@ def check_articles_match(
             winner.confidence = ConfidenceLevel.MEDIUM
             return (True, winner)
 
-    if all(fuzz.ratio(most_common, other) >= RAPIDFUZZ_THRESHOLD for other in others):
+    # Race field: normalize synonyms before comparison
+    if field == MediaFeatureField.CIVILIAN_RACE:
+        normalized_common = normalize_race(most_common)
+        if all(normalize_race(other) == normalized_common for other in others):
+            winner = next(r for r in non_null_results if r.value == most_common)
+            winner.confidence = ConfidenceLevel.MEDIUM
+            return (True, winner)
+
+    threshold = FIELD_FUZZY_THRESHOLDS.get(field, RAPIDFUZZ_THRESHOLD)
+    if all(
+        max(fuzz.ratio(most_common, other), fuzz.partial_ratio(most_common, other))
+        >= threshold
+        for other in others
+    ):
         # Minor difference: return the most common
         winner = next(r for r in non_null_results if r.value == most_common)
         winner.confidence = ConfidenceLevel.MEDIUM

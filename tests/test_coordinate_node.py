@@ -11,6 +11,7 @@ import pytest
 
 from src.agents.coordinate_node import (
     STRATEGY_ORDER,
+    _relevance_threshold,
     check_extract_results,
     check_merge_results,
     check_search_results,
@@ -224,10 +225,22 @@ def test_check_search_results_exhausted_retries(search_state: EnrichmentState) -
     assert state.requires_human_review
 
 
-def test_check_search_results_low_score_retry(search_state: EnrichmentState) -> None:
-    """Low relevance score triggers retry via retry_helper."""
+def test_check_search_results_low_score_proceeds(
+    search_state: EnrichmentState,
+) -> None:
+    """Low relevance score still proceeds to VALIDATE when results exist."""
     updated_search_state = search_state.model_copy()
     updated_search_state.search_attempts[-1].avg_relevance_score = 0.1
+    state = check_search_results(updated_search_state)
+    assert state.next_stage == PipelineStage.VALIDATE
+
+
+def test_check_search_results_no_results_retry(
+    search_state: EnrichmentState,
+) -> None:
+    """Zero results triggers retry via retry_helper."""
+    updated_search_state = search_state.model_copy()
+    updated_search_state.search_attempts[-1].num_results = 0
     state = check_search_results(updated_search_state)
     assert state.retry_count == 1
     assert state.next_stage == PipelineStage.SEARCH
@@ -242,6 +255,35 @@ def test_check_search_results_error_retry(search_state: EnrichmentState) -> None
     assert state.next_stage == PipelineStage.SEARCH
 
 
+def test_check_search_results_low_score_with_results_proceeds(
+    search_state: EnrichmentState,
+) -> None:
+    """Any score proceeds to VALIDATE when results exist (no score gating)."""
+    updated_search_state = search_state.model_copy()
+    updated_search_state.next_strategy = SearchStrategyType.EXACT_MATCH
+    updated_search_state.search_attempts[-1].avg_relevance_score = 0.30
+    state = check_search_results(updated_search_state)
+    assert state.next_stage == PipelineStage.VALIDATE
+
+
+# --- _relevance_threshold tests ---
+
+
+def test_relevance_threshold_exact_match() -> None:
+    """EXACT_MATCH threshold is 0.65."""
+    assert _relevance_threshold(SearchStrategyType.EXACT_MATCH) == 0.65
+
+
+def test_relevance_threshold_temporal_expanded() -> None:
+    """TEMPORAL_EXPANDED threshold is 0.55."""
+    assert _relevance_threshold(SearchStrategyType.TEMPORAL_EXPANDED) == 0.55
+
+
+def test_relevance_threshold_entity_dropped() -> None:
+    """ENTITY_DROPPED threshold is 0.45."""
+    assert _relevance_threshold(SearchStrategyType.ENTITY_DROPPED) == 0.45
+
+
 # --- check_validate_results tests ---
 
 
@@ -251,24 +293,39 @@ def test_check_validate_results_happy_path(validate_state: EnrichmentState) -> N
     assert state.next_stage == PipelineStage.MERGE
 
 
-def test_check_validate_results_all_failed(validate_state: EnrichmentState) -> None:
-    """All articles failed validation, escalate with VALIDATION_ERROR."""
+def test_check_validate_results_all_failed_retries(
+    validate_state: EnrichmentState,
+) -> None:
+    """All articles failed validation, retries search with next strategy."""
     updated_state = validate_state.model_copy()
     for vr in updated_state.validation_results:
         vr.passed = False
     state = check_validate_results(updated_state)
+    assert state.next_stage == PipelineStage.SEARCH
+    assert state.retry_count == 1
+
+
+def test_check_validate_results_all_failed_exhausted(
+    validate_state: EnrichmentState,
+) -> None:
+    """All articles failed validation and no strategies left, escalates."""
+    updated_state = validate_state.model_copy()
+    updated_state.next_strategy = STRATEGY_ORDER[-1]
+    for vr in updated_state.validation_results:
+        vr.passed = False
+    state = check_validate_results(updated_state)
     assert state.next_stage == PipelineStage.ESCALATE
-    assert state.escalation_reason == EscalationReason.VALIDATION_ERROR
+    assert state.escalation_reason == EscalationReason.MAX_RETRIES
     assert state.requires_human_review
 
 
 def test_check_validate_results_empty(validate_state: EnrichmentState) -> None:
-    """No validation results at all, escalate with VALIDATION_ERROR."""
+    """No validation results at all, retries search."""
     updated_state = validate_state.model_copy()
     updated_state.validation_results = []
     state = check_validate_results(updated_state)
-    assert state.next_stage == PipelineStage.ESCALATE
-    assert state.escalation_reason == EscalationReason.VALIDATION_ERROR
+    assert state.next_stage == PipelineStage.SEARCH
+    assert state.retry_count == 1
 
 
 # --- check_merge_results tests ---
@@ -291,8 +348,9 @@ def test_check_merge_results_error(merge_state: EnrichmentState) -> None:
 
 
 def test_check_merge_results_conflict(merge_state: EnrichmentState) -> None:
-    """Conflicting fields triggers escalation with CONFLICT."""
+    """Conflicts with zero extractions triggers escalation with CONFLICT."""
     updated_state = merge_state.model_copy()
+    updated_state.extracted_fields = []
     updated_state.conflicting_fields = [
         FieldConflict(
             field_name=MediaFeatureField.WEAPON,
@@ -305,6 +363,25 @@ def test_check_merge_results_conflict(merge_state: EnrichmentState) -> None:
     assert state.next_stage == PipelineStage.ESCALATE
     assert state.escalation_reason == EscalationReason.CONFLICT
     assert state.requires_human_review
+
+
+def test_check_merge_results_conflict_with_extractions(
+    merge_state: EnrichmentState,
+) -> None:
+    """Conflicts with agreed fields routes to COMPLETE with human review flag."""
+    updated_state = merge_state.model_copy()
+    updated_state.conflicting_fields = [
+        FieldConflict(
+            field_name=MediaFeatureField.WEAPON,
+            conflict_type=ConflictType.ARTICLES_DISAGREE,
+            values=["handgun", "knife"],
+            sources=[["https://a.com"], ["https://b.com"]],
+        )
+    ]
+    state = check_merge_results(updated_state)
+    assert state.next_stage == PipelineStage.COMPLETE
+    assert state.requires_human_review
+    assert state.escalation_reason is None
 
 
 def test_check_merge_results_empty_extractions(merge_state: EnrichmentState) -> None:
