@@ -105,7 +105,7 @@ train-test contamination.
 
 Coverage dimensions:
 
-- **Year** (2014–2021): Older incidents may have fewer surviving news articles
+- **Year** (2014–2024): Older incidents may have fewer surviving news articles
 - **Missingness pattern**: Which fields are missing (names, weapon,
   demographics) determines which parts of the pipeline are exercised
 
