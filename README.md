@@ -530,6 +530,20 @@ effectively instant.
 **Projected at scale** (1,956 records, sequential): ~3.5 hours. With async
 parallelism (e.g., 10 concurrent workers): ~20 minutes.
 
+### Cost
+
+Estimated per-record API cost using Claude Sonnet 4.6 and Tavily advanced search
+(PAYGO pricing):
+
+| Component       | Per Record | 1,956 Records |
+| --------------- | ---------- | ------------- |
+| Anthropic (LLM) | ~$0.11     | ~$210         |
+| Tavily (search) | ~$0.04     | ~$78          |
+| **Total**       | **~$0.15** | **~$290**     |
+
+Cost varies with retry count and article length. See
+[EVALUATION.md](EVALUATION.md) for methodology.
+
 ## Responsible AI
 
 This system operates in a sensitive domain (police accountability). Key design
