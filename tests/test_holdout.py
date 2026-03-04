@@ -216,42 +216,47 @@ class TestCompareRace:
 
 
 class TestCompareWeapon:
-    """Test cases for compare_weapon."""
+    """Test cases for compare_weapon using category normalization."""
 
     def test_exact_match(self) -> None:
-        """Test identical weapon strings."""
-        r = compare_weapon("handgun", "handgun", "weapon")
+        """Test identical canonical category."""
+        r = compare_weapon("HANDGUN", "HANDGUN", "weapon")
         assert r.exact_match is True
         assert r.fuzzy_match is True
-        assert r.fuzzy_score is not None
+        assert r.fuzzy_score is None
 
-    def test_fuzzy_match(self) -> None:
-        """Test fuzzy match on similar descriptions."""
-        r = compare_weapon("9mm handgun", "handgun", "weapon")
-        assert r.fuzzy_match is True
-        assert r.fuzzy_score >= 80
-
-    def test_partial_ratio_match(self) -> None:
-        """Test partial_ratio catches substring matches."""
-        r = compare_weapon("knife", "kitchen knife", "weapon")
+    def test_synonym_match(self) -> None:
+        """Test DB synonym maps to same category as extracted."""
+        r = compare_weapon("HANDGUN", "GUN", "weapon")
+        assert r.exact_match is True
         assert r.fuzzy_match is True
 
-    def test_non_match(self) -> None:
-        """Test non-matching weapons."""
-        r = compare_weapon("rifle", "knife", "weapon")
-        assert r.fuzzy_match is False
+    def test_cross_category_no_match(self) -> None:
+        """Test different categories don't match."""
+        r = compare_weapon("RIFLE", "KNIFE", "weapon")
         assert r.exact_match is False
+        assert r.fuzzy_match is False
 
     def test_none_extracted(self) -> None:
         """Test None extracted returns NO_EXTRACTION."""
-        r = compare_weapon(None, "handgun", "weapon")
+        r = compare_weapon(None, "HANDGUN", "weapon")
         assert r.error == EvalError.NO_EXTRACTION
         assert r.fuzzy_score is None
 
     def test_none_ground_truth(self) -> None:
         """Test None ground truth returns NO_GROUND_TRUTH."""
-        r = compare_weapon("handgun", None, "weapon")
+        r = compare_weapon("HANDGUN", None, "weapon")
         assert r.error == EvalError.NO_GROUND_TRUTH
+
+    def test_details_missing_ground_truth(self) -> None:
+        """Test '(DETAILS MISSING)' ground truth returns NO_GROUND_TRUTH."""
+        r = compare_weapon("HANDGUN", "(DETAILS MISSING)", "weapon")
+        assert r.error == EvalError.NO_GROUND_TRUTH
+
+    def test_unmapped_values_match_as_other(self) -> None:
+        """Test unmapped values both normalize to OTHER and match."""
+        r = compare_weapon("taser", "pepper spray", "weapon")
+        assert r.exact_match is True
 
 
 # ---------------------------------------------------------------------------

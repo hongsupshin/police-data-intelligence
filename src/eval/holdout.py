@@ -352,35 +352,42 @@ def compare_race(
 def compare_weapon(
     extracted: str | None, ground_truth: str | None, field_name: str
 ) -> MatchResult:
-    """Compare extracted weapon against ground truth using fuzzy matching.
+    """Compare extracted weapon against ground truth using category normalization.
 
-    Uses fuzz.ratio and fuzz.partial_ratio with RAPIDFUZZ_THRESHOLD.
+    Both values are normalized to canonical categories (HANDGUN, RIFLE,
+    SHOTGUN, KNIFE, VEHICLE, OTHER, UNKNOWN) before comparison. Ground
+    truth that normalizes to ``None`` (missing/empty) is treated as
+    ``NO_GROUND_TRUTH``.
 
     Args:
-        extracted: Weapon description from pipeline.
+        extracted: Weapon category from pipeline.
         ground_truth: Weapon description from database.
         field_name: Field name for the result.
 
     Returns:
-        MatchResult with fuzzy_score set.
+        MatchResult with exact_match and fuzzy_match set identically.
     """
+    from src.merge.weapon_similarity import normalize_weapon
+
     result = MatchResult(
         field_name=field_name,
         extracted_value=extracted,
         ground_truth_value=ground_truth,
     )
-    if ground_truth is None:
+    gt_normalized = normalize_weapon(ground_truth)
+    if gt_normalized is None:
         result.error = EvalError.NO_GROUND_TRUTH
         return result
     if extracted is None:
         result.error = EvalError.NO_EXTRACTION
         return result
-    ratio = fuzz.ratio(extracted.lower(), ground_truth.lower())
-    partial = fuzz.partial_ratio(extracted.lower(), ground_truth.lower())
-    best = max(ratio, partial)
-    result.fuzzy_score = best
-    result.exact_match = extracted.lower().strip() == ground_truth.lower().strip()
-    result.fuzzy_match = best >= RAPIDFUZZ_THRESHOLD
+    ext_normalized = normalize_weapon(extracted)
+    if ext_normalized is None:
+        result.error = EvalError.NO_EXTRACTION
+        return result
+    matched = ext_normalized == gt_normalized
+    result.exact_match = matched
+    result.fuzzy_match = matched
     return result
 
 
@@ -1022,6 +1029,7 @@ def evaluate_holdout(
     dataset_type: DatasetType,
     limit: int = 20,
     min_fields: int = 2,
+    incident_ids: list[int] | None = None,
 ) -> HoldoutReport:
     """Run holdout evaluation on a dataset.
 
@@ -1032,6 +1040,8 @@ def evaluate_holdout(
         dataset_type: Which dataset to evaluate.
         limit: Maximum number of incidents to evaluate.
         min_fields: Minimum non-NULL eval fields per incident.
+        incident_ids: Specific incident IDs to evaluate. When provided,
+            skips DB-based incident selection.
 
     Returns:
         Complete HoldoutReport with per-field metrics and per-incident
@@ -1041,9 +1051,10 @@ def evaluate_holdout(
 
     conn = get_connection()
     try:
-        incident_ids = select_holdout_incidents(
-            conn, dataset_type, min_fields, limit
-        )
+        if incident_ids is None:
+            incident_ids = select_holdout_incidents(
+                conn, dataset_type, min_fields, limit
+            )
 
         eval_results: list[EvalResult] = []
         for incident_id in incident_ids:

@@ -58,6 +58,12 @@ def main() -> None:
         default=True,
         help="Exclude dev-set incidents from holdout (default: True)",
     )
+    parser.add_argument(
+        "--incident-ids",
+        type=str,
+        default=None,
+        help="Comma-separated incident IDs to evaluate (skips DB selection)",
+    )
     args = parser.parse_args()
 
     try:
@@ -78,7 +84,10 @@ def main() -> None:
         args.exclude_dev_set,
     )
 
-    if args.stratified:
+    if args.incident_ids:
+        ids = [int(x.strip()) for x in args.incident_ids.split(",")]
+        report = evaluate_holdout(dataset_type, incident_ids=ids)
+    elif args.stratified:
         report = evaluate_holdout_stratified(
             dataset_type, args.limit, args.min_fields, args.exclude_dev_set
         )
