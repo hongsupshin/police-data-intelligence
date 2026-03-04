@@ -11,7 +11,9 @@ Modules:
 """
 
 import json
+import logging
 import re
+import time as time_mod
 from collections import defaultdict
 from collections.abc import Callable
 from datetime import datetime, time
@@ -25,10 +27,14 @@ from rapidfuzz import fuzz
 from src.agents.state import (
     ConfidenceLevel,
     DatasetType,
+    EscalationReason,
     FieldExtraction,
     MediaFeatureField,
+    PipelineStage,
 )
 from src.merge.merge_node import RAPIDFUZZ_THRESHOLD
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Enums
@@ -88,6 +94,8 @@ class EvalResult(BaseModel):
         pipeline_outcome: Whether pipeline completed or escalated.
         field_results: Comparison results for each evaluable field.
         escalation_reason: Reason for escalation (None if completed).
+        elapsed_seconds: Wall-clock seconds for pipeline execution.
+        stage_reached: Last pipeline stage before termination.
     """
 
     incident_id: int
@@ -95,6 +103,24 @@ class EvalResult(BaseModel):
     pipeline_outcome: PipelineOutcome
     field_results: list[MatchResult] = Field(default_factory=list)
     escalation_reason: str | None = None
+    elapsed_seconds: float = 0.0
+    stage_reached: str | None = None
+
+
+class HoldoutSample(BaseModel):
+    """Metadata for a single holdout evaluation sample.
+
+    Attributes:
+        incident_id: TJI incident identifier.
+        year: Year of the incident.
+        race: Race/ethnicity of the civilian (None if unknown).
+        n_eval_fields: Number of non-NULL evaluable ground truth fields.
+    """
+
+    incident_id: int
+    year: int
+    race: str | None = None
+    n_eval_fields: int
 
 
 class FieldMetrics(BaseModel):
@@ -134,6 +160,10 @@ class HoldoutReport(BaseModel):
         completion_rate: Fraction of incidents that completed.
         field_metrics: Per-field aggregated metrics.
         per_incident: Detailed results for each incident.
+        samples: Holdout sample metadata (populated by stratified eval).
+        mean_elapsed_seconds: Mean wall-clock seconds per incident.
+        total_elapsed_seconds: Total wall-clock seconds for all incidents.
+        fairness_metrics: Per-race group metrics (populated by stratified eval).
     """
 
     dataset_type: DatasetType
@@ -143,6 +173,10 @@ class HoldoutReport(BaseModel):
     completion_rate: float
     field_metrics: list[FieldMetrics] = Field(default_factory=list)
     per_incident: list[EvalResult] = Field(default_factory=list)
+    samples: list[HoldoutSample] = Field(default_factory=list)
+    mean_elapsed_seconds: float = 0.0
+    total_elapsed_seconds: float = 0.0
+    fairness_metrics: dict[str, dict[str, float]] = Field(default_factory=dict)
 
 
 # ---------------------------------------------------------------------------
@@ -683,6 +717,169 @@ def select_holdout_incidents(
 # ---------------------------------------------------------------------------
 
 
+DEV_SET_IDS: set[int] = {3710, 5388, 3630, 3669, 833, 792, 5168, 697, 3744, 330}
+
+
+def _infer_stage_reached(
+    pipeline_outcome: PipelineOutcome,
+    escalation_reason: str | None,
+) -> str:
+    """Infer which pipeline stage was reached before termination.
+
+    Args:
+        pipeline_outcome: Whether pipeline completed or escalated.
+        escalation_reason: Escalation reason string (None if completed).
+
+    Returns:
+        Pipeline stage name (e.g., "search", "validate", "merge", "complete").
+    """
+    if pipeline_outcome == PipelineOutcome.COMPLETE:
+        return "complete"
+    if escalation_reason is None:
+        return "unknown"
+    reason = escalation_reason.lower()
+    if reason == EscalationReason.MAX_RETRIES.value:
+        return "search"
+    if reason == EscalationReason.VALIDATION_ERROR.value:
+        return "validate"
+    if reason in (
+        EscalationReason.CONFLICT.value,
+        EscalationReason.MERGE_ERROR.value,
+        EscalationReason.INSUFFICIENT_SOURCES.value,
+    ):
+        return "merge"
+    if reason == EscalationReason.EXTRACTION_ERROR.value:
+        return "extract"
+    return "unknown"
+
+
+def select_holdout_stratified(
+    conn: connection,
+    dataset_type: DatasetType,
+    min_fields: int = 2,
+    limit: int = 40,
+    exclude_dev_set: bool = True,
+) -> list[HoldoutSample]:
+    """Select holdout incidents with proportional year stratification.
+
+    Selects incidents proportionally across years (2015-2019), ensuring
+    a minimum of 4 per stratum. Excludes dev-set incidents by default.
+
+    Args:
+        conn: Active PostgreSQL connection.
+        dataset_type: Which dataset to query.
+        min_fields: Minimum number of non-NULL eval fields required.
+        limit: Total number of incidents to return.
+        exclude_dev_set: Whether to exclude dev-set IDs.
+
+    Returns:
+        List of HoldoutSample with year/race metadata.
+    """
+    cursor = conn.cursor()
+
+    exclusion_clause = ""
+    if exclude_dev_set and DEV_SET_IDS:
+        ids_str = ", ".join(str(i) for i in DEV_SET_IDS)
+        exclusion_clause = f"AND i.incident_id NOT IN ({ids_str})"
+
+    if dataset_type == DatasetType.CIVILIANS_SHOT:
+        query = f"""
+            SELECT i.incident_id,
+                   EXTRACT(YEAR FROM i.date_incident)::int AS year,
+                   c.race,
+                   (CASE WHEN c.age IS NOT NULL THEN 1 ELSE 0 END
+                  + CASE WHEN c.race IS NOT NULL THEN 1 ELSE 0 END
+                  + CASE WHEN i.weapon_reported_by_media IS NOT NULL
+                         THEN 1 ELSE 0 END
+                  + CASE WHEN i.incident_address IS NOT NULL THEN 1 ELSE 0 END
+                  + CASE WHEN i.time_incident IS NOT NULL THEN 1 ELSE 0 END
+                  + CASE WHEN v.civilian_died IS NOT NULL THEN 1 ELSE 0 END
+                   ) AS field_count
+            FROM incidents_civilians_shot i
+            LEFT JOIN incident_civilians_shot_victims v
+                ON i.incident_id = v.incident_id
+            LEFT JOIN civilians c ON v.civilian_id = c.civilian_id
+            WHERE i.date_incident IS NOT NULL
+              AND i.incident_city IS NOT NULL
+              {exclusion_clause}
+            GROUP BY i.incident_id, i.date_incident, c.race, c.age,
+                     i.weapon_reported_by_media, i.incident_address,
+                     i.time_incident, v.civilian_died
+            HAVING (CASE WHEN c.age IS NOT NULL THEN 1 ELSE 0 END
+                  + CASE WHEN c.race IS NOT NULL THEN 1 ELSE 0 END
+                  + CASE WHEN i.weapon_reported_by_media IS NOT NULL
+                         THEN 1 ELSE 0 END
+                  + CASE WHEN i.incident_address IS NOT NULL THEN 1 ELSE 0 END
+                  + CASE WHEN i.time_incident IS NOT NULL THEN 1 ELSE 0 END
+                  + CASE WHEN v.civilian_died IS NOT NULL THEN 1 ELSE 0 END
+                   ) >= %s
+            ORDER BY field_count DESC, i.incident_id ASC;
+        """
+    else:
+        query = f"""
+            SELECT i.incident_id,
+                   EXTRACT(YEAR FROM i.date_incident)::int AS year,
+                   c.race,
+                   (CASE WHEN c.age IS NOT NULL THEN 1 ELSE 0 END
+                  + CASE WHEN c.race IS NOT NULL THEN 1 ELSE 0 END
+                  + CASE WHEN i.incident_address IS NOT NULL THEN 1 ELSE 0 END
+                  + CASE WHEN v.officer_harm IS NOT NULL THEN 1 ELSE 0 END
+                   ) AS field_count
+            FROM incidents_officers_shot i
+            LEFT JOIN incident_officers_shot_shooters s
+                ON i.incident_id = s.incident_id
+            LEFT JOIN civilians c ON s.civilian_id = c.civilian_id
+            LEFT JOIN incident_officers_shot_victims v
+                ON i.incident_id = v.incident_id
+            WHERE i.date_incident IS NOT NULL
+              AND i.incident_city IS NOT NULL
+              {exclusion_clause}
+            GROUP BY i.incident_id, i.date_incident, c.race, c.age,
+                     i.incident_address, v.officer_harm
+            HAVING (CASE WHEN c.age IS NOT NULL THEN 1 ELSE 0 END
+                  + CASE WHEN c.race IS NOT NULL THEN 1 ELSE 0 END
+                  + CASE WHEN i.incident_address IS NOT NULL THEN 1 ELSE 0 END
+                  + CASE WHEN v.officer_harm IS NOT NULL THEN 1 ELSE 0 END
+                   ) >= %s
+            ORDER BY field_count DESC, i.incident_id ASC;
+        """
+
+    cursor.execute(query, (min_fields,))
+    rows = cursor.fetchall()
+
+    # Group by year for proportional allocation
+    by_year: dict[int, list[tuple]] = defaultdict(list)
+    for row in rows:
+        by_year[row[1]].append(row)
+
+    # Proportional allocation with minimum 4 per stratum
+    total_available = sum(len(v) for v in by_year.values())
+    selected: list[HoldoutSample] = []
+    min_per_stratum = 4
+
+    for year in sorted(by_year.keys()):
+        year_rows = by_year[year]
+        # Proportional count, at least min_per_stratum
+        proportion = len(year_rows) / total_available if total_available > 0 else 0
+        n_for_year = max(min_per_stratum, round(proportion * limit))
+        n_for_year = min(n_for_year, len(year_rows))
+        for row in year_rows[:n_for_year]:
+            selected.append(
+                HoldoutSample(
+                    incident_id=row[0],
+                    year=row[1],
+                    race=row[2],
+                    n_eval_fields=row[3],
+                )
+            )
+            if len(selected) >= limit:
+                break
+        if len(selected) >= limit:
+            break
+
+    return selected[:limit]
+
+
 def evaluate_single(
     incident_id: int,
     dataset_type: DatasetType,
@@ -703,12 +900,20 @@ def evaluate_single(
     """
     from src.run import run
 
+    start = time_mod.monotonic()
     result = run(str(incident_id), dataset_type.value)
+    elapsed = time_mod.monotonic() - start
 
     pipeline_outcome = (
-        PipelineOutcome.ESCALATE
-        if result.get("requires_human_review", False)
-        else PipelineOutcome.COMPLETE
+        PipelineOutcome.COMPLETE
+        if result.get("current_stage") == PipelineStage.COMPLETE.value
+        else PipelineOutcome.ESCALATE
+    )
+
+    escalation_reason = (
+        str(result.get("escalation_reason"))
+        if result.get("escalation_reason")
+        else None
     )
 
     # Build lookup from extracted fields
@@ -738,9 +943,9 @@ def evaluate_single(
         dataset_type=dataset_type,
         pipeline_outcome=pipeline_outcome,
         field_results=field_results,
-        escalation_reason=str(result.get("escalation_reason"))
-        if result.get("escalation_reason")
-        else None,
+        escalation_reason=escalation_reason,
+        elapsed_seconds=round(elapsed, 2),
+        stage_reached=_infer_stage_reached(pipeline_outcome, escalation_reason),
     )
 
 
@@ -866,6 +1071,133 @@ def evaluate_holdout(
         completion_rate=n_completed / n_incidents if n_incidents > 0 else 0.0,
         field_metrics=aggregate_metrics(eval_results),
         per_incident=eval_results,
+    )
+
+
+def compute_fairness_metrics(
+    eval_results: list[EvalResult],
+    samples: list[HoldoutSample],
+) -> dict[str, dict[str, float]]:
+    """Compute per-race-group pipeline metrics for fairness analysis.
+
+    Groups results by race (from HoldoutSample metadata) and computes
+    completion rate, pipeline reach rate, and mean exact accuracy per group.
+
+    Args:
+        eval_results: List of EvalResult objects.
+        samples: List of HoldoutSample with race metadata.
+
+    Returns:
+        Dict mapping race group to metrics dict with keys:
+        n, completion_rate, mean_exact_accuracy.
+    """
+    # Build incident_id -> race lookup
+    race_lookup: dict[int, str] = {}
+    for sample in samples:
+        race_lookup[sample.incident_id] = (sample.race or "unknown").lower()
+
+    # Group results by race
+    by_race: dict[str, list[EvalResult]] = defaultdict(list)
+    for er in eval_results:
+        race = race_lookup.get(er.incident_id, "unknown")
+        by_race[race].append(er)
+
+    metrics: dict[str, dict[str, float]] = {}
+    for race, results in sorted(by_race.items()):
+        n = len(results)
+        n_completed = sum(
+            1 for r in results if r.pipeline_outcome == PipelineOutcome.COMPLETE
+        )
+        # Mean exact accuracy across completed incidents
+        exact_accs: list[float] = []
+        for r in results:
+            evaluated = [
+                fr for fr in r.field_results
+                if fr.error is None
+            ]
+            if evaluated:
+                acc = sum(1 for fr in evaluated if fr.exact_match) / len(evaluated)
+                exact_accs.append(acc)
+
+        metrics[race] = {
+            "n": float(n),
+            "completion_rate": n_completed / n if n > 0 else 0.0,
+            "mean_exact_accuracy": (
+                sum(exact_accs) / len(exact_accs) if exact_accs else 0.0
+            ),
+        }
+
+    return metrics
+
+
+def evaluate_holdout_stratified(
+    dataset_type: DatasetType,
+    limit: int = 40,
+    min_fields: int = 2,
+    exclude_dev_set: bool = True,
+) -> HoldoutReport:
+    """Run stratified holdout evaluation on a dataset.
+
+    Uses year-stratified sampling, tracks timing per incident,
+    and computes fairness metrics by race group.
+
+    Args:
+        dataset_type: Which dataset to evaluate.
+        limit: Total number of incidents to evaluate.
+        min_fields: Minimum non-NULL eval fields per incident.
+        exclude_dev_set: Whether to exclude dev-set IDs.
+
+    Returns:
+        Complete HoldoutReport with stratified samples, timing,
+        and fairness metrics.
+    """
+    from src.database.connection import get_connection
+
+    conn = get_connection()
+    try:
+        samples = select_holdout_stratified(
+            conn, dataset_type, min_fields, limit, exclude_dev_set
+        )
+
+        eval_results: list[EvalResult] = []
+        for i, sample in enumerate(samples):
+            logger.info(
+                "Evaluating %d/%d: incident_id=%d (year=%d)",
+                i + 1,
+                len(samples),
+                sample.incident_id,
+                sample.year,
+            )
+            gt = fetch_ground_truth(conn, sample.incident_id, dataset_type)
+            result = evaluate_single(sample.incident_id, dataset_type, gt)
+            eval_results.append(result)
+    finally:
+        conn.close()
+
+    n_completed = sum(
+        1 for r in eval_results
+        if r.pipeline_outcome == PipelineOutcome.COMPLETE
+    )
+    n_escalated = sum(
+        1 for r in eval_results
+        if r.pipeline_outcome == PipelineOutcome.ESCALATE
+    )
+    n_incidents = len(eval_results)
+    total_elapsed = sum(r.elapsed_seconds for r in eval_results)
+    mean_elapsed = total_elapsed / n_incidents if n_incidents > 0 else 0.0
+
+    return HoldoutReport(
+        dataset_type=dataset_type,
+        n_incidents=n_incidents,
+        n_completed=n_completed,
+        n_escalated=n_escalated,
+        completion_rate=n_completed / n_incidents if n_incidents > 0 else 0.0,
+        field_metrics=aggregate_metrics(eval_results),
+        per_incident=eval_results,
+        samples=samples,
+        mean_elapsed_seconds=round(mean_elapsed, 2),
+        total_elapsed_seconds=round(total_elapsed, 2),
+        fairness_metrics=compute_fairness_metrics(eval_results, samples),
     )
 
 

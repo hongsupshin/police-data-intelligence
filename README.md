@@ -46,13 +46,13 @@ flowchart TD
     Extract --> Coord
     Coord -- "fields OK" --> Search
     Search --> Coord
-    Coord -- "relevance ≥ 0.5" --> Validate
+    Coord -- "results > 0" --> Validate
     Coord -- "retry: next strategy" --> Search
     Validate --> Coord
     Coord -- "articles valid" --> Merge
     Merge --> Coord
-    Coord -- "no conflicts" --> Complete
-    Coord -- "conflict / error / max retries" --> Escalate
+    Coord -- "fields extracted" --> Complete
+    Coord -- "error / max retries / zero extractions" --> Escalate
 ```
 
 Each node accepts and returns `EnrichmentState` (defined in
@@ -75,12 +75,13 @@ nodes update state fields, graph edges handle transitions.
 
 The Coordinator implements an escalating retry strategy:
 
-| Retry | Strategy            | Description                                 |
-| ----- | ------------------- | ------------------------------------------- |
-| 0     | `exact_match`       | All fields, exact date                      |
-| 1     | `temporal_expanded` | Month + year format, keep names             |
-| 2     | `entity_dropped`    | Drop both names, keep location + date range |
-| 3     | Escalate            | Flag for human review                       |
+| Retry | Strategy            | Description                                      |
+| ----- | ------------------- | ------------------------------------------------ |
+| 0     | `exact_match`       | All fields, exact date                           |
+| 1     | `temporal_expanded` | Month + year format, keep both names             |
+| 2     | `name_partial`      | Drop officer name, keep civilian name + month-year |
+| 3     | `entity_dropped`    | Drop both names, keep location + date range      |
+| 4     | Escalate            | Flag for human review                            |
 
 ### Escalation Triggers
 
@@ -88,8 +89,9 @@ The Coordinator routes to human review when:
 
 - Max retries reached without sufficient validated articles
 - No articles pass validation after all strategies
-- Merge detects conflicting information across sources
-- Merge detects conflict between articles and database reference values
+- Merge detects conflicts **and** zero agreed fields — if some fields agree
+  while others conflict, the pipeline completes with the agreed fields and flags
+  `requires_human_review = True` for the conflicts
 - Merge encounters an error
 
 ### Validation Logic
@@ -114,9 +116,15 @@ validation), filtering out unrelated articles before extraction.
 For each field extracted from validated articles:
 
 - **Articles agree** → add to `extracted_fields` with confidence level
-- **Articles disagree** → add `FieldConflict` to `conflicting_fields`, escalate
+- **Articles disagree** → add `FieldConflict` to `conflicting_fields`
 - **All articles return null** → skip (no data, not a conflict)
-- **Articles agree but conflict with database** → add to both lists, escalate
+- **Articles agree but conflict with database** → add to both lists
+
+After merge, the Coordinator applies partial completion logic: if any fields were
+successfully extracted (`extracted_fields` non-empty), route to COMPLETE — even
+if conflicts exist on other fields. Only escalate on conflict when zero fields
+were extracted. Partial completions set `requires_human_review = True` so
+conflicts are still surfaced for review.
 
 Each `FieldConflict` captures the field name, conflict type (`articles_disagree`
 or `reference_mismatch`), the conflicting values with source URLs, and the
@@ -323,9 +331,8 @@ Environment variables (see `.env.example`):
 | `TAVILY_API_KEY`                       | (required)          | Tavily API key for news search        |
 | `LOG_LEVEL`                            | `INFO`              | Logging level                         |
 | `ENRICHMENT_OUTPUT_DIR`                | `output/enrichment` | Output directory for JSON results     |
-| `ENRICHMENT_MAX_SEARCH_RESULTS`        | `5`                 | Max articles per search               |
+| `ENRICHMENT_MAX_SEARCH_RESULTS`        | `10`                | Max articles per search               |
 | `ENRICHMENT_SEARCH_DEPTH`              | `advanced`          | Tavily search depth                   |
-| `ENRICHMENT_RELEVANCE_SCORE_THRESHOLD` | `0.5`               | Min avg relevance to proceed          |
 | `ENRICHMENT_FUZZY_MATCH_THRESHOLD`     | `80`                | Min rapidfuzz score for name matching |
 | `ENRICHMENT_DATE_PROXIMITY_DAYS`       | `3`                 | Max days between article and incident |
 
@@ -471,6 +478,7 @@ effectively instant.
 | 0       | 1        | 2–5s         |
 | 1       | 2        | 5–9s         |
 | 2       | 3        | 9–13s        |
+| 3       | 4        | 13–17s       |
 
 **Projected at scale** (1,956 records, sequential): ~3.5 hours. With async
 parallelism (e.g., 10 concurrent workers): ~20 minutes.
@@ -495,11 +503,15 @@ principles:
 
 - ETL pipeline (CSV → PostgreSQL)
 - 7-node LangGraph pipeline with conditional routing and retry strategies
+- Partial completion on merge conflicts (accept agreed fields, flag conflicts)
+- 4-tier search strategy (exact → temporal → name_partial → entity_dropped)
 - CLI entrypoint for single-incident enrichment
 - Holdout evaluation framework (precision, coverage against DB ground truth)
+- N=40 holdout eval: **70% completion rate**, civilian_age 75% exact accuracy
 
 **Next:**
 
+- Improve eval comparison (embedding similarity for weapon, geocoding for location)
 - Batch processing across all records
 - Human review UI
 

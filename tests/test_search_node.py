@@ -295,7 +295,7 @@ class TestSearchNode:
         search_node(base_state)
         mock_client_cls.return_value.search.assert_called_once_with(
             build_search_query(base_state, SearchStrategyType.EXACT_MATCH),
-            max_results=5,
+            max_results=10,
             search_depth="advanced",
             exclude_domains=["wikipedia.org", "fatalencounters.org"],
         )

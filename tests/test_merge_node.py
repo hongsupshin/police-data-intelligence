@@ -31,6 +31,7 @@ from src.merge.merge_node import (
     extract_fields,
     merge_node,
     normalize_name,
+    normalize_race,
 )
 
 # --- Fixtures ---
@@ -664,3 +665,101 @@ class TestMergeNode:
         assert result.conflicting_fields == []
         # LLM should never be called
         mock_llm.with_structured_output.return_value.invoke.assert_not_called()
+
+
+# --- normalize_race tests ---
+
+
+def test_normalize_race_african_american() -> None:
+    """'African American' normalizes to 'black'."""
+    assert normalize_race("African American") == "black"
+
+
+def test_normalize_race_caucasian() -> None:
+    """'Caucasian' normalizes to 'white'."""
+    assert normalize_race("Caucasian") == "white"
+
+
+def test_normalize_race_latino() -> None:
+    """'Latino' normalizes to 'hispanic'."""
+    assert normalize_race("Latino") == "hispanic"
+
+
+def test_normalize_race_passthrough() -> None:
+    """Unrecognized values are lowercased but not mapped."""
+    assert normalize_race("Asian") == "asian"
+
+
+def test_normalize_race_strips_whitespace() -> None:
+    """Leading/trailing whitespace is stripped."""
+    assert normalize_race("  Black  ") == "black"
+
+
+# --- check_articles_match with race normalization ---
+
+
+def test_check_articles_match_race_synonyms() -> None:
+    """Race synonyms ('African American' vs 'Black') converge after normalization."""
+    val_a = FieldExtraction(
+        field_name="civilian_race",
+        value="African American",
+        confidence=ConfidenceLevel.PENDING,
+        sources=["https://example.com/a1"],
+    )
+    val_b = FieldExtraction(
+        field_name="civilian_race",
+        value="Black",
+        confidence=ConfidenceLevel.PENDING,
+        sources=["https://example.com/a2"],
+    )
+    matched, winner = check_articles_match(
+        MediaFeatureField.CIVILIAN_RACE, [val_a, val_b]
+    )
+    assert matched is True
+    assert winner is not None
+    assert winner.confidence == ConfidenceLevel.MEDIUM
+
+
+def test_check_articles_match_race_genuinely_different() -> None:
+    """Genuinely different races still conflict."""
+    val_a = FieldExtraction(
+        field_name="civilian_race",
+        value="White",
+        confidence=ConfidenceLevel.PENDING,
+        sources=["https://example.com/a1"],
+    )
+    val_b = FieldExtraction(
+        field_name="civilian_race",
+        value="Black",
+        confidence=ConfidenceLevel.PENDING,
+        sources=["https://example.com/a2"],
+    )
+    matched, winner = check_articles_match(
+        MediaFeatureField.CIVILIAN_RACE, [val_a, val_b]
+    )
+    assert matched is False
+    assert winner is None
+
+
+# --- check_articles_match with partial_ratio and field thresholds ---
+
+
+def test_check_articles_match_weapon_partial_ratio() -> None:
+    """Weapon field uses partial_ratio and lower threshold (70)."""
+    val_a = FieldExtraction(
+        field_name="weapon",
+        value="9mm handgun",
+        confidence=ConfidenceLevel.PENDING,
+        sources=["https://example.com/a1"],
+    )
+    val_b = FieldExtraction(
+        field_name="weapon",
+        value="handgun",
+        confidence=ConfidenceLevel.PENDING,
+        sources=["https://example.com/a2"],
+    )
+    matched, winner = check_articles_match(
+        MediaFeatureField.WEAPON, [val_a, val_b]
+    )
+    assert matched is True
+    assert winner is not None

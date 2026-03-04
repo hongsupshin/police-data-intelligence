@@ -106,14 +106,14 @@ def check_name_match(article_name: str | None, name: str | None) -> bool:
 
 
 def check_date_match(article_date: date | None, incident_date: date | None) -> bool:
-    """Check if article date is within ±3 days of incident date.
+    """Check if article date is within ±5 days of incident date.
 
     Args:
         article_date: Published date parsed from article metadata.
         incident_date: Incident date from database.
 
     Returns:
-        True if dates are within 3 days of each other, False otherwise.
+        True if dates are within 5 days of each other, False otherwise.
         Returns False if either date is None.
 
     Examples:
@@ -128,7 +128,7 @@ def check_date_match(article_date: date | None, incident_date: date | None) -> b
     if article_date is None or incident_date is None:
         return False
     diff = abs((article_date - incident_date).days)
-    return diff <= 3
+    return diff <= 5
 
 
 def validate_node(state: EnrichmentState) -> EnrichmentState:

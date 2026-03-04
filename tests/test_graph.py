@@ -127,7 +127,7 @@ def test_route_after_coordinator_fallback(base_state: EnrichmentState) -> None:
 
 
 def test_complete_node(base_state: EnrichmentState, tmp_path: Path) -> None:
-    """Complete node sets COMPLETE stage and no human review."""
+    """Complete node sets COMPLETE stage and no human review when no conflicts."""
     config = RunnableConfig(
         {"configurable": {"settings": Settings(output_dir=str(tmp_path))}}
     )
@@ -146,6 +146,39 @@ def test_complete_node(base_state: EnrichmentState, tmp_path: Path) -> None:
         data["outcome_summary"]
         == f"Enriched {len(state.extracted_fields)} fields for incident {state.incident_id} ({state.dataset_type})"
     )
+
+
+def test_complete_node_preserves_human_review_with_conflicts(
+    base_state: EnrichmentState, tmp_path: Path
+) -> None:
+    """Complete node preserves requires_human_review=True when conflicting_fields exist."""
+    config = RunnableConfig(
+        {"configurable": {"settings": Settings(output_dir=str(tmp_path))}}
+    )
+    state = base_state.model_copy()
+    state.extracted_fields = [
+        FieldExtraction(
+            field_name="civilian_age",
+            value="34",
+            confidence=ConfidenceLevel.HIGH,
+        )
+    ]
+    state.conflicting_fields = [
+        FieldConflict(
+            field_name="weapon",
+            conflict_type=ConflictType.ARTICLES_DISAGREE,
+            values=["handgun", "knife"],
+            sources=[["https://a.com"], ["https://b.com"]],
+        )
+    ]
+    state.requires_human_review = True
+    result = complete_node(state, config)
+    assert result.current_stage == PipelineStage.COMPLETE
+    assert result.requires_human_review
+
+    data = json.loads(Path(result.output_file_path).read_text())
+    assert len(data["conflicting_fields"]) == 1
+    assert data["conflicting_fields"][0]["field_name"] == "weapon"
 
 
 def test_escalate_node(base_state: EnrichmentState, tmp_path: Path) -> None:
@@ -451,6 +484,7 @@ def test_complete_node_json_keys(
         "validation_results",
         "search_strategy",
         "retry_count",
+        "conflicting_fields",
         "outcome_summary",
     }
     assert set(data.keys()) == expected_keys

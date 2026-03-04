@@ -32,6 +32,7 @@ def build_search_query(state: EnrichmentState, strategy: SearchStrategyType) -> 
     Strategy behavior:
         - EXACT_MATCH: All available fields, exact date (YYYY-MM-DD).
         - TEMPORAL_EXPANDED: Replace exact date with "Month YYYY" format.
+        - NAME_PARTIAL: Drop officer name, keep civilian name + month-year.
         - ENTITY_DROPPED: Drop officer and civilian names, keep
           location + date range.
 
@@ -69,6 +70,10 @@ def build_search_query(state: EnrichmentState, strategy: SearchStrategyType) -> 
     elif strategy == SearchStrategyType.TEMPORAL_EXPANDED:
         date = state.incident_date.strftime("%B %Y")
         officer = state.officer_name
+        civilian = state.civilian_name
+    elif strategy == SearchStrategyType.NAME_PARTIAL:
+        date = state.incident_date.strftime("%B %Y")
+        officer = ""
         civilian = state.civilian_name
     elif strategy == SearchStrategyType.ENTITY_DROPPED:
         date = state.incident_date.strftime("%B %Y")  # Expand the date window
@@ -170,7 +175,7 @@ def search_node(state: EnrichmentState) -> EnrichmentState:
         client = TavilyClient(api_key=os.getenv("TAVILY_API_KEY"))
         results = client.search(
             search_query,
-            max_results=5,
+            max_results=10,
             search_depth="advanced",  # 2 API credits per request
             exclude_domains=["wikipedia.org", "fatalencounters.org"],
         )["results"]
