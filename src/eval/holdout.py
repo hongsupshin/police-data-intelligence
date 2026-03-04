@@ -813,7 +813,7 @@ def select_holdout_stratified(
                   + CASE WHEN i.time_incident IS NOT NULL THEN 1 ELSE 0 END
                   + CASE WHEN v.civilian_died IS NOT NULL THEN 1 ELSE 0 END
                    ) >= %s
-            ORDER BY field_count DESC;
+            ORDER BY field_count DESC, i.incident_id ASC;
         """
     else:
         query = f"""
@@ -841,7 +841,7 @@ def select_holdout_stratified(
                   + CASE WHEN i.incident_address IS NOT NULL THEN 1 ELSE 0 END
                   + CASE WHEN v.officer_harm IS NOT NULL THEN 1 ELSE 0 END
                    ) >= %s
-            ORDER BY field_count DESC;
+            ORDER BY field_count DESC, i.incident_id ASC;
         """
 
     cursor.execute(query, (min_fields,))
