@@ -356,10 +356,23 @@ would confirm this but is unlikely to reveal new failure modes.
 
 ### Cost and Latency
 
-| Metric               | Value        |
-| -------------------- | ------------ |
-| Mean time per record | 48.8s        |
-| Total eval run time  | 32.5 minutes |
+| Metric                | Value        |
+| --------------------- | ------------ |
+| Mean time per record  | 48.8s        |
+| Total eval run time   | 32.5 minutes |
+| Estimated total cost  | ~$6          |
+| Estimated cost/record | ~$0.15       |
+
+The 48.8s mean time is higher than the 7.0s pipeline latency reported in README
+because the evaluation harness adds overhead per incident: database queries to
+fetch ground truth, fuzzy-match comparisons across 6 fields, and result
+aggregation. The core pipeline (search + merge) accounts for ~7s; the remaining
+~42s is evaluation-only overhead spread across 40 sequential incidents.
+
+Cost is estimated from API pricing (Claude Sonnet 4.6 at $3/$15 per 1M
+input/output tokens; Tavily advanced search at $0.016/search PAYGO). The primary
+cost driver is LLM extraction (~70%), with web search comprising ~30%. Actual
+costs depend on article length and retry count.
 
 ## Discussion
 
