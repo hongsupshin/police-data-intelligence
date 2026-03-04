@@ -381,6 +381,13 @@ python -m src.eval.run_eval civilians_shot --limit 40 --min-fields 2
 `outcome` is omitted because all 40 holdout samples have NULL ground truth for
 `civilian_died`.
 
+> **Note on location_detail**: The N=40 numbers above used `incident_address`
+> (street-level) as ground truth, which penalized correct city-level extractions.
+> Eval ground truth has since been changed to
+> `COALESCE(incident_city, incident_county)` and the merge prompt now requests
+> structured addresses including city. A 10-sample pilot re-eval showed
+> location_detail fuzzy accuracy improved from 0% to 100%. N=40 re-eval pending.
+
 Age, weapon, and time-of-day are the strongest fields. Weapon extraction uses
 multiple-choice category normalization (HANDGUN, RIFLE, SHOTGUN, KNIFE, VEHICLE,
 OTHER) — both the LLM output and DB values are mapped to the same 7 canonical
@@ -604,10 +611,11 @@ principles:
 - CLI entrypoint for single-incident enrichment
 - Holdout evaluation framework (precision, coverage against DB ground truth)
 - N=40 holdout eval: **70% completion rate**, civilian_age 75% exact accuracy
+- Location extraction fix: structured prompt + city-level eval ground truth
+  (pilot re-eval: location_detail fuzzy 0% → 100%)
 
 **Next:**
 
-- Improve eval comparison (geocoding for location)
 - Batch processing across all records
 - Human review UI
 

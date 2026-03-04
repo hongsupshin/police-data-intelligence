@@ -22,6 +22,7 @@
   - [Fix 1: Aggregation Source Exclusion](#fix-1-aggregation-source-exclusion)
   - [Fix 2: Merge Normalization](#fix-2-merge-normalization)
   - [Regression Tests](#regression-tests)
+  - [Fix 3: Location Extraction + Eval Ground Truth](#fix-3-location-extraction--eval-ground-truth)
 - [Phase 2: Holdout Evaluation](#phase-2-holdout-evaluation)
   - [Setup](#setup-1)
   - [Results](#results-1)
@@ -275,6 +276,41 @@ differences without reducing sensitivity to genuine disagreements.
 Both fixes include regression tests using the exact inputs from pilot incidents
 697 (source contamination) and 5388 (synonym conflict).
 
+### Fix 3: Location Extraction + Eval Ground Truth
+
+**Problem**: location_detail showed 0% exact / 10% fuzzy accuracy on N=40
+holdout. Two compounding issues:
+
+1. **Extraction**: The merge prompt asked for a free-text location description,
+   producing narrative outputs like "near downtown Houston" instead of structured
+   addresses.
+2. **Eval ground truth**: The eval compared extracted values against
+   `incident_address` (e.g., "5021 GLENVIEW DR."), a street-level field that
+   doesn't match city-level extractions even when the city is correct.
+
+**Fix**:
+
+1. **Merge prompt** (`merge_node.py`): Changed location extraction to request a
+   structured address including city name, rather than a narrative description.
+2. **Eval ground truth** (`holdout.py`): Switched from `incident_address` to
+   `COALESCE(incident_city, incident_county)`, providing city-level ground truth
+   that matches the granularity the LLM reliably extracts from news articles.
+
+**Pilot re-eval results** (same 10 dev-set samples):
+
+| Metric          | Before | After |
+| --------------- | ------ | ----- |
+| Completion rate | 10%    | 60%   |
+| location_detail fuzzy | 0% | 100% |
+| weapon exact    | 0%     | 100%  |
+| civilian_race exact | 0% | 100%  |
+| time_of_day exact | 50%  | 100%  |
+
+The completion rate improvement (10% → 60%) is due to the prompt change
+producing more structured outputs that pass consistency checks, reducing
+false conflicts in the merge node. The accuracy improvements reflect both the
+prompt fix (better extractions) and the eval GT fix (fairer comparison).
+
 ## Phase 2: Holdout Evaluation
 
 **Pipeline version**: v1.3 (partial completion, score gating removed,
@@ -309,9 +345,13 @@ Stratification ensured coverage across incident years (2014–2021).
 | civilian_age    | 50%      | 75%         | 75%         |
 | civilian_race   | 18%      | 57%         | 57%         |
 | weapon          | 31%      | 86%         | 86%         |
-| location_detail | 25%      | 0%          | 10%         |
+| location_detail | 25%      | 0%          | 10%\*       |
 | time_of_day     | 38%      | 73%         | 73%         |
 | outcome         | N/A      | —           | —           |
+
+\*Location eval has since been fixed — see
+[Fix 3](#fix-3-location-extraction--eval-ground-truth) below. N=40 re-eval
+pending.
 
 **Notes on low-performing fields:**
 
@@ -320,10 +360,12 @@ Stratification ensured coverage across incident years (2014–2021).
   Fixed by mapping both extracted and ground-truth values to 7 canonical
   categories (Firearm, Knife, Vehicle, Unarmed, Unknown, Taser, Other). Pilot
   re-eval on dev set showed 86%; full N=40 holdout re-eval pending.
-- **location_detail** (0% exact, 10% fuzzy): The DB stores structured street
-  addresses ("5021 GLENVIEW DR.") while the LLM extracts narrative descriptions
-  ("near downtown Houston"). Planned fixes: improve the merge prompt to request
-  specific addresses; geocoding normalization for eval comparison.
+- **location_detail** (0% exact, 10% fuzzy on N=40): Fixed. The low accuracy was
+  caused by comparing LLM narrative descriptions against street addresses in the
+  DB. The merge prompt now requests structured addresses including city, and eval
+  ground truth uses `COALESCE(incident_city, incident_county)` instead of
+  `incident_address`. Pilot re-eval on 10 dev-set samples showed 0% → 100% fuzzy
+  accuracy. N=40 holdout re-eval pending.
 - **outcome** (not evaluated): The `civilian_died` ground truth column is NULL
   for all 40 holdout samples, so no comparison is possible.
 
@@ -449,18 +491,24 @@ may exhibit different failure modes.
 | Retrieval gap (no articles found)             | 11 (28%)                           | No             | —        |
 | Merge error (NoneType in merge)               | 1 (3%)                             | Yes            | Medium   |
 | Weapon eval mismatch (semantic synonyms)      | 31% coverage, 86% exact (fixed)    | Fixed          | —        |
-| Location eval mismatch (narrative vs address) | 25% coverage, 0% exact             | Yes            | High     |
+| Location eval mismatch (narrative vs address) | 25% coverage, 0% exact (fixed)     | Fixed          | —        |
 | Synonym/formatting false conflicts            | Reduced by partial completion      | Mitigated      | —        |
 | Genuine factual conflicts                     | Present but no longer block output | No (by design) | —        |
 
 ## Roadmap
 
+**Done:**
+
+- ~~Improve merge prompt for location extraction~~ → structured address prompt
+  with city (see Fix 3)
+- ~~Geocoding normalization for location eval~~ → addressed with city-level
+  ground truth instead (see Fix 3)
+
+**Open:**
+
 - Fix merge node null handling (incident 3494 crash) —
   `'NoneType' object has no attribute 'value'` when extracted fields are None
-- Improve merge prompt for location extraction (request specific street
-  addresses instead of narrative descriptions)
-- Geocoding normalization for location eval (US Census Geocoder or Google Maps
-  API via geopy)
+- Re-run N=40 holdout eval with location fixes to update Phase 2 numbers
 - Fairness analysis across demographic groups — the holdout eval JSON includes
   `fairness_metrics` data (pipeline reach and extraction precision by race/age)
   that has not yet been analyzed

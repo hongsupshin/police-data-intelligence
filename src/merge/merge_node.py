@@ -31,7 +31,7 @@ FIELD_DEFINITIONS = {
     MediaFeatureField.CIVILIAN_AGE: "Age of the civilian in integers",
     MediaFeatureField.CIVILIAN_RACE: "Race/ethnicity of the civilian",
     MediaFeatureField.WEAPON: "Weapon possessed by the civilian. Choose exactly one from: HANDGUN, RIFLE, SHOTGUN, KNIFE, VEHICLE, OTHER. Use OTHER if the weapon doesn't fit these categories or is unclear. Return only the category name, nothing else.",
-    MediaFeatureField.LOCATION_DETAIL: "Detailed location information such as street/business/landmark names",
+    MediaFeatureField.LOCATION_DETAIL: "Street address and city/county where the incident occurred. Include the street number and name if mentioned (e.g., '5021 Glenview Dr, Houston' or '900 block of Orange St, Beaumont'). Always include the city or county name. If only a landmark, intersection, or neighborhood is given, include that with the city (e.g., 'downtown Dallas' or 'I-35 near Waco').",
     MediaFeatureField.TIME_OF_DAY: "Time of day when the incident occurred, as described in the article",
     MediaFeatureField.OUTCOME: "Fatal or non-fatal outcome of the victim (police officer or the civilian)",
     MediaFeatureField.CIRCUMSTANCE: "Any context or background regarding the incident such as the cause, complications",

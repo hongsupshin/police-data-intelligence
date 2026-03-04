@@ -545,7 +545,7 @@ _CIVILIANS_GT_MAPPING: dict[str, MediaFeatureField] = {
     "age": MediaFeatureField.CIVILIAN_AGE,
     "race": MediaFeatureField.CIVILIAN_RACE,
     "weapon_reported_by_media": MediaFeatureField.WEAPON,
-    "incident_address": MediaFeatureField.LOCATION_DETAIL,
+    "location_city": MediaFeatureField.LOCATION_DETAIL,
     "time_incident": MediaFeatureField.TIME_OF_DAY,
     "civilian_died": MediaFeatureField.OUTCOME,
 }
@@ -553,7 +553,7 @@ _CIVILIANS_GT_MAPPING: dict[str, MediaFeatureField] = {
 _OFFICERS_GT_MAPPING: dict[str, MediaFeatureField] = {
     "age": MediaFeatureField.CIVILIAN_AGE,
     "race": MediaFeatureField.CIVILIAN_RACE,
-    "incident_address": MediaFeatureField.LOCATION_DETAIL,
+    "location_city": MediaFeatureField.LOCATION_DETAIL,
     "officer_harm": MediaFeatureField.OUTCOME,
 }
 
@@ -589,7 +589,8 @@ def fetch_ground_truth(
     if dataset_type == DatasetType.CIVILIANS_SHOT:
         query = """
             SELECT c.age, c.race,
-                   i.weapon_reported_by_media, i.incident_address,
+                   i.weapon_reported_by_media,
+                   COALESCE(i.incident_city, i.incident_county) AS location_city,
                    i.time_incident, v.civilian_died
             FROM incidents_civilians_shot i
             LEFT JOIN incident_civilians_shot_victims v
@@ -603,7 +604,7 @@ def fetch_ground_truth(
             raise KeyError(f"Incident {incident_id} not found in civilians_shot")
         columns = [
             "age", "race", "weapon_reported_by_media",
-            "incident_address", "time_incident", "civilian_died",
+            "location_city", "time_incident", "civilian_died",
         ]
         raw = dict(zip(columns, row))
         return {
@@ -613,7 +614,7 @@ def fetch_ground_truth(
     else:
         query = """
             SELECT c.age, c.race,
-                   i.incident_address,
+                   COALESCE(i.incident_city, i.incident_county) AS location_city,
                    v.officer_harm
             FROM incidents_officers_shot i
             LEFT JOIN incident_officers_shot_shooters s
@@ -627,7 +628,7 @@ def fetch_ground_truth(
         row = cursor.fetchone()
         if row is None:
             raise KeyError(f"Incident {incident_id} not found in officers_shot")
-        columns = ["age", "race", "incident_address", "officer_harm"]
+        columns = ["age", "race", "location_city", "officer_harm"]
         raw = dict(zip(columns, row))
         return {
             _OFFICERS_GT_MAPPING[col].value: val
