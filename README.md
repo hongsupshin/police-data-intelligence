@@ -26,8 +26,6 @@
   - [Project Structure](#project-structure)
   - [Commands](#commands)
   - [Testing Patterns](#testing-patterns)
-- [Key State Fields](#key-state-fields)
-- [Source Filtering](#source-filtering)
 - [Performance](#performance)
   - [Cost](#cost)
 - [Responsible AI](#responsible-ai)
@@ -135,7 +133,9 @@ Articles pass validation using three-tier logic:
 
 This prevents false positives from articles about different incidents that
 happen to match on location alone, while still handling Tavily results that lack
-parsed dates.
+parsed dates. Aggregation sites (e.g., Wikipedia, fatalencounters.org) and
+compilation documents (.pdf, .csv) are excluded at search or validation level —
+see [EVALUATION.md — Appendix](EVALUATION.md#appendix-excluded-domains).
 
 ### Merge Logic
 
@@ -155,20 +155,9 @@ even if conflicts exist on other fields. Only escalate on conflict when zero
 fields were extracted. Partial completions set `requires_human_review = True` so
 conflicts are still surfaced for review.
 
-Before comparing values across articles, the merge node normalizes fields to
-reduce spurious conflicts:
-
-- **Name normalization**: strips honorifics (e.g., "Master Sgt.") and nickname
-  quotes (e.g., "'Joe'") before fuzzy matching
-- **Race normalization**: maps synonyms (e.g., "African American" → "Black",
-  "Caucasian" → "White", "Latino" → "Hispanic")
-- **Weapon category normalization**: maps raw DB values and LLM extractions to 7
-  canonical categories (HANDGUN, RIFLE, SHOTGUN, KNIFE, VEHICLE, OTHER, UNKNOWN).
-  The LLM prompt constrains weapon extraction to multiple-choice selection from
-  these categories, eliminating verbose free-text descriptions that previously
-  caused mismatches.
-- **Per-field fuzzy thresholds**: location_detail (75) uses a lower threshold
-  than the default (80) to tolerate address formatting differences
+Before comparing values, the merge node normalizes names, race terms, and weapon
+categories to reduce spurious conflicts (see
+[EVALUATION.md — Fix 2](EVALUATION.md#fix-2-merge-normalization) for details).
 
 Each `FieldConflict` captures the field name, conflict type (`articles_disagree`
 or `reference_mismatch`), the conflicting values with source URLs, and the
@@ -230,54 +219,22 @@ Results are written to `output/enrichment/` as pretty-printed JSON files:
   "extracted_fields": [
     {
       "field_name": "weapon",
-      "value": "Knife (possessed by civilian Donnavan Hart); firearms (used by the off-duty HPD commander and the Precinct 4 deputy)",
+      "value": "Knife (possessed by civilian ...)",
       "confidence": "medium",
-      "sources": [
-        "https://www.click2houston.com/news/local/2020/02/19/deputy-off-duty-hpd-commander-shoot-suspect-near-popeyes-restaurant-in-spring-officials-say/"
-      ],
-      "source_quotes": [
-        "An off-duty HPD commander was working out at the gym when he saw the suspect, armed with a knife, run in and 'cause a disturbance'",
-        "Deputies said Hart lunged at them with the knife in his hand. The commander and the deputy both shot the suspect multiple times."
-      ],
-      "extraction_method": "llm",
-      "llm_reasoning": "The article clearly states the civilian was armed with a knife, and the officers responded by shooting the suspect multiple times, indicating use of firearms."
-    },
-    {
-      "field_name": "time_of_day",
-      "value": "5:16 p.m.",
-      "confidence": "medium",
-      "sources": [
-        "https://www.click2houston.com/news/local/2020/02/19/deputy-off-duty-hpd-commander-shoot-suspect-near-popeyes-restaurant-in-spring-officials-say/"
-      ],
-      "source_quotes": [
-        "At 5:16 p.m., Hermann wrote on Facebook that deputies responded to a report of a suspicious person at the Popeye's restaurant"
-      ],
-      "extraction_method": "llm",
-      "llm_reasoning": "The article explicitly states the time as 5:16 p.m."
-    },
-    {
-      "field_name": "circumstance",
-      "value": "Donnavan Hart was reported as a suspicious person at a Popeyes restaurant. He entered a nearby LA Fitness gym armed with a knife and caused a disturbance. An off-duty HPD commander who was at the gym joined a Precinct 4 deputy in pursuing Hart, who then lunged at the officers with the knife, prompting both to open fire.",
-      "confidence": "medium",
-      "sources": [
-        "https://www.click2houston.com/news/local/2020/02/19/deputy-off-duty-hpd-commander-shoot-suspect-near-popeyes-restaurant-in-spring-officials-say/"
-      ],
+      "sources": ["https://www.click2houston.com/news/local/2020/02/19/..."],
       "extraction_method": "llm"
     }
-    // ... 4 more extracted fields (officer_name, civilian_name, location_detail, outcome)
+    // ... 6 more fields (time_of_day, circumstance, officer_name, civilian_name, location_detail, outcome)
   ],
   "validation_results": [
     {
-      "article": {
-        "url": "https://www.click2houston.com/news/local/2020/02/19/...",
-        "title": "Authorities identify the man shot by deputy, off-duty HPD ..."
-      },
+      "article": { "url": "...", "title": "Authorities identify the man ..." },
       "date_match": false,
       "location_match": true,
       "victim_name_match": true,
       "passed": true
     }
-    // ... 4 more validation results (4 failed, 1 passed)
+    // ... 4 more (4 failed, 1 passed)
   ],
   "search_strategy": "entity_dropped",
   "retry_count": 2,
@@ -295,35 +252,24 @@ Results are written to `output/enrichment/` as pretty-printed JSON files:
   "incident_id": "10",
   "dataset_type": "civilians_shot",
   "escalation_reason": "conflict",
-  "error_message": null,
   "current_stage": "merge",
   "search_strategy": "exact_match",
   "retry_count": 0,
   "retrieved_articles": [
     {
-      "url": "https://www.nbcdfw.com/news/local/officer-shoots-armed-man-at-dallas-apartment-complex-police/143469/",
-      "title": "Officers Shoot Armed Man at Dallas Apartment Complex: Police"
+      "url": "https://www.nbcdfw.com/...",
+      "title": "Officers Shoot Armed Man ..."
     },
-    {
-      "url": "https://www.cbsnews.com/texas/news/police-kill-suspect-at-dallas-apartment-complex/",
-      "title": "Police Kill Suspect At Dallas Apartment Complex - CBS News"
-    },
-    {
-      "url": "https://www.dallasnews.com/news/crime/2015/09/22/man-killed-by-police-told-girlfriend-he-didnt-want-to-live/",
-      "title": "Man killed by police told girlfriend he didn't want to live"
-    }
-    // ... 2 more articles
+    { "url": "https://www.cbsnews.com/...", "title": "Police Kill Suspect ..." }
+    // ... 3 more articles
   ],
   "extracted_fields": [
     {
       "field_name": "officer_name",
       "value": "Rob Sherwin",
       "confidence": "high",
-      "sources": [
-        "https://www.nbcdfw.com/news/local/officer-shoots-armed-man-at-dallas-apartment-complex-police/143469/"
-      ],
-      "extraction_method": "llm",
-      "llm_reasoning": "Rob Sherwin is mentioned as the Deputy Chief who held the news conference, not as one of the officers who fired."
+      "sources": ["https://www.nbcdfw.com/..."],
+      "extraction_method": "llm"
     }
   ],
   "conflicting_fields": [
@@ -332,18 +278,14 @@ Results are written to `output/enrichment/` as pretty-printed JSON files:
       "conflict_type": "articles_disagree",
       "values": [
         "Gerardo Ramirez",
-        "Gerardo Ramirez (plus unrelated names from compilation sources)"
+        "Gerardo Ramirez (plus unrelated names ...)"
       ],
       "sources": [
-        [
-          "https://www.nbcdfw.com/news/local/...",
-          "https://www.cbsnews.com/texas/..."
-        ],
-        ["https://www.dallasnews.com/news/crime/2015/09/22/..."]
-      ],
-      "reference_value": null
+        ["https://www.nbcdfw.com/..."],
+        ["https://www.dallasnews.com/..."]
+      ]
     }
-    // ... 7 more conflicting fields (age, race, weapon, location, time, outcome, circumstance)
+    // ... 7 more conflicting fields
   ],
   "outcome_summary": "Escalated incident 10: conflict after 0 retries"
 }
@@ -374,29 +316,15 @@ python -m src.eval.run_eval civilians_shot --limit 40 --min-fields 2
 | --------------- | -------- | ----------- | ----------- |
 | civilian_age    | 50%      | 75%         | 75%         |
 | civilian_race   | 18%      | 57%         | 57%         |
-| weapon          | 70%      | 86%         | 86%         |
+| weapon          | 31%      | 86%         | 86%         |
 | location_detail | 25%      | 0%          | 10%         |
 | time_of_day     | 38%      | 73%         | 73%         |
 
-`outcome` is omitted because all 40 holdout samples have NULL ground truth for
-`civilian_died`.
-
-> **Note on location_detail**: The N=40 numbers above used `incident_address`
-> (street-level) as ground truth, which penalized correct city-level extractions.
-> Eval ground truth has since been changed to
-> `COALESCE(incident_city, incident_county)` and the merge prompt now requests
-> structured addresses including city. A 10-sample pilot re-eval showed
-> location_detail fuzzy accuracy improved from 0% to 100%. N=40 re-eval pending.
-
-Age, weapon, and time-of-day are the strongest fields. Weapon extraction uses
-multiple-choice category normalization (HANDGUN, RIFLE, SHOTGUN, KNIFE, VEHICLE,
-OTHER) — both the LLM output and DB values are mapped to the same 7 canonical
-categories, achieving 86% exact accuracy on extracted values. Most escalations
-(92%) are retrieval gaps — incidents without enough distinguishing details for
-web search to find relevant articles.
-
-Reports are saved to `output/eval/` as JSON. See [EVALUATION.md](EVALUATION.md)
-for full methodology, error analysis, and discussion.
+Age, weapon, and time-of-day are the strongest fields (86% exact on weapon via
+category normalization). Most escalations (92%) are retrieval gaps. Reports are
+saved to `output/eval/`. See [EVALUATION.md](EVALUATION.md) for full
+methodology, error analysis, caveats (outcome backfill, location ground truth
+changes), and discussion.
 
 ### Configuration
 
@@ -413,12 +341,6 @@ Environment variables (see `.env.example`):
 | `ENRICHMENT_SEARCH_DEPTH`          | `advanced`          | Tavily search depth                   |
 | `ENRICHMENT_FUZZY_MATCH_THRESHOLD` | `80`                | Min rapidfuzz score for name matching |
 | `ENRICHMENT_DATE_PROXIMITY_DAYS`   | `5`                 | Max days between article and incident |
-
-> **Note:** `ENRICHMENT_RELEVANCE_SCORE_THRESHOLD` exists in `Settings` but is
-> not used by any pipeline node. It may be removed in a future release.
-> `ENRICHMENT_MAX_SEARCH_RESULTS` defaults to 5 in `Settings`, but
-> `search_node.py` currently hardcodes `max_results=10` and does not read from
-> Settings.
 
 PostgreSQL connection variables (`DB_HOST`, `DB_PORT`, etc.) are configured in
 `.env.example` and used by the ETL pipeline (`data/`).
@@ -490,87 +412,17 @@ pytest tests/ -v -m "integration"
 - Mock LLM via `MagicMock` + dependency injection, not `@patch`
 - Use `model_copy()` when fixtures are mutated by functions under test
 
-## Key State Fields
-
-```python
-class EnrichmentState:
-    # Identity
-    incident_id: str
-    dataset_type: DatasetType          # "civilians_shot" | "officers_shot"
-
-    # Incident data (from Extract)
-    location: str | None
-    incident_date: date | None
-    officer_name: str | None
-    civilian_name: str | None
-    severity: str | None
-
-    # Pipeline control
-    current_stage: PipelineStage       # Which node just ran
-    next_stage: PipelineStage | None   # Where to go next (set by Coordinator)
-    next_strategy: SearchStrategyType  # Search strategy for retry
-    retry_count: int
-    escalation_reason: str | None
-    requires_human_review: bool
-
-    # Search results
-    retrieved_articles: list[Article]
-    search_attempts: list[SearchAttempt]
-
-    # Validation
-    validation_results: list[ValidationResult]
-
-    # Merge outputs
-    extracted_fields: list[FieldExtraction]
-    conflicting_fields: list[FieldConflict] | None
-```
-
-## Source Filtering
-
-### Search-level (Tavily `exclude_domains`)
-
-| Domain                | Reason                                          |
-| --------------------- | ----------------------------------------------- |
-| `wikipedia.org`       | Aggregation pages confuse LLM extraction        |
-| `fatalencounters.org` | Compilation dataset, not incident-specific news |
-
-### Validation-level (URL pattern filtering in `validate_node.py`)
-
-| Pattern               | Reason                                                 |
-| --------------------- | ------------------------------------------------------ |
-| `.pdf`                | Compilation documents (e.g., statewide victim reports) |
-| `.csv`                | Raw datasets with many unrelated records               |
-| `fatalencounters.org` | Compilation dataset, not incident-specific news        |
-
 ## Performance
 
-Measured across 23 incidents (warm connections, claude-sonnet-4-6). These
-timings measure per-incident pipeline execution latency (search + merge), not
-end-to-end evaluation time which includes holdout overhead — see
-[EVALUATION.md](EVALUATION.md) for holdout timing (48.8s mean across 40
-records).
+Measured across 23 incidents (claude-sonnet-4-6). See
+[EVALUATION.md — Cost and Latency](EVALUATION.md#cost-and-latency) for holdout
+timing.
 
-| Metric                          | Range            | Mean     |
-| ------------------------------- | ---------------- | -------- |
-| **Total per incident**          | **2.3s – 13.5s** | **7.0s** |
-| Search (Tavily API)             | 2.2s – 13.4s     | 6.5s     |
-| Merge (LLM call)                | 0.13s – 0.82s    | 0.4s     |
-| Extract + Validate + Coordinate | <0.1s            | ~0s      |
-
-The primary driver of variance is retry count — each retry adds a Tavily search
-call (~3–5s). Tavily search accounts for ~93% of total runtime; the LLM merge
-call is ~0.4s; all deterministic nodes (extract, validate, coordinate) are
-effectively instant.
-
-| Retries | Searches | Typical Time |
-| ------- | -------- | ------------ |
-| 0       | 1        | 2–5s         |
-| 1       | 2        | 5–9s         |
-| 2       | 3        | 9–13s        |
-| 3       | 4        | 13–17s       |
-
-**Projected at scale** (1,956 records, sequential): ~3.5 hours. With async
-parallelism (e.g., 10 concurrent workers): ~20 minutes.
+| Metric                | Mean   | Range         | Note                               |
+| --------------------- | ------ | ------------- | ---------------------------------- |
+| Total per incident    | 7.0s   | 2.3s – 13.5s  | ~93% is Tavily search              |
+| Bottleneck            | Search | 3–5s per call | Each retry adds one search call    |
+| Projected (1,956 seq) | ~3.5h  | —             | ~20 min with 10 concurrent workers |
 
 ### Cost
 
@@ -613,6 +465,8 @@ principles:
 - N=40 holdout eval: **70% completion rate**, civilian_age 75% exact accuracy
 - Location extraction fix: structured prompt + city-level eval ground truth
   (pilot re-eval: location_detail fuzzy 0% → 100%)
+- `civilian_died` backfill migration: updated all 3,518 rows, enabling outcome
+  evaluation (dev-set pilot: 70% coverage, 100% accuracy)
 
 **Next:**
 

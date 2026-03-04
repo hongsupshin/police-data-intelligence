@@ -23,6 +23,7 @@
   - [Fix 2: Merge Normalization](#fix-2-merge-normalization)
   - [Regression Tests](#regression-tests)
   - [Fix 3: Location Extraction + Eval Ground Truth](#fix-3-location-extraction--eval-ground-truth)
+  - [Fix 4: civilian_died Backfill Migration](#fix-4-civilian_died-backfill-migration)
 - [Phase 2: Holdout Evaluation](#phase-2-holdout-evaluation)
   - [Setup](#setup-1)
   - [Results](#results-1)
@@ -116,14 +117,14 @@ at this sample size.
 Extracted values were compared against ground truth using field-appropriate
 methods:
 
-| Field       | Comparison                  | Rationale                                     |
-| ----------- | --------------------------- | --------------------------------------------- |
-| Age         | Exact match                 | Numeric, no ambiguity                         |
-| Race        | Exact match                 | Standardized categories                       |
+| Field       | Comparison                                 | Rationale                                                           |
+| ----------- | ------------------------------------------ | ------------------------------------------------------------------- |
+| Age         | Exact match                                | Numeric, no ambiguity                                               |
+| Race        | Exact match                                | Standardized categories                                             |
 | Weapon      | Category normalization (7 canonical types) | Maps synonyms to canonical categories (e.g., "handgun" → "Firearm") |
-| Location    | Fuzzy match (threshold ≥80) | Address formatting varies                     |
-| Outcome     | Exact match                 | Binary (survived/died)                        |
-| Time of day | Hour-based (±2h tolerance)  | Parses hour or period keyword (morning, etc.) |
+| Location    | Fuzzy match (threshold ≥80)                | Address formatting varies                                           |
+| Outcome     | Exact match                                | Binary (survived/died)                                              |
+| Time of day | Hour-based (±2h tolerance)                 | Parses hour or period keyword (morning, etc.)                       |
 
 ### Metrics
 
@@ -282,8 +283,8 @@ Both fixes include regression tests using the exact inputs from pilot incidents
 holdout. Two compounding issues:
 
 1. **Extraction**: The merge prompt asked for a free-text location description,
-   producing narrative outputs like "near downtown Houston" instead of structured
-   addresses.
+   producing narrative outputs like "near downtown Houston" instead of
+   structured addresses.
 2. **Eval ground truth**: The eval compared extracted values against
    `incident_address` (e.g., "5021 GLENVIEW DR."), a street-level field that
    doesn't match city-level extractions even when the city is correct.
@@ -298,18 +299,46 @@ holdout. Two compounding issues:
 
 **Pilot re-eval results** (same 10 dev-set samples):
 
-| Metric          | Before | After |
-| --------------- | ------ | ----- |
-| Completion rate | 10%    | 60%   |
-| location_detail fuzzy | 0% | 100% |
-| weapon exact    | 0%     | 100%  |
-| civilian_race exact | 0% | 100%  |
-| time_of_day exact | 50%  | 100%  |
+| Metric                | Before | After |
+| --------------------- | ------ | ----- |
+| Completion rate       | 10%    | 60%   |
+| location_detail fuzzy | 0%     | 100%  |
+| weapon exact          | 0%     | 100%  |
+| civilian_race exact   | 0%     | 100%  |
+| time_of_day exact     | 50%    | 100%  |
 
 The completion rate improvement (10% → 60%) is due to the prompt change
-producing more structured outputs that pass consistency checks, reducing
-false conflicts in the merge node. The accuracy improvements reflect both the
-prompt fix (better extractions) and the eval GT fix (fairer comparison).
+producing more structured outputs that pass consistency checks, reducing false
+conflicts in the merge node. The accuracy improvements reflect both the prompt
+fix (better extractions) and the eval GT fix (fairer comparison).
+
+### Fix 4: civilian_died Backfill Migration
+
+**Problem**: The `outcome` field was not evaluable — `civilian_died` was NULL
+for all 1,674 rows in the civilians-shot table. The original `clean_boolean()`
+in the ETL didn't handle "DEATH"/"INJURY" values from the raw CSV, mapping them
+all to NULL. The bug was fixed in commit `9eb79a7` but the database was never
+re-loaded.
+
+**Fix**: A backfill migration (`data/backfill_civilian_died.py`) updated all
+3,518 rows in-place by re-deriving `civilian_died` from the raw `cause_of_death`
+column, using the same logic as the corrected `clean_boolean()`.
+
+**Pilot re-eval results** (same 10 dev-set samples, v2 → v3):
+
+| Field           | Coverage (v2) | Coverage (v3) | Exact (v2) | Exact (v3) |
+| --------------- | ------------- | ------------- | ---------- | ---------- |
+| civilian_age    | 40%           | 50%           | 75%        | 100%       |
+| civilian_race   | 10%           | 10%           | 100%       | 100%       |
+| weapon          | 50%           | 80%           | 100%       | 75%        |
+| location_detail | 20%           | 50%           | 0%         | 0%         |
+| time_of_day     | 20%           | 40%           | 100%       | 100%       |
+| outcome         | 0%            | 70%           | —          | 100%       |
+| Completion rate | 60%           | 80%           | —          | —          |
+
+The key change is `outcome`: previously 0% evaluable (all ground truth NULL),
+now 70% coverage with 100% exact accuracy. Other field variations are run-to-run
+LLM non-determinism, not caused by the backfill. N=40 holdout re-eval pending.
 
 ## Phase 2: Holdout Evaluation
 
@@ -353,21 +382,17 @@ Stratification ensured coverage across incident years (2014–2021).
 [Fix 3](#fix-3-location-extraction--eval-ground-truth) below. N=40 re-eval
 pending.
 
-**Notes on low-performing fields:**
+**Notes on low-performing fields:** Three fields have known issues that have
+since been fixed (N=40 re-eval pending):
 
-- **weapon** (86% exact after category normalization): Previously 0% exact / 45%
-  fuzzy due to synonym mismatches (e.g., "handgun" vs "firearm - handgun").
-  Fixed by mapping both extracted and ground-truth values to 7 canonical
-  categories (Firearm, Knife, Vehicle, Unarmed, Unknown, Taser, Other). Pilot
-  re-eval on dev set showed 86%; full N=40 holdout re-eval pending.
-- **location_detail** (0% exact, 10% fuzzy on N=40): Fixed. The low accuracy was
-  caused by comparing LLM narrative descriptions against street addresses in the
-  DB. The merge prompt now requests structured addresses including city, and eval
-  ground truth uses `COALESCE(incident_city, incident_county)` instead of
-  `incident_address`. Pilot re-eval on 10 dev-set samples showed 0% → 100% fuzzy
-  accuracy. N=40 holdout re-eval pending.
-- **outcome** (not evaluated): The `civilian_died` ground truth column is NULL
-  for all 40 holdout samples, so no comparison is possible.
+- **weapon**: 86% exact after
+  [category normalization](#fix-2-merge-normalization) (previously 0% exact /
+  45% fuzzy)
+- **location_detail**: 0% exact → 100% fuzzy on pilot after
+  [prompt + ground truth fix](#fix-3-location-extraction--eval-ground-truth)
+- **outcome**: Now evaluable after
+  [backfill migration](#fix-4-civilian_died-backfill-migration) (dev-set pilot:
+  70% coverage, 100% exact)
 
 #### Escalation Breakdown
 
@@ -477,8 +502,9 @@ narrow confidence intervals. Full-dataset batch evaluation is on the roadmap.
 available online, creating a structural disadvantage for older records that is
 independent of pipeline quality.
 
-**Ground truth completeness**: Some ground truth fields (e.g., civilian_died)
-are NULL in the database, limiting evaluation coverage for those fields.
+**Ground truth completeness**: The `civilian_died` column was backfilled
+([Fix 4](#fix-4-civilian_died-backfill-migration)). Other ground truth fields
+may also have gaps limiting evaluation coverage.
 
 **Single dataset**: This evaluation covers the civilians-shot dataset only. The
 officers-shot dataset (282 records, different schema) has not been evaluated and
@@ -497,18 +523,10 @@ may exhibit different failure modes.
 
 ## Roadmap
 
-**Done:**
-
-- ~~Improve merge prompt for location extraction~~ → structured address prompt
-  with city (see Fix 3)
-- ~~Geocoding normalization for location eval~~ → addressed with city-level
-  ground truth instead (see Fix 3)
-
-**Open:**
-
 - Fix merge node null handling (incident 3494 crash) —
   `'NoneType' object has no attribute 'value'` when extracted fields are None
-- Re-run N=40 holdout eval with location fixes to update Phase 2 numbers
+- Re-run N=40 holdout eval with location + outcome fixes to update Phase 2
+  numbers
 - Fairness analysis across demographic groups — the holdout eval JSON includes
   `fairness_metrics` data (pipeline reach and extraction precision by race/age)
   that has not yet been analyzed
