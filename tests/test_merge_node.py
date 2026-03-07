@@ -723,13 +723,43 @@ def test_normalize_race_latino() -> None:
 
 
 def test_normalize_race_passthrough() -> None:
-    """Unrecognized values are lowercased but not mapped."""
+    """Known single-word values are matched by keyword."""
     assert normalize_race("Asian") == "asian"
 
 
 def test_normalize_race_strips_whitespace() -> None:
     """Leading/trailing whitespace is stripped."""
     assert normalize_race("  Black  ") == "black"
+
+
+def test_normalize_race_hispanic_latino_male() -> None:
+    """'Hispanic/Latino male' strips gender and matches hispanic."""
+    assert normalize_race("Hispanic/Latino male") == "hispanic"
+
+
+def test_normalize_race_hispanic_or_latino() -> None:
+    """'Hispanic or Latino' matches hispanic."""
+    assert normalize_race("Hispanic or Latino") == "hispanic"
+
+
+def test_normalize_race_african_american_slash_black() -> None:
+    """'African-American/Black' matches black."""
+    assert normalize_race("African-American/Black") == "black"
+
+
+def test_normalize_race_nationality_iranian() -> None:
+    """Unrecognized nationality defaults to 'other'."""
+    assert normalize_race("Iranian") == "other"
+
+
+def test_normalize_race_nationality_egyptian() -> None:
+    """Unrecognized nationality defaults to 'other'."""
+    assert normalize_race("Egyptian") == "other"
+
+
+def test_normalize_race_unknown_defaults_to_other() -> None:
+    """Completely unrecognized values default to 'other'."""
+    assert normalize_race("Martian") == "other"
 
 
 # --- check_articles_match with race normalization ---

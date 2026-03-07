@@ -319,7 +319,7 @@ python -m src.eval.run_eval civilians_shot --limit 100 --stratified
 | location_detail | 38%      | 18%         | 97%         |
 | outcome         | 68%      | 84%         | 84%         |
 | weapon          | 50%      | 79%         | 79%         |
-| civilian_race   | 17%      | 35%         | 35%         |
+| civilian_race   | 17%      | 65%         | 65%         |
 
 Aggregate precision: 72% exact / 84% fuzzy across 245 extracted values. Age and
 time-of-day are the strongest fields; location is 97% correct by fuzzy match
@@ -453,6 +453,10 @@ principles:
 - **Accuracy over automation**: Conservative thresholds, escalation on conflicts
 - **Immutability**: Never overwrites official government data without human
   approval
+- **Fairness**: Evaluated across demographic groups — mean exact accuracy is
+  comparable (67–71%) regardless of race. Lower completion rates for some groups
+  (50% vs 83%) reflect older incidents with fewer surviving articles, not
+  pipeline bias. See [EVALUATION.md](EVALUATION.md) for full fairness metrics.
 
 ## Roadmap
 

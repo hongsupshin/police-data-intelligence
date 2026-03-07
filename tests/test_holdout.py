@@ -209,6 +209,36 @@ class TestCompareRace:
         r = compare_race("Black", None, "civilian_race")
         assert r.error == EvalError.NO_GROUND_TRUTH
 
+    def test_hispanic_latino_male(self) -> None:
+        """Test 'Hispanic/Latino male' normalizes to 'hispanic'."""
+        r = compare_race("Hispanic/Latino male", "HISPANIC", "civilian_race")
+        assert r.exact_match is True
+
+    def test_hispanic_or_latino(self) -> None:
+        """Test 'Hispanic or Latino' normalizes to 'hispanic'."""
+        r = compare_race("Hispanic or Latino", "HISPANIC", "civilian_race")
+        assert r.exact_match is True
+
+    def test_african_american_slash_black(self) -> None:
+        """Test 'African-American/Black' normalizes to 'black'."""
+        r = compare_race("African-American/Black", "BLACK", "civilian_race")
+        assert r.exact_match is True
+
+    def test_nationality_iranian_to_other(self) -> None:
+        """Test 'Iranian' normalizes to 'other'."""
+        r = compare_race("Iranian", "OTHER", "civilian_race")
+        assert r.exact_match is True
+
+    def test_nationality_egyptian_to_other(self) -> None:
+        """Test 'Egyptian' normalizes to 'other'."""
+        r = compare_race("Egyptian", "OTHER", "civilian_race")
+        assert r.exact_match is True
+
+    def test_unknown_defaults_to_other(self) -> None:
+        """Test unrecognized race defaults to 'other'."""
+        r = compare_race("Martian", "OTHER", "civilian_race")
+        assert r.exact_match is True
+
 
 # ---------------------------------------------------------------------------
 # compare_weapon
