@@ -374,7 +374,7 @@ Stratification ensured coverage across incident years (2014–2024).
 | Field           | N evaluable | Coverage | Exact match | Fuzzy match |
 | --------------- | ----------- | -------- | ----------- | ----------- |
 | civilian_age    | 100         | 49%      | 90%         | 90%         |
-| civilian_race   | 100         | 17%      | 35%         | 35%         |
+| civilian_race   | 100         | 17%      | 65%         | 65%         |
 | weapon          | 84          | 50%      | 79%         | 79%         |
 | location_detail | 100         | 38%      | 18%         | 97%         |
 | time_of_day     | 96          | 32%      | 94%         | 94%         |
@@ -392,9 +392,9 @@ Stratification ensured coverage across incident years (2014–2024).
   substantively correct.
 - **outcome** is newly evaluable after the `civilian_died` backfill (Fix 4): 68%
   coverage with 84% exact accuracy.
-- **civilian_race** has low coverage (17%) and accuracy (35%). Race is
-  inconsistently reported in news articles and the pipeline's race normalization
-  doesn't cover all variants.
+- **civilian_race** has low coverage (17%) and accuracy (65%). Race is
+  inconsistently reported in news articles; the remaining errors are genuine
+  disagreements between pipeline extractions and ground truth.
 - **weapon** achieves 79% exact accuracy after category normalization (Fix 2).
 
 #### Escalation Breakdown
@@ -445,31 +445,19 @@ The 9 false-positive deaths split into two sub-patterns:
 **Impact on outcome accuracy**: Excluding outcome-only completions (where entity
 confusion is most likely), outcome accuracy rises from 84% to 90% (56/62).
 
-#### Race: Normalization Gaps + Entity Confusion
+#### Race: Genuine Disagreements
 
-11 of 17 race extractions were wrong (35% accuracy). The errors fall into two
-categories:
+6 of 17 race extractions were wrong (65% accuracy). All 6 errors are genuine
+disagreements where the pipeline extracted a race that contradicts the database
+(#1 Black vs WHITE, #9 White vs BLACK, #254 Latino/Hispanic vs WHITE, #408 White
+vs HISPANIC, #951 Hispanic vs WHITE, #1277 El Salvadoran vs HISPANIC). Some may
+be entity confusion (the pipeline found an article about a different person),
+and some may reflect ambiguity in racial classification.
 
-**Normalization gaps (5 cases)** — the pipeline extracted a valid race
-description that should match the ground truth but doesn't due to incomplete
-normalization in the eval comparator:
-
-- "Hispanic/Latino male" and "Hispanic or Latino" don't map to "HISPANIC" (only
-  exact "latino"/"latina" are aliased)
-- "African-American/Black" doesn't map to "BLACK" (only "african
-  american"/"african-american" are aliased)
-- "Iranian" and "Egyptian" don't map to "OTHER" (nationality-to-race mapping not
-  implemented)
-
-**Genuine disagreements (6 cases)** — the pipeline extracted a race that
-contradicts the database (#1 Black vs WHITE, #9 White vs BLACK, #254
-Latino/Hispanic vs WHITE, #408 White vs HISPANIC, #951 Hispanic vs WHITE, #1277
-El Salvadoran vs HISPANIC). Some may be entity confusion (the pipeline found an
-article about a different person), and some may reflect ambiguity in racial
-classification.
-
-**Corrected accuracy**: Fixing the 5 normalization gaps would raise race
-accuracy from 35% (6/17) to 65% (11/17).
+Previously, 5 additional errors were normalization gaps (e.g., "Hispanic/Latino
+male" not mapping to "HISPANIC"). These were fixed by replacing the alias-dict
+lookup with keyword-based matching in both the eval comparator and the merge
+node.
 
 #### Weapon: Category Mapping Gaps + Entity Confusion
 
@@ -632,7 +620,7 @@ may exhibit different failure modes.
 | Retrieval gap (no articles found)     | 29 escalations (29%)         | No           | —        |
 | Entity confusion (wrong incident)     | ~5 outcome errors, ~4 weapon | Partial      | High     |
 | Outcome false-positive deaths         | 9/68 extractions (13%)       | Partial      | High     |
-| Race eval normalization gaps          | 5/17 extractions             | Yes (eval)   | Medium   |
+| Race eval normalization gaps          | ~~5/17~~ Fixed               | ~~Yes~~ Done | —        |
 | Race genuine misidentification        | 6/17 extractions             | Investigate  | Medium   |
 | Weapon category mapping gaps          | 4/42 extractions             | Yes (map)    | Low      |
 | Time parse errors (day-of-week)       | 6/37 extractions             | Yes (merge)  | Low      |
@@ -646,15 +634,16 @@ may exhibit different failure modes.
 - ~~Fix merge node null handling (incident 3494 crash)~~
 - ~~Re-run holdout eval with location + outcome fixes~~ — N=100 eval completed
 - ~~Fairness analysis across demographic groups~~ — included in Phase 2 results
+- ~~Race eval normalization~~ — keyword-based matching replaces alias dicts
+  (race accuracy 35% → 65%)
 
 **Remaining:**
 
 - **Outcome-only completion guard**: Records with only `outcome` extracted show
   17% accuracy (entity confusion). Consider requiring ≥2 extracted fields before
   completing, or treating outcome-only records as low-confidence
-- **Race eval normalization**: Add "Hispanic/Latino", "African-American/Black",
-  and nationality→"OTHER" mappings to `RACE_ALIASES` in `holdout.py` (would
-  raise race accuracy from 35% to 65%)
+- ~~**Race eval normalization**~~: Fixed — keyword-based matching in both
+  `holdout.py` and `merge_node.py` (race accuracy 35% → 65%)
 - **Weapon category map**: Add SAWED-OFF SHOTGUN→SHOTGUN, MACHETE→KNIFE, and BB
   GUN/PELLET GUN mappings to `WEAPON_CATEGORY_MAP`
 - **Time parse errors**: The merge node sometimes extracts day-of-week instead

@@ -183,14 +183,14 @@ class HoldoutReport(BaseModel):
 # Comparison Helpers
 # ---------------------------------------------------------------------------
 
-RACE_ALIASES: dict[str, str] = {
-    "african american": "black",
-    "african-american": "black",
-    "caucasian": "white",
-    "latino": "hispanic",
-    "latina": "hispanic",
-    "latin": "hispanic",
-}
+_GENDER_WORDS = re.compile(r"\b(male|female|man|woman)\b")
+
+_RACE_KEYWORDS: list[tuple[re.Pattern[str], str]] = [
+    (re.compile(r"\b(black|african)\b"), "black"),
+    (re.compile(r"\b(hispanic|latino|latina)\b"), "hispanic"),
+    (re.compile(r"\b(white|caucasian)\b"), "white"),
+    (re.compile(r"\basian\b"), "asian"),
+]
 
 TIME_PERIOD_BUCKETS: dict[str, tuple[int, int]] = {
     "morning": (6, 11),
@@ -204,9 +204,18 @@ NON_FATAL_KEYWORDS = {"injured", "survived", "wounded", "non-fatal", "nonfatal"}
 
 
 def _normalize_race(value: str) -> str:
-    """Normalize a race string via alias mapping and lowercasing."""
+    """Normalize a race string via keyword matching.
+
+    Strips gender words, then checks for race keywords in priority
+    order. Unmatched values default to "other".
+    """
     lowered = value.strip().lower()
-    return RACE_ALIASES.get(lowered, lowered)
+    lowered = _GENDER_WORDS.sub("", lowered).strip()
+    lowered = re.sub(r"\s+", " ", lowered)
+    for pattern, canonical in _RACE_KEYWORDS:
+        if pattern.search(lowered):
+            return canonical
+    return "other"
 
 
 def _normalize_outcome_str(value: str) -> str | None:

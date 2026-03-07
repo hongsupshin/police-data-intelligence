@@ -47,33 +47,43 @@ FIELD_FUZZY_THRESHOLDS: dict[MediaFeatureField, int] = {
     MediaFeatureField.LOCATION_DETAIL: 75,
 }
 
-RACE_SYNONYMS: dict[str, str] = {
-    "african american": "black",
-    "african-american": "black",
-    "caucasian": "white",
-    "latino": "hispanic",
-    "latina": "hispanic",
-    "latin": "hispanic",
-}
+_GENDER_WORDS = re.compile(r"\b(male|female|man|woman)\b")
+
+_RACE_KEYWORDS: list[tuple[re.Pattern[str], str]] = [
+    (re.compile(r"\b(black|african)\b"), "black"),
+    (re.compile(r"\b(hispanic|latino|latina)\b"), "hispanic"),
+    (re.compile(r"\b(white|caucasian)\b"), "white"),
+    (re.compile(r"\basian\b"), "asian"),
+]
 
 
 def normalize_race(value: str) -> str:
-    """Normalize a race/ethnicity string via synonym mapping.
+    """Normalize a race/ethnicity string via keyword matching.
+
+    Strips gender words, then checks for race keywords in priority
+    order. Unmatched values default to "other".
 
     Args:
-        value: Raw race string (e.g., "African American", "Caucasian").
+        value: Raw race string (e.g., "African American", "Hispanic/Latino male").
 
     Returns:
-        Canonical lowercase form (e.g., "black", "white").
+        Canonical lowercase form (e.g., "black", "hispanic", "other").
 
     Examples:
-        >>> normalize_race("African American")
+        >>> normalize_race("African-American/Black")
         'black'
-        >>> normalize_race("White")
-        'white'
+        >>> normalize_race("Hispanic/Latino male")
+        'hispanic'
+        >>> normalize_race("Iranian")
+        'other'
     """
     lowered = value.strip().lower()
-    return RACE_SYNONYMS.get(lowered, lowered)
+    lowered = _GENDER_WORDS.sub("", lowered).strip()
+    lowered = re.sub(r"\s+", " ", lowered)
+    for pattern, canonical in _RACE_KEYWORDS:
+        if pattern.search(lowered):
+            return canonical
+    return "other"
 
 
 _HONORIFICS = re.compile(
