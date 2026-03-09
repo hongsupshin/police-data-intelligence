@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Integration tests for src/agents/extract_node.py.
+"""Integration tests for src/agents/load_node.py.
 
-Tests the extract_node function which fetches incident records from PostgreSQL
+Tests the load_node function which fetches incident records from PostgreSQL
 and populates EnrichmentState with dataset-aware field mapping.
 
 Test coverage includes:
@@ -15,7 +15,7 @@ Test coverage includes:
 
 import pytest
 
-from src.agents.extract_node import extract_node, fetch_incident
+from src.agents.load_node import fetch_incident, load_node
 from src.agents.state import DatasetType, EnrichmentState, PipelineStage
 
 
@@ -76,11 +76,11 @@ class TestFetchIncident:
 
 
 @pytest.mark.integration
-class TestExtractNodeCiviliansShot:
-    """Test cases for extract_node with civilians_shot dataset."""
+class TestLoadNodeCiviliansShot:
+    """Test cases for load_node with civilians_shot dataset."""
 
-    def test_extract_populates_state(self, test_incident_civilians_shot) -> None:
-        """Test that extract_node populates EnrichmentState correctly."""
+    def test_load_populates_state(self, test_incident_civilians_shot) -> None:
+        """Test that load_node populates EnrichmentState correctly."""
         if not test_incident_civilians_shot:
             pytest.skip("No suitable test incident found")
 
@@ -89,10 +89,10 @@ class TestExtractNodeCiviliansShot:
             dataset_type=DatasetType.CIVILIANS_SHOT,
         )
 
-        updated_state = extract_node(state)
+        updated_state = load_node(state)
 
         # Verify pipeline stage updated
-        assert updated_state.current_stage == PipelineStage.EXTRACT
+        assert updated_state.current_stage == PipelineStage.LOAD
         assert updated_state.error_message is None
 
         # Verify required fields populated
@@ -100,19 +100,19 @@ class TestExtractNodeCiviliansShot:
         assert updated_state.location is not None
         assert updated_state.severity is not None
 
-    def test_extract_data_matches_database(
+    def test_load_data_matches_database(
         self, db_connection, test_incident_civilians_shot
     ) -> None:
-        """Test that extracted data matches raw database values."""
+        """Test that loaded data matches raw database values."""
         if not test_incident_civilians_shot:
             pytest.skip("No suitable test incident found")
 
-        # Run extract_node
+        # Run load_node
         state = EnrichmentState(
             incident_id=test_incident_civilians_shot,
             dataset_type=DatasetType.CIVILIANS_SHOT,
         )
-        updated_state = extract_node(state)
+        updated_state = load_node(state)
 
         # Query database directly for validation
         cursor = db_connection.cursor()
@@ -186,11 +186,11 @@ class TestExtractNodeCiviliansShot:
 
 
 @pytest.mark.integration
-class TestExtractNodeOfficersShot:
-    """Test cases for extract_node with officers_shot dataset."""
+class TestLoadNodeOfficersShot:
+    """Test cases for load_node with officers_shot dataset."""
 
-    def test_extract_populates_state(self, test_incident_officers_shot) -> None:
-        """Test that extract_node populates EnrichmentState correctly."""
+    def test_load_populates_state(self, test_incident_officers_shot) -> None:
+        """Test that load_node populates EnrichmentState correctly."""
         if not test_incident_officers_shot:
             pytest.skip("No suitable test incident found")
 
@@ -199,10 +199,10 @@ class TestExtractNodeOfficersShot:
             dataset_type=DatasetType.OFFICERS_SHOT,
         )
 
-        updated_state = extract_node(state)
+        updated_state = load_node(state)
 
         # Verify pipeline stage updated
-        assert updated_state.current_stage == PipelineStage.EXTRACT
+        assert updated_state.current_stage == PipelineStage.LOAD
         assert updated_state.error_message is None
 
         # Verify required fields populated
@@ -210,19 +210,19 @@ class TestExtractNodeOfficersShot:
         assert updated_state.location is not None
         assert updated_state.severity is not None
 
-    def test_extract_data_matches_database(
+    def test_load_data_matches_database(
         self, db_connection, test_incident_officers_shot
     ) -> None:
-        """Test that extracted data matches raw database values."""
+        """Test that loaded data matches raw database values."""
         if not test_incident_officers_shot:
             pytest.skip("No suitable test incident found")
 
-        # Run extract_node
+        # Run load_node
         state = EnrichmentState(
             incident_id=test_incident_officers_shot,
             dataset_type=DatasetType.OFFICERS_SHOT,
         )
-        updated_state = extract_node(state)
+        updated_state = load_node(state)
 
         # Query database directly for validation
         cursor = db_connection.cursor()

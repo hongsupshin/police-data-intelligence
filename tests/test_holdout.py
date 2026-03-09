@@ -696,25 +696,25 @@ class TestInferStageReached:
         )
 
     def test_conflict(self) -> None:
-        """CONFLICT escalation reached 'merge'."""
-        assert _infer_stage_reached(PipelineOutcome.ESCALATE, "conflict") == "merge"
+        """CONFLICT escalation reached 'synthesize'."""
+        assert _infer_stage_reached(PipelineOutcome.ESCALATE, "conflict") == "synthesize"
 
     def test_merge_error(self) -> None:
-        """MERGE_ERROR escalation reached 'merge'."""
-        assert _infer_stage_reached(PipelineOutcome.ESCALATE, "merge_error") == "merge"
+        """MERGE_ERROR escalation reached 'synthesize'."""
+        assert _infer_stage_reached(PipelineOutcome.ESCALATE, "merge_error") == "synthesize"
 
     def test_insufficient_sources(self) -> None:
-        """INSUFFICIENT_SOURCES escalation reached 'merge'."""
+        """INSUFFICIENT_SOURCES escalation reached 'synthesize'."""
         assert (
             _infer_stage_reached(PipelineOutcome.ESCALATE, "insufficient_sources")
-            == "merge"
+            == "synthesize"
         )
 
     def test_extraction_error(self) -> None:
-        """EXTRACTION_ERROR escalation reached 'extract'."""
+        """EXTRACTION_ERROR escalation reached 'load'."""
         assert (
             _infer_stage_reached(PipelineOutcome.ESCALATE, "extraction_error")
-            == "extract"
+            == "load"
         )
 
     def test_unknown_reason(self) -> None:

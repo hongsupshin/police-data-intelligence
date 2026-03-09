@@ -2,8 +2,8 @@
 
 Defines Pydantic models for tracking state across nodes in the
 LangGraph-based enrichment workflow. The pipeline consists of:
-Extract → Coordinator → Search → Coordinator → Validate →
-Coordinator → Merge → Coordinator → Complete | Escalate
+Load → Coordinator → Search → Coordinator → Validate →
+Coordinator → Synthesize → Coordinator → Complete | Escalate
 """
 
 from datetime import date, datetime
@@ -42,10 +42,10 @@ class SearchStrategyType(StrEnum):
 class PipelineStage(StrEnum):
     """Current stage in the enrichment pipeline."""
 
-    EXTRACT = "extract"
+    LOAD = "load"
     SEARCH = "search"
     VALIDATE = "validate"
-    MERGE = "merge"
+    SYNTHESIZE = "synthesize"
     COMPLETE = "complete"
     ESCALATE = "escalate"
 
@@ -262,8 +262,8 @@ class EnrichmentState(BaseModel):
     """Complete state for enrichment pipeline.
 
     Tracks all data as a record moves through the pipeline:
-    Extract → Coordinator → Search → Coordinator → Validate →
-    Coordinator → Merge → Coordinator → Complete | Escalate
+    Load → Coordinator → Search → Coordinator → Validate →
+    Coordinator → Synthesize → Coordinator → Complete | Escalate
 
     The Coordinator orchestrates retry logic and escalation routing
     based on intermediate results from each node.
@@ -305,7 +305,7 @@ class EnrichmentState(BaseModel):
     incident_id: str
     dataset_type: DatasetType
 
-    # Original incident data (from Extract Node)
+    # Original incident data (from Load Node)
     officer_name: str | None = None
     civilian_name: str | None = None
     incident_date: date | None = None
@@ -319,7 +319,7 @@ class EnrichmentState(BaseModel):
     # Validation results (Validate Node)
     validation_results: list[ValidationResult] = Field(default_factory=list)
 
-    # Merge outputs (Merge Node)
+    # Synthesize outputs (Synthesize Node)
     extracted_fields: list[FieldExtraction] = Field(default_factory=list)
     conflicting_fields: list[FieldConflict] | None = None
 
@@ -327,8 +327,8 @@ class EnrichmentState(BaseModel):
     retry_count: int = 0
     max_retries: int = 3
     next_strategy: SearchStrategyType = SearchStrategyType.EXACT_MATCH
-    current_stage: PipelineStage = PipelineStage.EXTRACT
-    next_stage: PipelineStage = PipelineStage.EXTRACT
+    current_stage: PipelineStage = PipelineStage.LOAD
+    next_stage: PipelineStage = PipelineStage.LOAD
 
     # Escalation
     escalation_reason: EscalationReason | None = None

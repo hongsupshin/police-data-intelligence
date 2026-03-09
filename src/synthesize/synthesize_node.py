@@ -1,4 +1,4 @@
-"""Merge node for enrichment pipeline."""
+"""Synthesize node for enrichment pipeline."""
 
 import logging
 import re
@@ -21,7 +21,7 @@ from src.agents.state import (
     MergeExtractionResponse,
     PipelineStage,
 )
-from src.merge.weapon_similarity import weapons_match
+from src.synthesize.weapon_similarity import weapons_match
 
 logger = logging.getLogger(__name__)
 
@@ -311,7 +311,7 @@ def check_reference_match(
         return (True, extracted_field)
 
 
-def merge_node(state: EnrichmentState, config: RunnableConfig) -> EnrichmentState:
+def synthesize_node(state: EnrichmentState, config: RunnableConfig) -> EnrichmentState:
     """Orchestrate field extraction, cross-article consistency, and reference matching.
 
     Filters to only validated articles (those that passed validation),
@@ -326,7 +326,7 @@ def merge_node(state: EnrichmentState, config: RunnableConfig) -> EnrichmentStat
 
     Returns:
         Updated EnrichmentState with extracted_fields, conflicting_fields,
-        and current_stage set to MERGE.
+        and current_stage set to SYNTHESIZE.
     """
     llm_client = config["configurable"]["llm_client"]
 
@@ -398,11 +398,11 @@ def merge_node(state: EnrichmentState, config: RunnableConfig) -> EnrichmentStat
                     )
                 )
 
-        state.current_stage = PipelineStage.MERGE
+        state.current_stage = PipelineStage.SYNTHESIZE
     except Exception as e:
         state.extracted_fields = []
         state.conflicting_fields = None
-        state.error_message = f"Merge failed: {str(e)}"
-        state.current_stage = PipelineStage.MERGE
+        state.error_message = f"Synthesize failed: {str(e)}"
+        state.current_stage = PipelineStage.SYNTHESIZE
 
     return state

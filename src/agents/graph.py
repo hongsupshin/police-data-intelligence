@@ -13,10 +13,10 @@ from langgraph.checkpoint.sqlite import SqliteSaver
 from langgraph.graph.state import END, START, CompiledStateGraph, StateGraph
 
 from src.agents.coordinate_node import coordinate_node
-from src.agents.extract_node import extract_node
+from src.agents.load_node import load_node
 from src.agents.state import EnrichmentState, PipelineStage
-from src.merge.merge_node import merge_node
 from src.retrieval.search_node import search_node
+from src.synthesize.synthesize_node import synthesize_node
 from src.validation.validate_node import validate_node
 
 logger = logging.getLogger(__name__)
@@ -37,7 +37,7 @@ def route_after_coordinator(state: EnrichmentState) -> str:
     if state.next_stage not in [
         PipelineStage.SEARCH,
         PipelineStage.VALIDATE,
-        PipelineStage.MERGE,
+        PipelineStage.SYNTHESIZE,
         PipelineStage.COMPLETE,
         PipelineStage.ESCALATE,
     ]:
@@ -158,7 +158,7 @@ def build_graph(checkpointer: SqliteSaver | None = None) -> CompiledStateGraph:
     """Build and compile the enrichment pipeline graph.
 
     Assembles a hub-and-spoke StateGraph where every processing node
-    (extract, search, validate, merge) feeds into the coordinator,
+    (load, search, validate, synthesize) feeds into the coordinator,
     which conditionally routes to the next stage or a terminal node.
 
     Args:
@@ -169,20 +169,20 @@ def build_graph(checkpointer: SqliteSaver | None = None) -> CompiledStateGraph:
         Compiled graph ready for invocation via graph.invoke(state).
     """
     workflow = StateGraph(EnrichmentState)
-    workflow.add_node("extract", extract_node)
+    workflow.add_node("load", load_node)
     workflow.add_node("search", search_node)
     workflow.add_node("validate", validate_node)
-    workflow.add_node("merge", merge_node)
+    workflow.add_node("synthesize", synthesize_node)
     workflow.add_node("complete", complete_node)
     workflow.add_node("escalate", escalate_node)
     workflow.add_node("coordinate", coordinate_node)
 
     # Normal nodes
-    workflow.add_edge(START, "extract")
-    workflow.add_edge("extract", "coordinate")
+    workflow.add_edge(START, "load")
+    workflow.add_edge("load", "coordinate")
     workflow.add_edge("search", "coordinate")
     workflow.add_edge("validate", "coordinate")
-    workflow.add_edge("merge", "coordinate")
+    workflow.add_edge("synthesize", "coordinate")
     workflow.add_edge("complete", END)
     workflow.add_edge("escalate", END)
 

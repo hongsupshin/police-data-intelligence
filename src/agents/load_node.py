@@ -1,4 +1,4 @@
-"""Extract Node for the enrichment pipeline.
+"""Load Node for the enrichment pipeline.
 
 Fetches incident records from the PostgreSQL database and populates
 the EnrichmentState with baseline data for downstream processing.
@@ -175,8 +175,8 @@ def fetch_incident(
     }
 
 
-def extract_node(state: EnrichmentState) -> EnrichmentState:
-    """Extract incident data from database and populate state.
+def load_node(state: EnrichmentState) -> EnrichmentState:
+    """Load incident data from database and populate state.
 
     Fetches a single incident record from the TJI database using the
     incident_id and dataset_type (civilian vs. officer) set in the state.
@@ -196,19 +196,19 @@ def extract_node(state: EnrichmentState) -> EnrichmentState:
         - incident_date: Date of the incident
         - location: City/county where incident occurred
         - severity: Outcome severity (fatal, injured, etc.)
-        - current_stage: Set to PipelineStage.EXTRACT
-        - error_message: Set if extraction fails
+        - current_stage: Set to PipelineStage.LOAD
+        - error_message: Set if loading fails
 
     Examples:
         >>> state = EnrichmentState(
         ...     incident_id="123",
         ...     dataset_type=DatasetType.CIVILIANS_SHOT
         ... )
-        >>> updated_state = extract_node(state)
+        >>> updated_state = load_node(state)
         >>> print(updated_state.location)
         'Houston'
         >>> print(updated_state.current_stage)
-        <PipelineStage.EXTRACT: 'extract'>
+        <PipelineStage.LOAD: 'load'>
     """
     try:
         # Get database connection
@@ -233,14 +233,14 @@ def extract_node(state: EnrichmentState) -> EnrichmentState:
         state.severity = incident_data["severity"]
 
         # Update pipeline stage
-        state.current_stage = PipelineStage.EXTRACT
+        state.current_stage = PipelineStage.LOAD
 
         # Close connection
         conn.close()
 
     except Exception as e:
         # Handle errors and populate error_message
-        state.error_message = f"Extract failed: {str(e)}"
-        state.current_stage = PipelineStage.EXTRACT
+        state.error_message = f"Load failed: {str(e)}"
+        state.current_stage = PipelineStage.LOAD
 
     return state

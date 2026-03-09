@@ -1,7 +1,7 @@
 """Tests for the Coordinator Node.
 
-Tests cover four helper functions (check_extract_results, retry_helper,
-check_search_results, check_validate_results, check_merge_results)
+Tests cover four helper functions (check_load_results, retry_helper,
+check_search_results, check_validate_results, check_synthesize_results)
 that gate progression between pipeline stages.
 """
 
@@ -12,9 +12,9 @@ import pytest
 from src.agents.coordinate_node import (
     STRATEGY_ORDER,
     _relevance_threshold,
-    check_extract_results,
-    check_merge_results,
+    check_load_results,
     check_search_results,
+    check_synthesize_results,
     check_validate_results,
     coordinate_node,
     retry_helper,
@@ -40,7 +40,7 @@ from src.agents.state import (
 
 @pytest.fixture()
 def base_state() -> EnrichmentState:
-    """State after extract with all identity fields populated."""
+    """State after load with all identity fields populated."""
     return EnrichmentState(
         incident_id="142",
         dataset_type=DatasetType.CIVILIANS_SHOT,
@@ -49,7 +49,7 @@ def base_state() -> EnrichmentState:
         officer_name="James Rodriguez",
         civilian_name="John Doe",
         severity="fatal",
-        current_stage=PipelineStage.EXTRACT,
+        current_stage=PipelineStage.LOAD,
         next_strategy=SearchStrategyType.EXACT_MATCH,
     )
 
@@ -119,9 +119,9 @@ def validate_state(search_state: EnrichmentState) -> EnrichmentState:
 
 @pytest.fixture()
 def merge_state(validate_state: EnrichmentState) -> EnrichmentState:
-    """State after merge with extracted fields and no conflicts."""
+    """State after synthesize with extracted fields and no conflicts."""
     state = validate_state.model_copy()
-    state.current_stage = PipelineStage.MERGE
+    state.current_stage = PipelineStage.SYNTHESIZE
     state.extracted_fields = [
         FieldExtraction(
             field_name="weapon",
@@ -144,43 +144,43 @@ def merge_state(validate_state: EnrichmentState) -> EnrichmentState:
     return state
 
 
-# --- check_extract_results tests ---
+# --- check_load_results tests ---
 
 
-def test_check_extract_results_happy_path(base_state: EnrichmentState) -> None:
+def test_check_load_results_happy_path(base_state: EnrichmentState) -> None:
     """All identity fields present, proceed to SEARCH."""
-    extract_state = base_state.model_copy()
-    state = check_extract_results(extract_state)
+    load_state = base_state.model_copy()
+    state = check_load_results(load_state)
     assert state.next_stage == PipelineStage.SEARCH
 
 
-def test_check_extract_results_error(base_state: EnrichmentState) -> None:
-    """Extract error message triggers ESCALATE with EXTRACTION_ERROR."""
-    extract_state = base_state.model_copy()
-    extract_state.error_message = "Extract failed..."
-    state = check_extract_results(extract_state)
+def test_check_load_results_error(base_state: EnrichmentState) -> None:
+    """Load error message triggers ESCALATE with EXTRACTION_ERROR."""
+    load_state = base_state.model_copy()
+    load_state.error_message = "Load failed..."
+    state = check_load_results(load_state)
     assert state.escalation_reason == EscalationReason.EXTRACTION_ERROR
     assert state.requires_human_review
     assert state.next_stage == PipelineStage.ESCALATE
 
 
-def test_check_extract_results_all_missing(base_state: EnrichmentState) -> None:
+def test_check_load_results_all_missing(base_state: EnrichmentState) -> None:
     """All identity fields missing triggers ESCALATE with INSUFFICIENT_SOURCES."""
-    extract_state = base_state.model_copy()
-    extract_state.civilian_name = None
-    extract_state.officer_name = None
-    extract_state.incident_date = None
-    state = check_extract_results(extract_state)
+    load_state = base_state.model_copy()
+    load_state.civilian_name = None
+    load_state.officer_name = None
+    load_state.incident_date = None
+    state = check_load_results(load_state)
     assert state.escalation_reason == EscalationReason.INSUFFICIENT_SOURCES
     assert state.requires_human_review
     assert state.next_stage == PipelineStage.ESCALATE
 
 
-def test_check_extract_results_partial_missing(base_state: EnrichmentState) -> None:
+def test_check_load_results_partial_missing(base_state: EnrichmentState) -> None:
     """At least one identity field present, proceed to SEARCH."""
-    extract_state = base_state.model_copy()
-    extract_state.civilian_name = None
-    state = check_extract_results(extract_state)
+    load_state = base_state.model_copy()
+    load_state.civilian_name = None
+    state = check_load_results(load_state)
     assert state.next_stage == PipelineStage.SEARCH
 
 
@@ -288,9 +288,9 @@ def test_relevance_threshold_entity_dropped() -> None:
 
 
 def test_check_validate_results_happy_path(validate_state: EnrichmentState) -> None:
-    """At least one article passed validation, proceed to MERGE."""
+    """At least one article passed validation, proceed to SYNTHESIZE."""
     state = check_validate_results(validate_state)
-    assert state.next_stage == PipelineStage.MERGE
+    assert state.next_stage == PipelineStage.SYNTHESIZE
 
 
 def test_check_validate_results_all_failed_retries(
@@ -328,26 +328,26 @@ def test_check_validate_results_empty(validate_state: EnrichmentState) -> None:
     assert state.retry_count == 1
 
 
-# --- check_merge_results tests ---
+# --- check_synthesize_results tests ---
 
 
-def test_check_merge_results_happy_path(merge_state: EnrichmentState) -> None:
+def test_check_synthesize_results_happy_path(merge_state: EnrichmentState) -> None:
     """No errors or conflicts, proceed to COMPLETE."""
-    state = check_merge_results(merge_state)
+    state = check_synthesize_results(merge_state)
     assert state.next_stage == PipelineStage.COMPLETE
 
 
-def test_check_merge_results_error(merge_state: EnrichmentState) -> None:
-    """Merge error message triggers escalation with MERGE_ERROR."""
+def test_check_synthesize_results_error(merge_state: EnrichmentState) -> None:
+    """Synthesize error message triggers escalation with MERGE_ERROR."""
     updated_state = merge_state.model_copy()
-    updated_state.error_message = "Merge failed: LLM timeout"
-    state = check_merge_results(updated_state)
+    updated_state.error_message = "Synthesize failed: LLM timeout"
+    state = check_synthesize_results(updated_state)
     assert state.next_stage == PipelineStage.ESCALATE
     assert state.escalation_reason == EscalationReason.MERGE_ERROR
     assert state.requires_human_review
 
 
-def test_check_merge_results_conflict(merge_state: EnrichmentState) -> None:
+def test_check_synthesize_results_conflict(merge_state: EnrichmentState) -> None:
     """Conflicts with zero extractions triggers escalation with CONFLICT."""
     updated_state = merge_state.model_copy()
     updated_state.extracted_fields = []
@@ -359,13 +359,13 @@ def test_check_merge_results_conflict(merge_state: EnrichmentState) -> None:
             sources=[["https://a.com"], ["https://b.com"]],
         )
     ]
-    state = check_merge_results(updated_state)
+    state = check_synthesize_results(updated_state)
     assert state.next_stage == PipelineStage.ESCALATE
     assert state.escalation_reason == EscalationReason.CONFLICT
     assert state.requires_human_review
 
 
-def test_check_merge_results_conflict_with_extractions(
+def test_check_synthesize_results_conflict_with_extractions(
     merge_state: EnrichmentState,
 ) -> None:
     """Conflicts with agreed fields routes to COMPLETE with human review flag."""
@@ -378,17 +378,17 @@ def test_check_merge_results_conflict_with_extractions(
             sources=[["https://a.com"], ["https://b.com"]],
         )
     ]
-    state = check_merge_results(updated_state)
+    state = check_synthesize_results(updated_state)
     assert state.next_stage == PipelineStage.COMPLETE
     assert state.requires_human_review
     assert state.escalation_reason is None
 
 
-def test_check_merge_results_empty_extractions(merge_state: EnrichmentState) -> None:
+def test_check_synthesize_results_empty_extractions(merge_state: EnrichmentState) -> None:
     """No fields extracted triggers escalation with INSUFFICIENT_SOURCES."""
     updated_state = merge_state.model_copy()
     updated_state.extracted_fields = []
-    state = check_merge_results(updated_state)
+    state = check_synthesize_results(updated_state)
     assert state.next_stage == PipelineStage.ESCALATE
     assert state.escalation_reason == EscalationReason.INSUFFICIENT_SOURCES
     assert state.requires_human_review
@@ -397,8 +397,8 @@ def test_check_merge_results_empty_extractions(merge_state: EnrichmentState) -> 
 # --- coordinate_node tests ---
 
 
-def test_coordinate_node_extract_stage(base_state: EnrichmentState) -> None:
-    """Dispatches to check_extract_results when stage is EXTRACT."""
+def test_coordinate_node_load_stage(base_state: EnrichmentState) -> None:
+    """Dispatches to check_load_results when stage is LOAD."""
     state = coordinate_node(base_state.model_copy())
     assert state.next_stage == PipelineStage.SEARCH
 
@@ -412,11 +412,12 @@ def test_coordinate_node_search_stage(search_state: EnrichmentState) -> None:
 def test_coordinate_node_validate_stage(validate_state: EnrichmentState) -> None:
     """Dispatches to check_validate_results when stage is VALIDATE."""
     state = coordinate_node(validate_state)
-    assert state.next_stage == PipelineStage.MERGE
+    assert state.next_stage == PipelineStage.SYNTHESIZE
 
 
-def test_coordinate_node_merge_stage(merge_state: EnrichmentState) -> None:
-    """Dispatches to check_merge_results when stage is MERGE."""
+
+def test_coordinate_node_synthesize_stage(merge_state: EnrichmentState) -> None:
+    """Dispatches to check_synthesize_results when stage is SYNTHESIZE."""
     state = coordinate_node(merge_state)
     assert state.next_stage == PipelineStage.COMPLETE
 
@@ -425,6 +426,7 @@ def test_coordinate_node_unexpected_stage(base_state: EnrichmentState) -> None:
     """Unexpected stage (COMPLETE) returns state unchanged."""
     updated_state = base_state.model_copy()
     updated_state.current_stage = PipelineStage.COMPLETE
+
     state = coordinate_node(updated_state)
     assert state.current_stage == PipelineStage.COMPLETE
 
