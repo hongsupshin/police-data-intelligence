@@ -35,7 +35,7 @@ def base_state() -> EnrichmentState:
         officer_name="James Rodriguez",
         civilian_name="John Doe",
         severity="fatal",
-        current_stage=PipelineStage.EXTRACT,
+        current_stage=PipelineStage.LOAD,
         next_strategy=SearchStrategyType.EXACT_MATCH,
     )
 
@@ -51,7 +51,7 @@ def state_missing_names() -> EnrichmentState:
         officer_name=None,
         civilian_name=None,
         severity="non-fatal",
-        current_stage=PipelineStage.EXTRACT,
+        current_stage=PipelineStage.LOAD,
         next_strategy=SearchStrategyType.EXACT_MATCH,
     )
 

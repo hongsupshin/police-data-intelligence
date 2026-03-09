@@ -14,7 +14,7 @@
   - [Search Strategies](#search-strategies)
   - [Escalation Triggers](#escalation-triggers)
   - [Validation Logic](#validation-logic)
-  - [Merge Logic](#merge-logic)
+  - [Synthesize Logic](#synthesize-logic)
 - [Quick Start](#quick-start)
   - [Prerequisites](#prerequisites)
   - [Setup](#setup)
@@ -60,24 +60,24 @@ The system uses **7 nodes** orchestrated by a Coordinator in LangGraph:
 
 ```mermaid
 flowchart TD
-    Start([Start]) --> Extract
+    Start([Start]) --> Load
 
-    Extract[Extract<br/><i>DB → state fields</i>]
+    Load[Load<br/><i>DB → state fields</i>]
     Search[Search<br/><i>Tavily API</i>]
     Validate[Validate<br/><i>date + location + name</i>]
-    Merge[Merge<br/><i>LLM extraction</i>]
+    Synthesize[Synthesize<br/><i>LLM extraction</i>]
     Coord{Coordinator}
     Complete([Complete<br/><i>write JSON</i>])
     Escalate([Escalate<br/><i>human review</i>])
 
-    Extract --> Coord
+    Load --> Coord
     Coord -- "fields OK" --> Search
     Search --> Coord
     Coord -- "results > 0" --> Validate
     Coord -- "retry: next strategy" --> Search
     Validate --> Coord
-    Coord -- "articles valid" --> Merge
-    Merge --> Coord
+    Coord -- "articles valid" --> Synthesize
+    Synthesize --> Coord
     Coord -- "fields extracted" --> Complete
     Coord -- "error / max retries / zero extractions" --> Escalate
 ```
@@ -90,10 +90,10 @@ nodes update state fields, graph edges handle transitions.
 
 | Node            | Type          | Purpose                                                                    |
 | --------------- | ------------- | -------------------------------------------------------------------------- |
-| **Extract**     | Deterministic | Reads incident record from PostgreSQL, populates state fields              |
+| **Load**        | Deterministic | Reads incident record from PostgreSQL, populates state fields              |
 | **Search**      | Deterministic | Constructs query from incident fields, calls Tavily API for news articles  |
 | **Validate**    | Rule-based    | Checks date proximity (±5 days), location match, and optional name match   |
-| **Merge**       | LLM-powered   | Extracts structured fields from articles, checks cross-article consistency |
+| **Synthesize**  | LLM-powered   | Extracts structured fields from articles, checks cross-article consistency |
 | **Coordinator** | Rule-based    | Gates after each stage — decides retry, proceed, or escalate               |
 | **Complete**    | Terminal      | Writes enrichment results to JSON                                          |
 | **Escalate**    | Terminal      | Writes escalation report to JSON for human review                          |
@@ -116,10 +116,10 @@ The Coordinator routes to human review when:
 
 - Max retries reached without sufficient validated articles
 - No articles pass validation after all strategies
-- Merge detects conflicts **and** zero agreed fields — if some fields agree
+- Synthesize detects conflicts **and** zero agreed fields if some fields agree
   while others conflict, the pipeline completes with the agreed fields and flags
   `requires_human_review = True` for the conflicts
-- Merge encounters an error
+- Synthesize encounters an error
 
 ### Validation Logic
 
@@ -137,9 +137,9 @@ parsed dates. Aggregation sites (e.g., Wikipedia, fatalencounters.org) and
 compilation documents (.pdf, .csv) are excluded at search or validation level —
 see [EVALUATION.md — Appendix](EVALUATION.md#appendix-excluded-domains).
 
-### Merge Logic
+### Synthesize Logic
 
-The merge node only processes **validated articles** (those that passed
+The synthesize node only processes **validated articles** (those that passed
 validation), filtering out unrelated articles before extraction.
 
 For each field extracted from validated articles:
@@ -149,15 +149,15 @@ For each field extracted from validated articles:
 - **All articles return null** → skip (no data, not a conflict)
 - **Articles agree but conflict with database** → add to both lists
 
-After merge, the Coordinator applies partial completion logic: if any fields
+After synthesize, the Coordinator applies partial completion logic: if any fields
 were successfully extracted (`extracted_fields` non-empty), route to COMPLETE —
 even if conflicts exist on other fields. Only escalate on conflict when zero
 fields were extracted. Partial completions set `requires_human_review = True` so
 conflicts are still surfaced for review.
 
-Before comparing values, the merge node normalizes names, race terms, and weapon
+Before comparing values, the synthesize node normalizes names, race terms, and weapon
 categories to reduce spurious conflicts (see
-[EVALUATION.md — Fix 2](EVALUATION.md#fix-2-merge-normalization) for details).
+[EVALUATION.md — Fix 2](EVALUATION.md#fix-2-synthesize-normalization) for details).
 
 Each `FieldConflict` captures the field name, conflict type (`articles_disagree`
 or `reference_mismatch`), the conflicting values with source URLs, and the
@@ -252,7 +252,7 @@ Results are written to `output/enrichment/` as pretty-printed JSON files:
   "incident_id": "10",
   "dataset_type": "civilians_shot",
   "escalation_reason": "conflict",
-  "current_stage": "merge",
+  "current_stage": "synthesize",
   "search_strategy": "exact_match",
   "retry_count": 0,
   "retrieved_articles": [
@@ -357,14 +357,14 @@ police-data-intelligence/
 │   ├── agents/
 │   │   ├── state.py             # EnrichmentState, Article, FieldExtraction models
 │   │   ├── graph.py             # LangGraph wiring, complete/escalate terminal nodes
-│   │   ├── coordinate_node.py   # Coordinator gates (search/validate/merge checks)
-│   │   └── extract_node.py      # Extract node (PostgreSQL → state)
+│   │   ├── coordinate_node.py   # Coordinator gates (search/validate/synthesize checks)
+│   │   └── load_node.py         # Load node (PostgreSQL → state)
 │   ├── retrieval/
 │   │   └── search_node.py       # Search node (Tavily API)
 │   ├── validation/
 │   │   └── validate_node.py     # Validate node (date/location/name matching)
-│   ├── merge/
-│   │   └── merge_node.py        # Merge node (LLM extraction + consistency)
+│   ├── synthesize/
+│   │   └── synthesize_node.py   # Synthesize node (LLM extraction + consistency)
 │   ├── database/
 │   │   └── connection.py        # PostgreSQL connection
 │   ├── eval/
@@ -375,10 +375,10 @@ police-data-intelligence/
 ├── data/
 │   └── etl/                     # ETL pipeline (CSV → PostgreSQL), separate from agents
 ├── tests/
-│   ├── test_extract_node.py
+│   ├── test_load_node.py
 │   ├── test_search_node.py
 │   ├── test_validate_node.py
-│   ├── test_merge_node.py
+│   ├── test_synthesize_node.py
 │   ├── test_coordinate_node.py
 │   ├── test_graph.py            # Graph wiring + terminal node tests
 │   ├── test_run.py
@@ -453,10 +453,6 @@ principles:
 - **Accuracy over automation**: Conservative thresholds, escalation on conflicts
 - **Immutability**: Never overwrites official government data without human
   approval
-- **Fairness**: Evaluated across demographic groups — mean exact accuracy is
-  comparable (67–71%) regardless of race. Lower completion rates for some groups
-  (50% vs 83%) reflect older incidents with fewer surviving articles, not
-  pipeline bias. See [EVALUATION.md](EVALUATION.md) for full fairness metrics.
 
 ## Roadmap
 
@@ -464,7 +460,7 @@ principles:
 
 - ETL pipeline (CSV → PostgreSQL)
 - 7-node LangGraph pipeline with conditional routing and retry strategies
-- Partial completion on merge conflicts (accept agreed fields, flag conflicts)
+- Partial completion on synthesize conflicts (accept agreed fields, flag conflicts)
 - 4-tier search strategy (exact → temporal → name_partial → entity_dropped)
 - CLI entrypoint for single-incident enrichment
 - Holdout evaluation framework (precision, coverage against DB ground truth)

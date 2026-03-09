@@ -1,11 +1,11 @@
-"""Tests for src/merge/weapon_similarity.py.
+"""Tests for src/synthesize/weapon_similarity.py.
 
 Tests normalize_weapon() category mapping and weapons_match() equality logic.
 No external dependencies (sentence-transformers, numpy) needed.
 """
 
 
-from src.merge.weapon_similarity import (
+from src.synthesize.weapon_similarity import (
     WEAPON_CATEGORIES,
     WEAPON_CATEGORY_MAP,
     normalize_weapon,

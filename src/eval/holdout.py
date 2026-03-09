@@ -32,7 +32,7 @@ from src.agents.state import (
     MediaFeatureField,
     PipelineStage,
 )
-from src.merge.merge_node import RAPIDFUZZ_THRESHOLD
+from src.synthesize.synthesize_node import RAPIDFUZZ_THRESHOLD
 
 logger = logging.getLogger(__name__)
 
@@ -376,7 +376,7 @@ def compare_weapon(
     Returns:
         MatchResult with exact_match and fuzzy_match set identically.
     """
-    from src.merge.weapon_similarity import normalize_weapon
+    from src.synthesize.weapon_similarity import normalize_weapon
 
     result = MatchResult(
         field_name=field_name,
@@ -748,7 +748,7 @@ def _infer_stage_reached(
         escalation_reason: Escalation reason string (None if completed).
 
     Returns:
-        Pipeline stage name (e.g., "search", "validate", "merge", "complete").
+        Pipeline stage name (e.g., "search", "validate", "synthesize", "complete").
     """
     if pipeline_outcome == PipelineOutcome.COMPLETE:
         return "complete"
@@ -764,9 +764,9 @@ def _infer_stage_reached(
         EscalationReason.MERGE_ERROR.value,
         EscalationReason.INSUFFICIENT_SOURCES.value,
     ):
-        return "merge"
+        return "synthesize"
     if reason == EscalationReason.EXTRACTION_ERROR.value:
-        return "extract"
+        return "load"
     return "unknown"
 
 

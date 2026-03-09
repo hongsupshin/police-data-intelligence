@@ -20,7 +20,7 @@
   - [Revised Assessment](#revised-assessment)
 - [Bug Fixes (Between Pilot and Holdout Evaluation)](#bug-fixes-between-pilot-and-holdout-evaluation)
   - [Fix 1: Aggregation Source Exclusion](#fix-1-aggregation-source-exclusion)
-  - [Fix 2: Merge Normalization](#fix-2-merge-normalization)
+  - [Fix 2: Synthesize Normalization](#fix-2-synthesize-normalization)
   - [Regression Tests](#regression-tests)
   - [Fix 3: Location Extraction + Eval Ground Truth](#fix-3-location-extraction--eval-ground-truth)
   - [Fix 4: civilian_died Backfill Migration](#fix-4-civilian_died-backfill-migration)
@@ -132,7 +132,7 @@ methods:
 **Pipeline completion rate**: Percentage of records that reach the Complete
 terminal node (not escalated).
 
-**Pipeline reach**: Percentage of records that reach the Merge node (extraction
+**Pipeline reach**: Percentage of records that reach the Synthesize node (extraction
 attempted), regardless of final outcome. This distinguishes retrieval failures
 from extraction failures.
 
@@ -204,7 +204,7 @@ multi-party incident where distinguishing individuals requires human judgment.
 
 | Pattern                        | Incidents         | Root cause                                   | Action                                                   |
 | ------------------------------ | ----------------- | -------------------------------------------- | -------------------------------------------------------- |
-| Synonym/formatting             | 5388, part of 833 | String comparison without normalization      | Fix: name normalization in merge node                    |
+| Synonym/formatting             | 5388, part of 833 | String comparison without normalization      | Fix: name normalization in synthesize node                    |
 | Source contamination           | 697               | Aggregation source passed validation         | Fix: exclude fatalencounters.org + PDF/CSV URL filtering |
 | Genuinely conflicting accounts | 833               | Real factual disagreement across sources     | No fix needed — correct escalation                       |
 | Identity ambiguity             | 330               | Multi-party incident, wrong entity extracted | No fix needed — correct escalation                       |
@@ -245,7 +245,7 @@ principled, generalizable rule: the pipeline should only extract from documents
 that describe a single incident or a small number of clearly delineated
 incidents.
 
-### Fix 2: Merge Normalization
+### Fix 2: Synthesize Normalization
 
 **Problem**: Superficial formatting differences triggered false
 `articles_disagree` conflicts. Names varied by honorifics and quote styles
@@ -253,7 +253,7 @@ incidents.
 inconsistent terms ("African American" vs "Black"), and weapon/location
 descriptions differed in phrasing ("handgun" vs "firearm - handgun").
 
-**Fix**: Three targeted normalizations in `merge_node.py`:
+**Fix**: Three targeted normalizations in `synthesize_node.py`:
 
 - **Name normalization** (`normalize_name`): Strips honorifics (Mr, Mrs, Sgt,
   Master Sgt, Officer, Detective, Deputy, Chief, Trooper, Corporal, Sergeant,
@@ -292,7 +292,7 @@ holdout. Two compounding issues:
 
 **Fix**:
 
-1. **Merge prompt** (`merge_node.py`): Changed location extraction to request a
+1. **Merge prompt** (`synthesize_node.py`): Changed location extraction to request a
    structured address including city name, rather than a narrative description.
 2. **Eval ground truth** (`holdout.py`): Switched from `incident_address` to
    `COALESCE(incident_city, incident_county)`, providing city-level ground truth
@@ -310,7 +310,7 @@ holdout. Two compounding issues:
 
 The completion rate improvement (10% → 60%) is due to the prompt change
 producing more structured outputs that pass consistency checks, reducing false
-conflicts in the merge node. The accuracy improvements reflect both the prompt
+conflicts in the synthesize node. The accuracy improvements reflect both the prompt
 fix (better extractions) and the eval GT fix (fairer comparison).
 
 ### Fix 4: civilian_died Backfill Migration
@@ -366,10 +366,10 @@ Stratification ensured coverage across incident years (2014–2024).
 | Stage reached                                | Count | Percentage |
 | -------------------------------------------- | ----- | ---------- |
 | Complete                                     | 70    | 70%        |
-| Escalated after merge (insufficient_sources) | 1     | 1%         |
+| Escalated after synthesize (insufficient_sources) | 1     | 1%         |
 | Escalated after search (max_retries)         | 29    | 29%        |
 
-#### Extraction Quality (Records That Reached Merge)
+#### Extraction Quality (Records That Reached Synthesize)
 
 | Field           | N evaluable | Coverage | Exact match | Fuzzy match |
 | --------------- | ----------- | -------- | ----------- | ----------- |
@@ -623,7 +623,7 @@ may exhibit different failure modes.
 | Race eval normalization gaps          | ~~5/17~~ Fixed               | ~~Yes~~ Done | —        |
 | Race genuine misidentification        | 6/17 extractions             | Investigate  | Medium   |
 | Weapon category mapping gaps          | 4/42 extractions             | Yes (map)    | Low      |
-| Time parse errors (day-of-week)       | 6/37 extractions             | Yes (merge)  | Low      |
+| Time parse errors (day-of-week)       | 6/37 extractions             | Yes (synthesize)  | Low      |
 | Location formatting gap (exact/fuzzy) | 18% exact vs 97% fuzzy       | Low priority | —        |
 | Outcome-only completions              | 6 records (9%)               | Yes          | High     |
 
@@ -631,7 +631,7 @@ may exhibit different failure modes.
 
 **Completed:**
 
-- ~~Fix merge node null handling (incident 3494 crash)~~
+- ~~Fix synthesize node null handling (incident 3494 crash)~~
 - ~~Re-run holdout eval with location + outcome fixes~~ — N=100 eval completed
 - ~~Fairness analysis across demographic groups~~ — included in Phase 2 results
 - ~~Race eval normalization~~ — keyword-based matching replaces alias dicts
@@ -643,10 +643,10 @@ may exhibit different failure modes.
   17% accuracy (entity confusion). Consider requiring ≥2 extracted fields before
   completing, or treating outcome-only records as low-confidence
 - ~~**Race eval normalization**~~: Fixed — keyword-based matching in both
-  `holdout.py` and `merge_node.py` (race accuracy 35% → 65%)
+  `holdout.py` and `synthesize_node.py` (race accuracy 35% → 65%)
 - **Weapon category map**: Add SAWED-OFF SHOTGUN→SHOTGUN, MACHETE→KNIFE, and BB
   GUN/PELLET GUN mappings to `WEAPON_CATEGORY_MAP`
-- **Time parse errors**: The merge node sometimes extracts day-of-week instead
+- **Time parse errors**: The synthesize node sometimes extracts day-of-week instead
   of time-of-day (6 parse errors) — tighten the extraction prompt
 - Batch processing across all ~1,564 remaining records with priority ordering
 - Evaluation of the officers-shot dataset

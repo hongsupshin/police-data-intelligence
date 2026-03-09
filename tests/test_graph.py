@@ -40,8 +40,8 @@ from src.config import Settings
 _STUB_ARTICLE = Article(url="https://stub.com", title="stub", snippet="stub")
 
 
-def _fake_extract(state: EnrichmentState) -> EnrichmentState:
-    state.current_stage = PipelineStage.EXTRACT
+def _fake_load(state: EnrichmentState) -> EnrichmentState:
+    state.current_stage = PipelineStage.LOAD
     return state
 
 
@@ -65,8 +65,8 @@ def _fake_validate(state: EnrichmentState) -> EnrichmentState:
     return state
 
 
-def _fake_merge(state: EnrichmentState) -> EnrichmentState:
-    state.current_stage = PipelineStage.MERGE
+def _fake_synthesize(state: EnrichmentState) -> EnrichmentState:
+    state.current_stage = PipelineStage.SYNTHESIZE
     state.extracted_fields = [
         FieldExtraction(
             field_name="weapon",
@@ -83,7 +83,7 @@ def _fake_merge(state: EnrichmentState) -> EnrichmentState:
 
 @pytest.fixture()
 def base_state() -> EnrichmentState:
-    """State after extract with all identity fields populated."""
+    """State after load with all identity fields populated."""
     return EnrichmentState(
         incident_id="142",
         dataset_type=DatasetType.CIVILIANS_SHOT,
@@ -92,7 +92,7 @@ def base_state() -> EnrichmentState:
         officer_name="James Rodriguez",
         civilian_name="John Doe",
         severity="fatal",
-        current_stage=PipelineStage.EXTRACT,
+        current_stage=PipelineStage.LOAD,
         next_strategy=SearchStrategyType.EXACT_MATCH,
     )
 
@@ -105,7 +105,7 @@ def base_state() -> EnrichmentState:
     [
         PipelineStage.SEARCH,
         PipelineStage.VALIDATE,
-        PipelineStage.MERGE,
+        PipelineStage.SYNTHESIZE,
         PipelineStage.COMPLETE,
         PipelineStage.ESCALATE,
     ],
@@ -120,9 +120,9 @@ def test_route_after_coordinator_next_stage(
 
 
 def test_route_after_coordinator_fallback(base_state: EnrichmentState) -> None:
-    """Unexpected next_stage (EXTRACT) falls back to escalate."""
+    """Unexpected next_stage (LOAD) falls back to escalate."""
     state = base_state.model_copy()
-    state.next_stage = PipelineStage.EXTRACT
+    state.next_stage = PipelineStage.LOAD
     assert route_after_coordinator(state) == "escalate"
 
 
@@ -208,10 +208,10 @@ def test_build_graph_none() -> None:
     compiled_graph = build_graph(None)
     assert isinstance(compiled_graph, CompiledStateGraph)
     node_names = [
-        "extract",
+        "load",
         "search",
         "validate",
-        "merge",
+        "synthesize",
         "complete",
         "escalate",
         "coordinate",
@@ -226,20 +226,20 @@ def test_build_graph_none() -> None:
 @pytest.mark.integration
 @patch("src.agents.graph.validate_node")
 @patch("src.agents.graph.search_node")
-@patch("src.agents.graph.merge_node")
-@patch("src.agents.graph.extract_node")
+@patch("src.agents.graph.synthesize_node")
+@patch("src.agents.graph.load_node")
 def test_happy_path(
-    mock_extract,
-    mock_merge,
+    mock_load,
+    mock_synthesize,
     mock_search,
     mock_validate,
     base_state: EnrichmentState,
 ) -> None:
-    """Happy path: extract → search → validate → merge → complete."""
-    mock_extract.side_effect = _fake_extract
+    """Happy path: load → search → validate → synthesize → complete."""
+    mock_load.side_effect = _fake_load
     mock_search.side_effect = _fake_search
     mock_validate.side_effect = _fake_validate
-    mock_merge.side_effect = _fake_merge
+    mock_synthesize.side_effect = _fake_synthesize
 
     graph = build_graph(None)
     config = RunnableConfig({"configurable": {"settings": Settings()}})
@@ -253,21 +253,21 @@ def test_happy_path(
 
 
 @pytest.mark.integration
-@patch("src.agents.graph.extract_node")
+@patch("src.agents.graph.load_node")
 def test_escalate_after_extract(
-    mock_extract,
+    mock_load,
     base_state: EnrichmentState,
 ) -> None:
-    """Escalate when extract produces no identity fields."""
+    """Escalate when load produces no identity fields."""
 
-    def _fake_extract_empty(state: EnrichmentState) -> EnrichmentState:
-        state.current_stage = PipelineStage.EXTRACT
+    def _fake_load_empty(state: EnrichmentState) -> EnrichmentState:
+        state.current_stage = PipelineStage.LOAD
         state.civilian_name = None
         state.officer_name = None
         state.incident_date = None
         return state
 
-    mock_extract.side_effect = _fake_extract_empty
+    mock_load.side_effect = _fake_load_empty
 
     graph = build_graph(None)
     config = RunnableConfig({"configurable": {"settings": Settings()}})
@@ -279,9 +279,9 @@ def test_escalate_after_extract(
 
 @pytest.mark.integration
 @patch("src.agents.graph.search_node")
-@patch("src.agents.graph.extract_node")
+@patch("src.agents.graph.load_node")
 def test_escalate_after_search(
-    mock_extract,
+    mock_load,
     mock_search,
     base_state: EnrichmentState,
 ) -> None:
@@ -299,7 +299,7 @@ def test_escalate_after_search(
         ]
         return state
 
-    mock_extract.side_effect = _fake_extract
+    mock_load.side_effect = _fake_load
     mock_search.side_effect = _fake_search_low_score
 
     graph = build_graph(None)
@@ -313,9 +313,9 @@ def test_escalate_after_search(
 @pytest.mark.integration
 @patch("src.agents.graph.validate_node")
 @patch("src.agents.graph.search_node")
-@patch("src.agents.graph.extract_node")
+@patch("src.agents.graph.load_node")
 def test_escalate_after_validate(
-    mock_extract,
+    mock_load,
     mock_search,
     mock_validate,
     base_state: EnrichmentState,
@@ -329,7 +329,7 @@ def test_escalate_after_validate(
         ]
         return state
 
-    mock_extract.side_effect = _fake_extract
+    mock_load.side_effect = _fake_load
     mock_search.side_effect = _fake_search
     mock_validate.side_effect = _fake_validate_fail
 
@@ -344,19 +344,19 @@ def test_escalate_after_validate(
 @pytest.mark.integration
 @patch("src.agents.graph.validate_node")
 @patch("src.agents.graph.search_node")
-@patch("src.agents.graph.merge_node")
-@patch("src.agents.graph.extract_node")
+@patch("src.agents.graph.synthesize_node")
+@patch("src.agents.graph.load_node")
 def test_escalate_after_merge(
-    mock_extract,
-    mock_merge,
+    mock_load,
+    mock_synthesize,
     mock_search,
     mock_validate,
     base_state: EnrichmentState,
 ) -> None:
-    """Escalate when merge detects conflicting fields."""
+    """Escalate when synthesize detects conflicting fields."""
 
-    def _fake_merge_conflict(state: EnrichmentState) -> EnrichmentState:
-        state.current_stage = PipelineStage.MERGE
+    def _fake_synthesize_conflict(state: EnrichmentState) -> EnrichmentState:
+        state.current_stage = PipelineStage.SYNTHESIZE
         state.extracted_fields = []
         state.conflicting_fields = [
             FieldConflict(
@@ -368,10 +368,10 @@ def test_escalate_after_merge(
         ]
         return state
 
-    mock_extract.side_effect = _fake_extract
+    mock_load.side_effect = _fake_load
     mock_search.side_effect = _fake_search
     mock_validate.side_effect = _fake_validate
-    mock_merge.side_effect = _fake_merge_conflict
+    mock_synthesize.side_effect = _fake_synthesize_conflict
 
     graph = build_graph(None)
     config = RunnableConfig({"configurable": {"settings": Settings()}})
@@ -392,7 +392,7 @@ def test_nested_serialization(base_state: EnrichmentState, tmp_path: Path) -> No
         )
     ]
     state.validation_results = [ValidationResult(article=_STUB_ARTICLE, passed=True)]
-    state.current_stage = PipelineStage.MERGE
+    state.current_stage = PipelineStage.SYNTHESIZE
     config = RunnableConfig(
         {"configurable": {"settings": Settings(output_dir=str(tmp_path))}}
     )

@@ -1,7 +1,7 @@
-"""Tests for the Merge Node.
+"""Tests for the Synthesize Node.
 
 Tests cover three helper functions (check_reference_match,
-check_articles_match, extract_fields) and the merge_node orchestrator.
+check_articles_match, extract_fields) and the synthesize_node orchestrator.
 LLM calls are mocked via MagicMock.
 """
 
@@ -25,13 +25,13 @@ from src.agents.state import (
     SearchStrategyType,
     ValidationResult,
 )
-from src.merge.merge_node import (
+from src.synthesize.synthesize_node import (
     check_articles_match,
     check_reference_match,
     extract_fields,
-    merge_node,
     normalize_name,
     normalize_race,
+    synthesize_node,
 )
 
 # --- Fixtures ---
@@ -191,7 +191,7 @@ def base_field_extraction_location_detail() -> FieldExtraction:
 # --- check_reference_match tests ---
 
 
-@patch("src.merge.merge_node.weapons_match")
+@patch("src.synthesize.synthesize_node.weapons_match")
 def test_check_reference_match(
     mock_weapons_match: MagicMock, base_field_extraction: FieldExtraction
 ) -> None:
@@ -291,7 +291,7 @@ def test_check_articles_match_all_agree(
     assert result[1].value == "handgun"
 
 
-@patch("src.merge.merge_node.weapons_match", return_value=True)
+@patch("src.synthesize.synthesize_node.weapons_match", return_value=True)
 def test_check_articles_match_minor_diff(
     mock_weapons_match: MagicMock,
     base_field_extraction: FieldExtraction,
@@ -313,7 +313,7 @@ def test_check_articles_match_minor_diff(
     assert result[1].value == "handguns"
 
 
-@patch("src.merge.merge_node.weapons_match", return_value=False)
+@patch("src.synthesize.synthesize_node.weapons_match", return_value=False)
 def test_check_articles_match_conflict(
     mock_weapons_match: MagicMock,
     base_field_extraction: FieldExtraction,
@@ -489,7 +489,7 @@ def test_extract_fields_happy_path(
     assert result["weapon"].confidence == ConfidenceLevel.PENDING
 
 
-# --- merge_node tests ---
+# --- synthesize_node tests ---
 
 
 def _make_extraction(field_name: str, value: str | None) -> FieldExtraction:
@@ -518,8 +518,8 @@ def _build_mock_llm(extractions_per_article: list[list[FieldExtraction]]) -> Mag
     return mock_llm
 
 
-class TestMergeNode:
-    """Tests for the merge_node orchestrator."""
+class TestSynthesizeNode:
+    """Tests for the synthesize_node orchestrator."""
 
     def test_happy_path_articles_agree(self, base_state: EnrichmentState) -> None:
         """Both articles return same values, names match DB reference."""
@@ -532,9 +532,9 @@ class TestMergeNode:
         mock_llm = _build_mock_llm([shared_extractions, shared_extractions])
 
         config = RunnableConfig({"configurable": {"llm_client": mock_llm}})
-        result = merge_node(base_state, config)
+        result = synthesize_node(base_state, config)
 
-        assert result.current_stage == PipelineStage.MERGE
+        assert result.current_stage == PipelineStage.SYNTHESIZE
         assert result.error_message is None
         assert result.conflicting_fields == []
         # All 4 fields should be in extracted_fields
@@ -565,9 +565,9 @@ class TestMergeNode:
         mock_llm = _build_mock_llm([shared_extractions, shared_extractions])
 
         config = RunnableConfig({"configurable": {"llm_client": mock_llm}})
-        result = merge_node(base_state, config)
+        result = synthesize_node(base_state, config)
 
-        assert result.current_stage == PipelineStage.MERGE
+        assert result.current_stage == PipelineStage.SYNTHESIZE
         # officer_name should be in conflicting_fields (doesn't match DB)
         assert len(result.conflicting_fields) == 1
         conflict = result.conflicting_fields[0]
@@ -580,7 +580,7 @@ class TestMergeNode:
         extracted_names = [e.field_name for e in result.extracted_fields]
         assert "officer_name" in extracted_names
 
-    @patch("src.merge.merge_node.weapons_match", return_value=False)
+    @patch("src.synthesize.synthesize_node.weapons_match", return_value=False)
     def test_articles_conflict(
         self, mock_weapons_match: MagicMock, base_state: EnrichmentState
     ) -> None:
@@ -596,9 +596,9 @@ class TestMergeNode:
         mock_llm = _build_mock_llm([article1_extractions, article2_extractions])
 
         config = RunnableConfig({"configurable": {"llm_client": mock_llm}})
-        result = merge_node(base_state, config)
+        result = synthesize_node(base_state, config)
 
-        assert result.current_stage == PipelineStage.MERGE
+        assert result.current_stage == PipelineStage.SYNTHESIZE
         conflict_names = [c.field_name for c in result.conflicting_fields]
         assert MediaFeatureField.WEAPON in conflict_names
         weapon_conflict = next(
@@ -622,10 +622,10 @@ class TestMergeNode:
         )
 
         config = RunnableConfig({"configurable": {"llm_client": mock_llm}})
-        result = merge_node(base_state, config)
+        result = synthesize_node(base_state, config)
 
         # Helpers catch the error -- orchestrator completes normally
-        assert result.current_stage == PipelineStage.MERGE
+        assert result.current_stage == PipelineStage.SYNTHESIZE
         assert result.error_message is None
         assert result.extracted_fields == []
         assert result.conflicting_fields == []
@@ -655,9 +655,9 @@ class TestMergeNode:
         mock_llm = _build_mock_llm([shared_extractions, shared_extractions])
 
         config = RunnableConfig({"configurable": {"llm_client": mock_llm}})
-        result = merge_node(base_state, config)
+        result = synthesize_node(base_state, config)
 
-        assert result.current_stage == PipelineStage.MERGE
+        assert result.current_stage == PipelineStage.SYNTHESIZE
         assert result.error_message is None
         # LLM was called exactly 2 times (once per validated article)
         assert mock_llm.with_structured_output.return_value.invoke.call_count == 2
@@ -672,9 +672,9 @@ class TestMergeNode:
 
         mock_llm = MagicMock()
         config = RunnableConfig({"configurable": {"llm_client": mock_llm}})
-        result = merge_node(base_state, config)
+        result = synthesize_node(base_state, config)
 
-        assert result.current_stage == PipelineStage.MERGE
+        assert result.current_stage == PipelineStage.SYNTHESIZE
         assert result.extracted_fields == []
         assert result.conflicting_fields == []
         # LLM should never be called
@@ -692,9 +692,9 @@ class TestMergeNode:
         mock_llm = _build_mock_llm([null_extractions, null_extractions])
 
         config = RunnableConfig({"configurable": {"llm_client": mock_llm}})
-        result = merge_node(base_state, config)
+        result = synthesize_node(base_state, config)
 
-        assert result.current_stage == PipelineStage.MERGE
+        assert result.current_stage == PipelineStage.SYNTHESIZE
         assert result.error_message is None
         # No conflicts — nothing to compare against DB reference
         assert result.conflicting_fields == []
@@ -811,7 +811,7 @@ def test_check_articles_match_race_genuinely_different() -> None:
 # --- check_articles_match with partial_ratio and field thresholds ---
 
 
-@patch("src.merge.merge_node.weapons_match", return_value=True)
+@patch("src.synthesize.synthesize_node.weapons_match", return_value=True)
 def test_check_articles_match_weapon_embedding_similarity(
     mock_weapons_match: MagicMock,
 ) -> None:

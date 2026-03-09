@@ -38,21 +38,21 @@ def _relevance_threshold(strategy: SearchStrategyType) -> float:
             return 0.45
 
 
-def check_extract_results(state: EnrichmentState) -> EnrichmentState:
-    """Gate after extract stage.
+def check_load_results(state: EnrichmentState) -> EnrichmentState:
+    """Gate after load stage.
 
-    Checks whether extraction produced enough data to build a
-    meaningful search query. Escalates if the extract node errored
+    Checks whether loading produced enough data to build a
+    meaningful search query. Escalates if the load node errored
     or all key identity fields are missing.
 
     Args:
-        state: Pipeline state after extract node.
+        state: Pipeline state after load node.
 
     Returns:
         Updated state with current_stage set to SEARCH (proceed)
         or ESCALATE (insufficient data or error).
     """
-    if state.error_message and "Extract failed" in state.error_message:
+    if state.error_message and "Load failed" in state.error_message:
         state.escalation_reason = EscalationReason.EXTRACTION_ERROR
         state.requires_human_review = True
         state.next_stage = PipelineStage.ESCALATE
@@ -129,37 +129,37 @@ def check_search_results(state: EnrichmentState) -> EnrichmentState:
 def check_validate_results(state: EnrichmentState) -> EnrichmentState:
     """Gate after validate stage.
 
-    Proceeds to merge if at least one article passed validation.
+    Proceeds to synthesize if at least one article passed validation.
     Escalates if all articles failed.
 
     Args:
         state: Pipeline state after validate node.
 
     Returns:
-        Updated state with current_stage set to MERGE (proceed)
+        Updated state with current_stage set to SYNTHESIZE (proceed)
         or ESCALATE (no valid articles).
     """
     if any(vr.passed for vr in state.validation_results):
-        state.next_stage = PipelineStage.MERGE
+        state.next_stage = PipelineStage.SYNTHESIZE
     else:
         return retry_helper(state)
     return state
 
 
-def check_merge_results(state: EnrichmentState) -> EnrichmentState:
-    """Gate after merge stage.
+def check_synthesize_results(state: EnrichmentState) -> EnrichmentState:
+    """Gate after synthesize stage.
 
-    Checks for merge errors, conflicting fields, and empty
+    Checks for synthesize errors, conflicting fields, and empty
     extractions. Marks pipeline as complete if all checks pass.
 
     Args:
-        state: Pipeline state after merge node.
+        state: Pipeline state after synthesize node.
 
     Returns:
         Updated state with current_stage set to COMPLETE (success)
         or ESCALATE (error, conflict, or no data extracted).
     """
-    if state.error_message and "Merge failed" in state.error_message:
+    if state.error_message and "Synthesize failed" in state.error_message:
         state.escalation_reason = EscalationReason.MERGE_ERROR
         state.requires_human_review = True
         state.next_stage = PipelineStage.ESCALATE
@@ -197,14 +197,14 @@ def coordinate_node(state: EnrichmentState) -> EnrichmentState:
     """
     current_state = state.current_stage
     match current_state:
-        case PipelineStage.EXTRACT:
-            updated_state = check_extract_results(state)
+        case PipelineStage.LOAD:
+            updated_state = check_load_results(state)
         case PipelineStage.SEARCH:
             updated_state = check_search_results(state)
         case PipelineStage.VALIDATE:
             updated_state = check_validate_results(state)
-        case PipelineStage.MERGE:
-            updated_state = check_merge_results(state)
+        case PipelineStage.SYNTHESIZE:
+            updated_state = check_synthesize_results(state)
         case _:
             return state
 
