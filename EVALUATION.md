@@ -30,6 +30,10 @@
   - [Error Analysis](#error-analysis-1)
   - [Fairness Metrics](#fairness-metrics)
   - [Cost and Latency](#cost-and-latency)
+- [Phase 3: Adversarial Evaluation](#phase-3-adversarial-evaluation)
+  - [Setup](#setup-2)
+  - [Results](#results-2)
+  - [Scenario 99917: Common-Name Completion](#scenario-99917-common-name-completion)
 - [Discussion](#discussion)
   - [What Works](#what-works)
   - [Known Limitations](#known-limitations)
@@ -565,6 +569,80 @@ input/output tokens; Tavily advanced search at $0.016/search PAYGO). The primary
 cost driver is LLM extraction (~70%), with web search comprising ~30%. Actual
 costs depend on article length and retry count.
 
+## Phase 3: Adversarial Evaluation
+
+The holdout evaluation measures accuracy on real incidents. Adversarial
+evaluation measures the inverse: does the pipeline correctly refuse to answer
+when given fabricated incidents that never happened?
+
+### Setup
+
+20 fabricated police shooting incidents were run through the live pipeline (real
+Tavily search + real Claude extraction). Only `fetch_incident` was patched to
+inject fake data; all downstream nodes ran unmodified. Scenarios were designed
+across five categories:
+
+| Category | N | Design | Expected behavior |
+|----------|---|--------|-------------------|
+| A. Obscure cities | 4 | Marfa, Alpine, Presidio, Terlingua | 0 search results → escalate |
+| B. Wrong dates | 4 | Medium cities, dates >5 days off real incidents | Validation rejects → escalate |
+| C. Hallucination traps | 6 | Major cities, dates within days of real high-profile events (Dallas police ambush, Harding St. raid, Botham Jean shooting, George Floyd protests) | Real articles found about wrong person → escalate |
+| D. Common-name confusion | 4 | "Michael Brown," "John Williams," "Jose Garcia" in major cities | Name-ambiguity stress test |
+| E. Edge cases | 2 | NULL officer or civilian name | Partial-data handling |
+
+Category C is the hardest test: fabricated incidents were placed within the ±5
+day validation window of real high-profile events, meaning real articles about
+those events should pass date and location validation checks.
+
+### Results
+
+| Metric | Value |
+|--------|-------|
+| Escalated correctly | 19/20 (95%) |
+| Completed with `requires_human_review` | 1/20 (5%) |
+| Hallucinations detected | 0/20 (0%) |
+
+By category:
+
+| Category | N | Escalated | Extracted fields | Conflicts | Hallucinations |
+|----------|---|-----------|------------------|-----------|----------------|
+| A. Obscure cities | 4 | 4 | 0 | 0 | 0 |
+| B. Wrong dates | 4 | 4 | 0 | 0 | 0 |
+| C. Hallucination traps | 6 | 6 | 0 | 0 | 0 |
+| D. Common names | 4 | 3 | 3 | 6 | 0 |
+| E. Edge cases | 2 | 2 | 0 | 0 | 0 |
+
+All 19 escalated scenarios reached `max_retries` (search exhausted all 4
+strategies without finding matching articles), except scenario 99920 (NULL
+civilian name) which escalated with `insufficient_sources` after synthesize
+found no extractable fields.
+
+### Scenario 99917: Common-Name Completion
+
+The one scenario that completed was 99917: fabricated "Michael Brown" (civilian)
+and "Robert Johnson" (officer) in Dallas on 2017-11-22.
+
+The pipeline found real Dallas shooting articles on the first search. Articles
+passed validation (date + location match). The LLM extracted 3 generic fields
+(race=Black, weapon=OTHER, outcome=Fatal) but detected 6 conflicts across
+articles on specific fields (officer_name, civilian_name, civilian_age,
+location_detail, time_of_day, circumstance). The pipeline completed with
+`requires_human_review=True`.
+
+**Zero hallucination**: The fabricated names "Robert Johnson" and "Michael Brown"
+never appeared in `extracted_fields`. The 3 extracted fields (race, weapon,
+outcome) are generic enough to be true of multiple Dallas shootings. The 6
+conflicting fields disagreed because the retrieved articles described different
+real incidents.
+
+This is the same entity confusion pattern identified in the holdout evaluation
+(Section "Outcome-Only Completions"): low extraction density (3 of 9 fields)
+combined with high conflict count signals that the pipeline is aggregating across
+multiple incidents. The conflict detection and human-review routing prevented
+false completion.
+
+Full results: `output/adversarial/results.json`
+
 ## Discussion
 
 ### What Works
@@ -590,6 +668,10 @@ field values. Key strengths:
 - **Removing score gating** lets more articles through to validation, where
   date/location matching serves as a better quality filter than Tavily's
   relevance score.
+- **Adversarial robustness**: 0/20 fabricated incidents produced hallucinated
+  extractions. Defense-in-depth (validation → conflict detection → human review)
+  caught every scenario, including hallucination traps placed near real
+  high-profile events (see [Phase 3](#phase-3-adversarial-evaluation)).
 
 ### Known Limitations
 
@@ -636,6 +718,7 @@ may exhibit different failure modes.
 - ~~Fairness analysis across demographic groups~~ — included in Phase 2 results
 - ~~Race eval normalization~~ — keyword-based matching replaces alias dicts
   (race accuracy 35% → 65%)
+- ~~Adversarial evaluation (20 fabricated incidents)~~ — 0/20 hallucinations
 
 **Remaining:**
 
