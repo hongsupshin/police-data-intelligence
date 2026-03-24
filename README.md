@@ -324,9 +324,16 @@ python -m src.eval.run_eval civilians_shot --limit 100 --stratified
 Aggregate precision: 72% exact / 84% fuzzy across 245 extracted values. Age and
 time-of-day are the strongest fields; location is 97% correct by fuzzy match
 (exact gap is formatting only). Most escalations (97%) are retrieval gaps where
-no articles were found. Reports are saved to `output/eval/`. See
-[EVALUATION.md](EVALUATION.md) for full methodology, error analysis, fairness
-metrics, and discussion.
+no articles were found. Reports are saved to `output/eval/`.
+
+**Adversarial evaluation (N=20, fabricated incidents):** 20 fabricated incidents
+(fake names, real Texas cities/dates) were run through the live pipeline. 19/20
+escalated correctly; 1 completed with `requires_human_review=True` and 6 field
+conflicts. Zero hallucinations — fabricated names never appeared in extracted
+fields.
+
+See [EVALUATION.md](EVALUATION.md) for full methodology, error analysis,
+fairness metrics, adversarial evaluation, and discussion.
 
 ### Configuration
 
@@ -466,6 +473,7 @@ principles:
 - Holdout evaluation framework (precision, coverage against DB ground truth)
 - N=100 holdout eval: **70% completion, 72% exact / 84% fuzzy precision** across
   6 fields (age 90%, time 94%, location 97% fuzzy, outcome 84%)
+- Adversarial evaluation: 20 fabricated incidents, **0 hallucinations**
 
 **Next:**
 
