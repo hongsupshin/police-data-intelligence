@@ -96,6 +96,8 @@ class EvalResult(BaseModel):
         escalation_reason: Reason for escalation (None if completed).
         elapsed_seconds: Wall-clock seconds for pipeline execution.
         stage_reached: Last pipeline stage before termination.
+        validation_failure_summary: Per-check validation failure counts
+            from the pipeline's final validate pass (None if unavailable).
     """
 
     incident_id: int
@@ -105,6 +107,7 @@ class EvalResult(BaseModel):
     escalation_reason: str | None = None
     elapsed_seconds: float = 0.0
     stage_reached: str | None = None
+    validation_failure_summary: dict[str, int] | None = None
 
 
 class HoldoutSample(BaseModel):
@@ -164,6 +167,8 @@ class HoldoutReport(BaseModel):
         mean_elapsed_seconds: Mean wall-clock seconds per incident.
         total_elapsed_seconds: Total wall-clock seconds for all incidents.
         fairness_metrics: Per-race group metrics (populated by stratified eval).
+        validation_failure_totals: Per-check validation failure counts summed
+            over escalated incidents (the escalation residual).
     """
 
     dataset_type: DatasetType
@@ -177,6 +182,7 @@ class HoldoutReport(BaseModel):
     mean_elapsed_seconds: float = 0.0
     total_elapsed_seconds: float = 0.0
     fairness_metrics: dict[str, dict[str, float]] = Field(default_factory=dict)
+    validation_failure_totals: dict[str, int] = Field(default_factory=dict)
 
 
 # ---------------------------------------------------------------------------
@@ -566,6 +572,35 @@ _OFFICERS_GT_MAPPING: dict[str, MediaFeatureField] = {
     "officer_harm": MediaFeatureField.OUTCOME,
 }
 
+_DATASET_GT_MAPPINGS: dict[DatasetType, dict[str, MediaFeatureField]] = {
+    DatasetType.CIVILIANS_SHOT: _CIVILIANS_GT_MAPPING,
+    DatasetType.OFFICERS_SHOT: _OFFICERS_GT_MAPPING,
+}
+
+
+def comparators_for_dataset(
+    dataset_type: DatasetType,
+) -> dict[MediaFeatureField, Callable]:
+    """Return the comparators evaluable for a dataset.
+
+    Restricts FIELD_COMPARATORS to fields that have ground truth for the
+    given dataset (e.g., officers_shot has no weapon/time_of_day columns),
+    preserving FIELD_COMPARATORS ordering. This keeps officers reports from
+    listing phantom civilian-only fields with zero evaluable incidents.
+
+    Args:
+        dataset_type: Which dataset is being evaluated.
+
+    Returns:
+        Subset of FIELD_COMPARATORS whose fields are mapped for the dataset.
+    """
+    mapped_fields = set(_DATASET_GT_MAPPINGS[dataset_type].values())
+    return {
+        field: comparator
+        for field, comparator in FIELD_COMPARATORS.items()
+        if field in mapped_fields
+    }
+
 
 # ---------------------------------------------------------------------------
 # DB Queries
@@ -942,7 +977,7 @@ def evaluate_single(
             extracted_lookup[field["field_name"]] = FieldExtraction(**field)
 
     field_results: list[MatchResult] = []
-    for field_enum, comparator in FIELD_COMPARATORS.items():
+    for field_enum, comparator in comparators_for_dataset(dataset_type).items():
         gt_value = ground_truth.get(field_enum.value)
 
         extraction = extracted_lookup.get(field_enum.value)
@@ -955,6 +990,8 @@ def evaluate_single(
 
         field_results.append(match_result)
 
+    vfs = result.get("validation_failure_summary")
+
     return EvalResult(
         incident_id=incident_id,
         dataset_type=dataset_type,
@@ -963,10 +1000,14 @@ def evaluate_single(
         escalation_reason=escalation_reason,
         elapsed_seconds=round(elapsed, 2),
         stage_reached=_infer_stage_reached(pipeline_outcome, escalation_reason),
+        validation_failure_summary=vfs if isinstance(vfs, dict) else None,
     )
 
 
-def aggregate_metrics(eval_results: list[EvalResult]) -> list[FieldMetrics]:
+def aggregate_metrics(
+    eval_results: list[EvalResult],
+    dataset_type: DatasetType | None = None,
+) -> list[FieldMetrics]:
     """Aggregate per-field metrics across all evaluated incidents.
 
     Groups MatchResults by field, excludes NO_GROUND_TRUTH from accuracy
@@ -974,17 +1015,25 @@ def aggregate_metrics(eval_results: list[EvalResult]) -> list[FieldMetrics]:
 
     Args:
         eval_results: List of EvalResult objects from evaluate_single.
+        dataset_type: When given, report only the fields evaluable for that
+            dataset. When None, report all FIELD_COMPARATORS fields.
 
     Returns:
         List of FieldMetrics, one per evaluable field.
     """
+    comparators = (
+        comparators_for_dataset(dataset_type)
+        if dataset_type is not None
+        else FIELD_COMPARATORS
+    )
+
     results_by_field: dict[str, list[MatchResult]] = defaultdict(list)
     for er in eval_results:
         for mr in er.field_results:
             results_by_field[mr.field_name].append(mr)
 
     metrics: list[FieldMetrics] = []
-    for field_enum in FIELD_COMPARATORS:
+    for field_enum in comparators:
         field_name = field_enum.value
         all_results = results_by_field.get(field_name, [])
 
@@ -1033,6 +1082,32 @@ def aggregate_metrics(eval_results: list[EvalResult]) -> list[FieldMetrics]:
         )
 
     return metrics
+
+
+def sum_validation_failures(eval_results: list[EvalResult]) -> dict[str, int]:
+    """Sum per-check validation-failure counts over escalated incidents.
+
+    Aggregates the per-incident ``validation_failure_summary`` for escalated
+    incidents only, producing the escalation residual that the deterministic
+    fixes (and the later enable-gate) are read against.
+
+    Args:
+        eval_results: List of EvalResult objects from evaluate_single.
+
+    Returns:
+        Dict of summed counts keyed by the summary keys (total, passed,
+        excluded, date_fail, location_fail, name_fail). Empty if no
+        escalated incident carried a summary.
+    """
+    totals: dict[str, int] = {}
+    for er in eval_results:
+        if er.pipeline_outcome != PipelineOutcome.ESCALATE:
+            continue
+        if not er.validation_failure_summary:
+            continue
+        for key, value in er.validation_failure_summary.items():
+            totals[key] = totals.get(key, 0) + value
+    return totals
 
 
 def evaluate_holdout(
@@ -1090,8 +1165,9 @@ def evaluate_holdout(
         n_completed=n_completed,
         n_escalated=n_escalated,
         completion_rate=n_completed / n_incidents if n_incidents > 0 else 0.0,
-        field_metrics=aggregate_metrics(eval_results),
+        field_metrics=aggregate_metrics(eval_results, dataset_type),
         per_incident=eval_results,
+        validation_failure_totals=sum_validation_failures(eval_results),
     )
 
 
@@ -1213,12 +1289,13 @@ def evaluate_holdout_stratified(
         n_completed=n_completed,
         n_escalated=n_escalated,
         completion_rate=n_completed / n_incidents if n_incidents > 0 else 0.0,
-        field_metrics=aggregate_metrics(eval_results),
+        field_metrics=aggregate_metrics(eval_results, dataset_type),
         per_incident=eval_results,
         samples=samples,
         mean_elapsed_seconds=round(mean_elapsed, 2),
         total_elapsed_seconds=round(total_elapsed, 2),
         fairness_metrics=compute_fairness_metrics(eval_results, samples),
+        validation_failure_totals=sum_validation_failures(eval_results),
     )
 
 
@@ -1266,6 +1343,12 @@ def print_report(report: HoldoutReport) -> None:
         f"({report.n_completed}/{report.n_incidents} completed, "
         f"{report.n_escalated} escalated)"
     )
+    if report.validation_failure_totals:
+        residual = ", ".join(
+            f"{key}={value}"
+            for key, value in report.validation_failure_totals.items()
+        )
+        print(f"Escalation validation residual: {residual}")
     print()
 
 

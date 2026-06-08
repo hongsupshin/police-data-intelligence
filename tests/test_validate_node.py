@@ -15,14 +15,34 @@ from src.agents.state import (
     EnrichmentState,
     PipelineStage,
     SearchStrategyType,
+    ValidationResult,
 )
 from src.validation.validate_node import (
     _is_excluded_source,
     check_date_match,
     check_location_match,
     check_name_match,
+    summarize_validation_failures,
     validate_node,
 )
+
+
+def _make_vr(
+    url: str = "https://news.com/article",
+    *,
+    date_match: bool = True,
+    location_match: bool = True,
+    victim_name_match: bool | None = True,
+    passed: bool = True,
+) -> ValidationResult:
+    """Build a ValidationResult with controlled check outcomes for tests."""
+    return ValidationResult(
+        article=Article(url=url, title="t", snippet="s"),
+        date_match=date_match,
+        location_match=location_match,
+        victim_name_match=victim_name_match,
+        passed=passed,
+    )
 
 
 @pytest.fixture
@@ -109,6 +129,74 @@ def test_is_excluded_source_normal_url() -> None:
     assert not _is_excluded_source("https://cbs.com/news/shooting")
 
 
+class TestSummarizeValidationFailures:
+    """Tests for the summarize_validation_failures helper."""
+
+    def test_empty(self) -> None:
+        """Empty input yields all-zero counts."""
+        assert summarize_validation_failures([]) == {
+            "total": 0,
+            "passed": 0,
+            "excluded": 0,
+            "date_fail": 0,
+            "location_fail": 0,
+            "name_fail": 0,
+        }
+
+    def test_all_pass(self) -> None:
+        """All-passing articles count only as total + passed."""
+        summary = summarize_validation_failures([_make_vr(), _make_vr()])
+        assert summary == {
+            "total": 2,
+            "passed": 2,
+            "excluded": 0,
+            "date_fail": 0,
+            "location_fail": 0,
+            "name_fail": 0,
+        }
+
+    def test_date_and_location_fail(self) -> None:
+        """Date and location failures are tallied independently."""
+        summary = summarize_validation_failures(
+            [
+                _make_vr(date_match=False, passed=False),
+                _make_vr(location_match=False, passed=False),
+            ]
+        )
+        assert summary["date_fail"] == 1
+        assert summary["location_fail"] == 1
+        assert summary["passed"] == 0
+        assert summary["total"] == 2
+
+    def test_name_fail_counted_only_when_applicable(self) -> None:
+        """name_fail counts False but not None (not-applicable)."""
+        summary = summarize_validation_failures(
+            [
+                _make_vr(victim_name_match=False, passed=False),
+                _make_vr(victim_name_match=None),
+            ]
+        )
+        assert summary["name_fail"] == 1
+
+    def test_excluded_source_not_counted_as_date_location_fail(self) -> None:
+        """Excluded sources are bucketed separately, not as date/location fails."""
+        summary = summarize_validation_failures(
+            [
+                _make_vr(
+                    url="https://example.com/report.pdf",
+                    date_match=False,
+                    location_match=False,
+                    victim_name_match=None,
+                    passed=False,
+                )
+            ]
+        )
+        assert summary["excluded"] == 1
+        assert summary["date_fail"] == 0
+        assert summary["location_fail"] == 0
+        assert summary["name_fail"] == 0
+
+
 class TestValidateNode:
     """Tests for the validate_node orchestrator function."""
 
@@ -159,6 +247,35 @@ class TestValidateNode:
         result = validate_node(base_state)
         assert result.validation_results == []
         assert "Validation failed" in result.error_message
+
+    def test_failure_summary_populated_on_success(
+        self, base_state: EnrichmentState
+    ) -> None:
+        """Success path sets validation_failure_summary from results."""
+        result = validate_node(base_state)
+        assert result.validation_failure_summary == {
+            "total": 2,
+            "passed": 2,
+            "excluded": 0,
+            "date_fail": 0,
+            "location_fail": 0,
+            "name_fail": 0,
+        }
+
+    def test_failure_summary_populated_on_exception(
+        self, base_state: EnrichmentState
+    ) -> None:
+        """Exception path sets an all-zero validation_failure_summary."""
+        base_state.retrieved_articles = ["not an article"]
+        result = validate_node(base_state)
+        assert result.validation_failure_summary == {
+            "total": 0,
+            "passed": 0,
+            "excluded": 0,
+            "date_fail": 0,
+            "location_fail": 0,
+            "name_fail": 0,
+        }
 
     def test_article_with_missing_date_and_name_match(
         self, base_state: EnrichmentState
