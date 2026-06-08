@@ -263,6 +263,24 @@ Results are written to `output/enrichment/` as pretty-printed JSON files:
     { "url": "https://www.cbsnews.com/...", "title": "Police Kill Suspect ..." }
     // ... 3 more articles
   ],
+  "validation_results": [
+    {
+      "article": { "url": "https://www.nbcdfw.com/...", "title": "Officers Shoot Armed Man ..." },
+      "date_match": true,
+      "location_match": true,
+      "victim_name_match": false,
+      "passed": false
+    }
+    // ... 4 more
+  ],
+  "validation_failure_summary": {
+    "total": 5,
+    "passed": 0,
+    "excluded": 1,
+    "date_fail": 2,
+    "location_fail": 3,
+    "name_fail": 1
+  },
   "extracted_fields": [
     {
       "field_name": "officer_name",
