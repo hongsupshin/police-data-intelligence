@@ -22,6 +22,7 @@ from src.eval.holdout import (
     PipelineOutcome,
     _infer_stage_reached,
     aggregate_metrics,
+    comparators_for_dataset,
     compare_age,
     compare_location,
     compare_outcome,
@@ -29,6 +30,7 @@ from src.eval.holdout import (
     compare_time,
     compare_weapon,
     compute_fairness_metrics,
+    sum_validation_failures,
 )
 
 # ---------------------------------------------------------------------------
@@ -820,3 +822,95 @@ class TestHoldoutReportNewFields:
         assert report.mean_elapsed_seconds == 0.0
         assert report.total_elapsed_seconds == 0.0
         assert report.fairness_metrics == {}
+        assert report.validation_failure_totals == {}
+
+
+# ---------------------------------------------------------------------------
+# comparators_for_dataset (dataset-aware field set)
+# ---------------------------------------------------------------------------
+
+
+class TestComparatorsForDataset:
+    """Test the dataset-aware comparator subset."""
+
+    def test_civilians_yields_all_six(self) -> None:
+        """Civilians dataset evaluates all 6 comparator fields."""
+        comparators = comparators_for_dataset(DatasetType.CIVILIANS_SHOT)
+        assert set(comparators.keys()) == set(FIELD_COMPARATORS.keys())
+
+    def test_officers_yields_only_mapped_four(self) -> None:
+        """Officers dataset drops weapon and time_of_day (no ground truth)."""
+        comparators = comparators_for_dataset(DatasetType.OFFICERS_SHOT)
+        assert set(comparators.keys()) == {
+            MediaFeatureField.CIVILIAN_AGE,
+            MediaFeatureField.CIVILIAN_RACE,
+            MediaFeatureField.LOCATION_DETAIL,
+            MediaFeatureField.OUTCOME,
+        }
+
+    def test_aggregate_metrics_respects_officers_subset(self) -> None:
+        """aggregate_metrics with officers dataset reports only 4 fields."""
+        metrics = aggregate_metrics([], DatasetType.OFFICERS_SHOT)
+        assert len(metrics) == 4
+        assert MediaFeatureField.WEAPON.value not in {m.field_name for m in metrics}
+
+
+# ---------------------------------------------------------------------------
+# validation_failure telemetry
+# ---------------------------------------------------------------------------
+
+
+class TestValidationFailureTelemetry:
+    """Test the per-check failure summary threading and aggregation."""
+
+    def test_eval_result_summary_default_and_set(self) -> None:
+        """EvalResult.validation_failure_summary defaults to None and is settable."""
+        default = EvalResult(
+            incident_id=1,
+            dataset_type=DatasetType.CIVILIANS_SHOT,
+            pipeline_outcome=PipelineOutcome.COMPLETE,
+        )
+        assert default.validation_failure_summary is None
+
+        with_summary = EvalResult(
+            incident_id=2,
+            dataset_type=DatasetType.CIVILIANS_SHOT,
+            pipeline_outcome=PipelineOutcome.ESCALATE,
+            validation_failure_summary={"total": 3, "location_fail": 2},
+        )
+        assert with_summary.validation_failure_summary == {
+            "total": 3,
+            "location_fail": 2,
+        }
+
+    def test_sum_only_escalated(self) -> None:
+        """sum_validation_failures sums escalated incidents and ignores completed."""
+        escalated_a = EvalResult(
+            incident_id=1,
+            dataset_type=DatasetType.CIVILIANS_SHOT,
+            pipeline_outcome=PipelineOutcome.ESCALATE,
+            validation_failure_summary={"total": 2, "location_fail": 1, "name_fail": 1},
+        )
+        escalated_b = EvalResult(
+            incident_id=2,
+            dataset_type=DatasetType.CIVILIANS_SHOT,
+            pipeline_outcome=PipelineOutcome.ESCALATE,
+            validation_failure_summary={"total": 1, "location_fail": 1, "name_fail": 0},
+        )
+        completed = EvalResult(
+            incident_id=3,
+            dataset_type=DatasetType.CIVILIANS_SHOT,
+            pipeline_outcome=PipelineOutcome.COMPLETE,
+            validation_failure_summary={"total": 5, "location_fail": 9, "name_fail": 9},
+        )
+        totals = sum_validation_failures([escalated_a, escalated_b, completed])
+        assert totals == {"total": 3, "location_fail": 2, "name_fail": 1}
+
+    def test_sum_empty_when_no_summaries(self) -> None:
+        """sum_validation_failures returns empty dict when no summaries present."""
+        escalated = EvalResult(
+            incident_id=1,
+            dataset_type=DatasetType.CIVILIANS_SHOT,
+            pipeline_outcome=PipelineOutcome.ESCALATE,
+        )
+        assert sum_validation_failures([escalated]) == {}

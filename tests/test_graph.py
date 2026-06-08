@@ -509,8 +509,35 @@ def test_escalate_node_json_keys(
         "search_strategy",
         "retry_count",
         "retrieved_articles",
+        "validation_results",
+        "validation_failure_summary",
         "extracted_fields",
         "conflicting_fields",
         "outcome_summary",
     }
     assert set(data.keys()) == expected_keys
+
+
+def test_escalate_node_dumps_validation_telemetry(
+    base_state: EnrichmentState, tmp_path: Path
+) -> None:
+    """Escalate output carries validation_results and failure summary."""
+    config = RunnableConfig(
+        {"configurable": {"settings": Settings(output_dir=str(tmp_path))}}
+    )
+    state = base_state.model_copy()
+    state.validation_results = [ValidationResult(article=_STUB_ARTICLE, passed=False)]
+    state.validation_failure_summary = {
+        "total": 1,
+        "passed": 0,
+        "excluded": 0,
+        "date_fail": 1,
+        "location_fail": 1,
+        "name_fail": 0,
+    }
+    result = escalate_node(state, config)
+
+    data = json.loads(Path(result.output_file_path).read_text())
+    assert data["validation_results"][0]["article"] == _STUB_ARTICLE.model_dump()
+    assert not data["validation_results"][0]["passed"]
+    assert data["validation_failure_summary"] == state.validation_failure_summary

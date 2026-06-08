@@ -131,6 +131,56 @@ def check_date_match(article_date: date | None, incident_date: date | None) -> b
     return diff <= 5
 
 
+def summarize_validation_failures(results: list[ValidationResult]) -> dict[str, int]:
+    """Count per-check validation outcomes across articles.
+
+    Produces a compact breakdown of why articles failed validation, for
+    telemetry on the escalate path and the holdout residual read. Excluded
+    sources (PDFs, CSVs, compilation sites) are counted separately rather
+    than as date/location failures, since they fail for a structural reason
+    and are not a query/relevance problem a search retry could fix.
+
+    Args:
+        results: Validation results from the validate node (may be empty).
+
+    Returns:
+        Dict with integer counts keyed by:
+        - total: number of articles validated
+        - passed: articles that passed validation
+        - excluded: articles rejected as excluded sources
+        - date_fail: non-excluded articles whose date did not match
+        - location_fail: non-excluded articles whose location did not match
+        - name_fail: non-excluded articles whose victim name did not match
+          (counted only when victim_name_match was applicable, i.e. not None)
+
+    Examples:
+        >>> summarize_validation_failures([])
+        {'total': 0, 'passed': 0, 'excluded': 0, 'date_fail': 0, \
+'location_fail': 0, 'name_fail': 0}
+    """
+    summary = {
+        "total": len(results),
+        "passed": 0,
+        "excluded": 0,
+        "date_fail": 0,
+        "location_fail": 0,
+        "name_fail": 0,
+    }
+    for result in results:
+        if result.passed:
+            summary["passed"] += 1
+        if _is_excluded_source(result.article.url):
+            summary["excluded"] += 1
+            continue
+        if not result.date_match:
+            summary["date_fail"] += 1
+        if not result.location_match:
+            summary["location_fail"] += 1
+        if result.victim_name_match is False:
+            summary["name_fail"] += 1
+    return summary
+
+
 def validate_node(state: EnrichmentState) -> EnrichmentState:
     """Validate retrieved articles against incident data.
 
@@ -196,9 +246,13 @@ def validate_node(state: EnrichmentState) -> EnrichmentState:
             validation_results.append(result)
 
         state.validation_results = validation_results
+        state.validation_failure_summary = summarize_validation_failures(
+            validation_results
+        )
         state.current_stage = PipelineStage.VALIDATE
     except Exception as e:
         state.validation_results = []
+        state.validation_failure_summary = summarize_validation_failures([])
         state.error_message = f"Validation failed: {str(e)}"
         state.current_stage = PipelineStage.VALIDATE
     return state

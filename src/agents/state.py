@@ -282,6 +282,9 @@ class EnrichmentState(BaseModel):
         retrieved_articles: Current set of articles from latest search.
 
         validation_results: Articles validated against incident anchors.
+        validation_failure_summary: Per-check failure counts from the final
+            validate pass (total, passed, excluded, date_fail, location_fail,
+            name_fail). None until the validate node runs.
 
         extracted_fields: Only enriched/updated fields with provenance.
         conflicting_fields: Field names with conflicts (for escalation).
@@ -318,6 +321,7 @@ class EnrichmentState(BaseModel):
 
     # Validation results (Validate Node)
     validation_results: list[ValidationResult] = Field(default_factory=list)
+    validation_failure_summary: dict[str, int] | None = None
 
     # Synthesize outputs (Synthesize Node)
     extracted_fields: list[FieldExtraction] = Field(default_factory=list)
