@@ -88,15 +88,15 @@ nodes update state fields, graph edges handle transitions.
 
 ### Pipeline Nodes
 
-| Node            | Type          | Purpose                                                                    |
-| --------------- | ------------- | -------------------------------------------------------------------------- |
-| **Load**        | Deterministic | Reads incident record from PostgreSQL, populates state fields              |
-| **Search**      | Deterministic | Constructs query from incident fields, calls Tavily API for news articles  |
-| **Validate**    | Rule-based    | Checks date proximity (±5 days), location match, and optional name match   |
-| **Synthesize**  | LLM-powered   | Extracts structured fields from articles, checks cross-article consistency |
-| **Coordinator** | Rule-based    | Gates after each stage — decides retry, proceed, or escalate               |
-| **Complete**    | Terminal      | Writes enrichment results to JSON                                          |
-| **Escalate**    | Terminal      | Writes escalation report to JSON for human review                          |
+| Node            | Type          | Purpose                                                                                                                 |
+| --------------- | ------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| **Load**        | Deterministic | Reads incident record from PostgreSQL, populates state fields                                                           |
+| **Search**      | Deterministic | Constructs query from incident fields, calls Tavily API for news articles (scoped to a date window around the incident) |
+| **Validate**    | Rule-based    | Checks date proximity (±5 days), location match, and optional name match                                                |
+| **Synthesize**  | LLM-powered   | Extracts structured fields from articles, checks cross-article consistency                                              |
+| **Coordinator** | Rule-based    | Gates after each stage — decides retry, proceed, or escalate                                                            |
+| **Complete**    | Terminal      | Writes enrichment results to JSON                                                                                       |
+| **Escalate**    | Terminal      | Writes escalation report to JSON for human review                                                                       |
 
 ### Search Strategies
 
@@ -149,15 +149,16 @@ For each field extracted from validated articles:
 - **All articles return null** → skip (no data, not a conflict)
 - **Articles agree but conflict with database** → add to both lists
 
-After synthesize, the Coordinator applies partial completion logic: if any fields
-were successfully extracted (`extracted_fields` non-empty), route to COMPLETE —
-even if conflicts exist on other fields. Only escalate on conflict when zero
-fields were extracted. Partial completions set `requires_human_review = True` so
-conflicts are still surfaced for review.
+After synthesize, the Coordinator applies partial completion logic: if any
+fields were successfully extracted (`extracted_fields` non-empty), route to
+COMPLETE — even if conflicts exist on other fields. Only escalate on conflict
+when zero fields were extracted. Partial completions set
+`requires_human_review = True` so conflicts are still surfaced for review.
 
-Before comparing values, the synthesize node normalizes names, race terms, and weapon
-categories to reduce spurious conflicts (see
-[EVALUATION.md — Fix 2](EVALUATION.md#fix-2-synthesize-normalization) for details).
+Before comparing values, the synthesize node normalizes names, race terms, and
+weapon categories to reduce spurious conflicts (see
+[EVALUATION.md — Fix 2](EVALUATION.md#fix-2-synthesize-normalization) for
+details).
 
 Each `FieldConflict` captures the field name, conflict type (`articles_disagree`
 or `reference_mismatch`), the conflicting values with source URLs, and the
@@ -265,7 +266,10 @@ Results are written to `output/enrichment/` as pretty-printed JSON files:
   ],
   "validation_results": [
     {
-      "article": { "url": "https://www.nbcdfw.com/...", "title": "Officers Shoot Armed Man ..." },
+      "article": {
+        "url": "https://www.nbcdfw.com/...",
+        "title": "Officers Shoot Armed Man ..."
+      },
       "date_match": true,
       "location_match": true,
       "victim_name_match": false,
@@ -357,17 +361,19 @@ fairness metrics, adversarial evaluation, and discussion.
 
 Environment variables (see `.env.example`):
 
-| Variable                           | Default             | Description                           |
-| ---------------------------------- | ------------------- | ------------------------------------- |
-| `ANTHROPIC_API_KEY`                | (required)          | Anthropic API key                     |
-| `ANTHROPIC_MODEL`                  | `claude-sonnet-4-6` | Model for LLM-powered nodes           |
-| `TAVILY_API_KEY`                   | (required)          | Tavily API key for news search        |
-| `LOG_LEVEL`                        | `INFO`              | Logging level                         |
-| `ENRICHMENT_OUTPUT_DIR`            | `output/enrichment` | Output directory for JSON results     |
-| `ENRICHMENT_MAX_SEARCH_RESULTS`    | `5`                 | Max articles per search               |
-| `ENRICHMENT_SEARCH_DEPTH`          | `advanced`          | Tavily search depth                   |
-| `ENRICHMENT_FUZZY_MATCH_THRESHOLD` | `80`                | Min rapidfuzz score for name matching |
-| `ENRICHMENT_DATE_PROXIMITY_DAYS`   | `5`                 | Max days between article and incident |
+| Variable                                | Default             | Description                                            |
+| --------------------------------------- | ------------------- | ------------------------------------------------------ |
+| `ANTHROPIC_API_KEY`                     | (required)          | Anthropic API key                                      |
+| `ANTHROPIC_MODEL`                       | `claude-sonnet-4-6` | Model for LLM-powered nodes                            |
+| `TAVILY_API_KEY`                        | (required)          | Tavily API key for news search                         |
+| `LOG_LEVEL`                             | `INFO`              | Logging level                                          |
+| `ENRICHMENT_OUTPUT_DIR`                 | `output/enrichment` | Output directory for JSON results                      |
+| `ENRICHMENT_MAX_SEARCH_RESULTS`         | `10`                | Max articles per search                                |
+| `ENRICHMENT_SEARCH_DEPTH`               | `advanced`          | Tavily search depth                                    |
+| `ENRICHMENT_SEARCH_WINDOW_BACK_DAYS`    | `14`                | Days before incident date for the Tavily search window |
+| `ENRICHMENT_SEARCH_WINDOW_FORWARD_DAYS` | `60`                | Days after incident date for the Tavily search window  |
+| `ENRICHMENT_FUZZY_MATCH_THRESHOLD`      | `80`                | Min rapidfuzz score for name matching                  |
+| `ENRICHMENT_DATE_PROXIMITY_DAYS`        | `5`                 | Max days between article and incident                  |
 
 PostgreSQL connection variables (`DB_HOST`, `DB_PORT`, etc.) are configured in
 `.env.example` and used by the ETL pipeline (`data/`).
@@ -485,7 +491,8 @@ principles:
 
 - ETL pipeline (CSV → PostgreSQL)
 - 7-node LangGraph pipeline with conditional routing and retry strategies
-- Partial completion on synthesize conflicts (accept agreed fields, flag conflicts)
+- Partial completion on synthesize conflicts (accept agreed fields, flag
+  conflicts)
 - 4-tier search strategy (exact → temporal → name_partial → entity_dropped)
 - CLI entrypoint for single-incident enrichment
 - Holdout evaluation framework (precision, coverage against DB ground truth)
