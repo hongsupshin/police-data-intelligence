@@ -27,6 +27,13 @@ class Settings(BaseSettings):
         output_dir: Directory for pipeline output JSON files.
         max_search_results: Maximum articles per Tavily search request.
         search_depth: Tavily search depth (``basic`` or ``advanced``).
+        search_window_back_days: Days before the incident date to bound
+            the Tavily search window (``start_date``). Must be at least
+            ``date_proximity_days`` so search never excludes an article
+            that validation would accept.
+        search_window_forward_days: Days after the incident date to bound
+            the Tavily search window (``end_date``). Wider than the back
+            window to capture follow-up coverage (news lag).
         relevance_score_threshold: Minimum average relevance score to
             proceed from search to validation.
         fuzzy_match_threshold: Minimum rapidfuzz score for location,
@@ -38,8 +45,10 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="ENRICHMENT_")
 
     output_dir: str = "output/enrichment"
-    max_search_results: int = 5
+    max_search_results: int = 10
     search_depth: str = "advanced"
+    search_window_back_days: int = 14
+    search_window_forward_days: int = 60
     relevance_score_threshold: float = 0.5
     fuzzy_match_threshold: int = 80
     date_proximity_days: int = 5
