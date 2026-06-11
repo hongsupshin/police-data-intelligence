@@ -36,9 +36,8 @@ def build_search_query(state: EnrichmentState, strategy: SearchStrategyType) -> 
     Strategy behavior:
         - EXACT_MATCH: All available fields, exact date (YYYY-MM-DD).
         - TEMPORAL_EXPANDED: Replace exact date with "Month YYYY" format.
-        - NAME_PARTIAL: Drop officer name, keep civilian name + month-year.
-        - ENTITY_DROPPED: Drop officer and civilian names, keep
-          location + date range.
+        - NAME_PARTIAL: Drop officer name, keep civilian name + month-year
+          (terminal rung — the victim name is never stripped).
 
     Always includes "Texas" and "police shooting" as base terms.
     Appends "fatal" or "killed" for fatal-severity incidents.
@@ -64,8 +63,6 @@ def build_search_query(state: EnrichmentState, strategy: SearchStrategyType) -> 
         'Houston Texas police shooting 2018-03-15 James Rodriguez fatal'
         >>> build_search_query(state, SearchStrategyType.TEMPORAL_EXPANDED)
         'Houston Texas police shooting March 2018 James Rodriguez fatal'
-        >>> build_search_query(state, SearchStrategyType.ENTITY_DROPPED)
-        'Houston Texas police shooting March 2018 fatal'
     """
     if strategy == SearchStrategyType.EXACT_MATCH:
         date = state.incident_date.strftime("%Y-%m-%d")
@@ -79,10 +76,6 @@ def build_search_query(state: EnrichmentState, strategy: SearchStrategyType) -> 
         date = state.incident_date.strftime("%B %Y")
         officer = ""
         civilian = state.civilian_name
-    elif strategy == SearchStrategyType.ENTITY_DROPPED:
-        date = state.incident_date.strftime("%B %Y")  # Expand the date window
-        officer = ""
-        civilian = ""
     search_query = []
     if state.location:
         search_query.append(state.location)

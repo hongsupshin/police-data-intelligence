@@ -30,13 +30,12 @@ class SearchStrategyType(StrEnum):
     - exact_match: All fields, exact date (initial)
     - temporal_expanded: Date range ±2 days (after < 2 results)
     - name_partial: Drop officer name, keep civilian name + month-year
-    - entity_dropped: Drop both names, keep location + date
+      (terminal rung — the victim name is never stripped)
     """
 
     EXACT_MATCH = "exact_match"
     TEMPORAL_EXPANDED = "temporal_expanded"
     NAME_PARTIAL = "name_partial"
-    ENTITY_DROPPED = "entity_dropped"
 
 
 class PipelineStage(StrEnum):

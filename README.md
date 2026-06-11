@@ -107,8 +107,7 @@ The Coordinator implements an escalating retry strategy:
 | 0     | `exact_match`       | All fields, exact date                             |
 | 1     | `temporal_expanded` | Month + year format, keep both names               |
 | 2     | `name_partial`      | Drop officer name, keep civilian name + month-year |
-| 3     | `entity_dropped`    | Drop both names, keep location + date range        |
-| 4     | Escalate            | Flag for human review                              |
+| 3     | Escalate            | Flag for human review                              |
 
 ### Escalation Triggers
 
@@ -237,7 +236,7 @@ Results are written to `output/enrichment/` as pretty-printed JSON files:
     }
     // ... 4 more (4 failed, 1 passed)
   ],
-  "search_strategy": "entity_dropped",
+  "search_strategy": "name_partial",
   "retry_count": 2,
   "outcome_summary": "Enriched 7 fields for incident 792 (civilians_shot)"
 }
@@ -493,7 +492,7 @@ principles:
 - 7-node LangGraph pipeline with conditional routing and retry strategies
 - Partial completion on synthesize conflicts (accept agreed fields, flag
   conflicts)
-- 4-tier search strategy (exact → temporal → name_partial → entity_dropped)
+- 3-tier search strategy (exact → temporal → name_partial)
 - CLI entrypoint for single-incident enrichment
 - Holdout evaluation framework (precision, coverage against DB ground truth)
 - N=100 holdout eval: **70% completion, 72% exact / 84% fuzzy precision** across

@@ -34,8 +34,6 @@ def _relevance_threshold(strategy: SearchStrategyType) -> float:
             return 0.55
         case SearchStrategyType.NAME_PARTIAL:
             return 0.50
-        case SearchStrategyType.ENTITY_DROPPED:
-            return 0.45
 
 
 def check_load_results(state: EnrichmentState) -> EnrichmentState:
