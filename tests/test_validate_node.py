@@ -8,6 +8,7 @@ function that orchestrates article validation against incident data.
 from datetime import date
 
 import pytest
+from langchain_core.runnables import RunnableConfig
 
 from src.agents.state import (
     Article,
@@ -17,6 +18,7 @@ from src.agents.state import (
     SearchStrategyType,
     ValidationResult,
 )
+from src.config import Settings
 from src.validation.validate_node import (
     _is_excluded_source,
     check_date_match,
@@ -81,6 +83,12 @@ def base_state() -> EnrichmentState:
     )
 
 
+@pytest.fixture
+def config() -> RunnableConfig:
+    """RunnableConfig injecting default Settings, mirroring run.py."""
+    return RunnableConfig({"configurable": {"settings": Settings()}})
+
+
 def test_check_location_match() -> None:
     """Fuzzy partial match of location within article text."""
     assert check_location_match("A shooting in Houston", "Houston")
@@ -98,15 +106,16 @@ def test_check_name_match() -> None:
 
 
 def test_check_date_match() -> None:
-    """Date match within +/-5 day tolerance, including boundary."""
-    assert check_date_match(date(2018, 3, 10), date(2018, 3, 10))
-    assert check_date_match(date(2018, 3, 10), date(2018, 3, 12))
-    assert check_date_match(date(2018, 3, 9), date(2018, 3, 12))
-    assert check_date_match(date(2018, 3, 8), date(2018, 3, 12))  # diff=4, within 5
-    assert check_date_match(date(2018, 3, 7), date(2018, 3, 12))  # diff=5, boundary
-    assert not check_date_match(date(2018, 3, 6), date(2018, 3, 12))  # diff=6, outside
-    assert not check_date_match(None, date(2018, 3, 12))
-    assert not check_date_match(date(2018, 3, 12), None)
+    """Date match within the configured tolerance, including the boundary."""
+    assert check_date_match(date(2018, 3, 10), date(2018, 3, 10), proximity_days=5)
+    assert check_date_match(date(2018, 3, 9), date(2018, 3, 12), proximity_days=5)
+    assert check_date_match(date(2018, 3, 7), date(2018, 3, 12), proximity_days=5)
+    assert not check_date_match(date(2018, 3, 6), date(2018, 3, 12), proximity_days=5)
+    assert not check_date_match(None, date(2018, 3, 12), proximity_days=5)
+    assert not check_date_match(date(2018, 3, 12), None, proximity_days=5)
+    # tolerance is configurable, not hardcoded
+    assert check_date_match(date(2018, 3, 6), date(2018, 3, 12), proximity_days=6)
+    assert not check_date_match(date(2018, 3, 7), date(2018, 3, 12), proximity_days=2)
 
 
 def test_is_excluded_source_pdf() -> None:
@@ -200,9 +209,11 @@ class TestSummarizeValidationFailures:
 class TestValidateNode:
     """Tests for the validate_node orchestrator function."""
 
-    def test_happy_path(self, base_state: EnrichmentState) -> None:
+    def test_happy_path(
+        self, base_state: EnrichmentState, config: RunnableConfig
+    ) -> None:
         """All articles match on date, location, and name."""
-        result = validate_node(base_state)
+        result = validate_node(base_state, config)
         assert result.current_stage == PipelineStage.VALIDATE
         assert len(result.validation_results) == 2
         for vr in result.validation_results:
@@ -211,10 +222,12 @@ class TestValidateNode:
             assert vr.victim_name_match
             assert vr.passed
 
-    def test_victim_name_match_none(self, base_state: EnrichmentState) -> None:
+    def test_victim_name_match_none(
+        self, base_state: EnrichmentState, config: RunnableConfig
+    ) -> None:
         """victim_name_match is None when civilian_name unavailable."""
         base_state.civilian_name = None
-        result = validate_node(base_state)
+        result = validate_node(base_state, config)
         assert result.current_stage == PipelineStage.VALIDATE
         assert len(result.validation_results) == 2
         for vr in result.validation_results:
@@ -223,7 +236,9 @@ class TestValidateNode:
             assert vr.victim_name_match is None
             assert vr.passed  # only checks location and date
 
-    def test_content_fallback_on_title(self, base_state: EnrichmentState) -> None:
+    def test_content_fallback_on_title(
+        self, base_state: EnrichmentState, config: RunnableConfig
+    ) -> None:
         """Empty content falls back to title for location and name matching."""
         base_state.retrieved_articles = [
             Article(
@@ -234,25 +249,27 @@ class TestValidateNode:
                 published_date=date(2018, 3, 14),
             )
         ]
-        result = validate_node(base_state)
+        result = validate_node(base_state, config)
         for vr in result.validation_results:
             assert vr.location_match
             assert vr.date_match
             assert vr.victim_name_match
             assert vr.passed
 
-    def test_exception_handling(self, base_state: EnrichmentState) -> None:
+    def test_exception_handling(
+        self, base_state: EnrichmentState, config: RunnableConfig
+    ) -> None:
         """Invalid article triggers exception and sets error_message."""
         base_state.retrieved_articles = ["not an article"]
-        result = validate_node(base_state)
+        result = validate_node(base_state, config)
         assert result.validation_results == []
         assert "Validation failed" in result.error_message
 
     def test_failure_summary_populated_on_success(
-        self, base_state: EnrichmentState
+        self, base_state: EnrichmentState, config: RunnableConfig
     ) -> None:
         """Success path sets validation_failure_summary from results."""
-        result = validate_node(base_state)
+        result = validate_node(base_state, config)
         assert result.validation_failure_summary == {
             "total": 2,
             "passed": 2,
@@ -263,11 +280,11 @@ class TestValidateNode:
         }
 
     def test_failure_summary_populated_on_exception(
-        self, base_state: EnrichmentState
+        self, base_state: EnrichmentState, config: RunnableConfig
     ) -> None:
         """Exception path sets an all-zero validation_failure_summary."""
         base_state.retrieved_articles = ["not an article"]
-        result = validate_node(base_state)
+        result = validate_node(base_state, config)
         assert result.validation_failure_summary == {
             "total": 0,
             "passed": 0,
@@ -278,7 +295,7 @@ class TestValidateNode:
         }
 
     def test_article_with_missing_date_and_name_match(
-        self, base_state: EnrichmentState
+        self, base_state: EnrichmentState, config: RunnableConfig
     ) -> None:
         """Missing date + name match → passes (location + name required)."""
         base_state.retrieved_articles = [
@@ -290,7 +307,7 @@ class TestValidateNode:
                 published_date=None,
             )
         ]
-        result = validate_node(base_state)
+        result = validate_node(base_state, config)
         for vr in result.validation_results:
             assert not vr.date_match
             assert vr.location_match
@@ -298,7 +315,7 @@ class TestValidateNode:
             assert vr.passed
 
     def test_article_with_missing_date_and_name_mismatch(
-        self, base_state: EnrichmentState
+        self, base_state: EnrichmentState, config: RunnableConfig
     ) -> None:
         """Missing date + name mismatch → fails even with location match."""
         base_state.retrieved_articles = [
@@ -310,7 +327,7 @@ class TestValidateNode:
                 published_date=None,
             )
         ]
-        result = validate_node(base_state)
+        result = validate_node(base_state, config)
         for vr in result.validation_results:
             assert not vr.date_match
             assert vr.location_match
@@ -318,7 +335,7 @@ class TestValidateNode:
             assert not vr.passed
 
     def test_article_with_missing_date_and_no_civilian_name(
-        self, base_state: EnrichmentState
+        self, base_state: EnrichmentState, config: RunnableConfig
     ) -> None:
         """Missing date + no civilian_name in state → passes on location alone (fallback)."""
         base_state.civilian_name = None
@@ -331,7 +348,7 @@ class TestValidateNode:
                 published_date=None,
             )
         ]
-        result = validate_node(base_state)
+        result = validate_node(base_state, config)
         for vr in result.validation_results:
             assert not vr.date_match
             assert vr.location_match
@@ -339,7 +356,7 @@ class TestValidateNode:
             assert vr.passed
 
     def test_article_with_missing_date_and_location_mismatch(
-        self, base_state: EnrichmentState
+        self, base_state: EnrichmentState, config: RunnableConfig
     ) -> None:
         """Missing published_date with location mismatch still fails."""
         base_state.retrieved_articles = [
@@ -351,30 +368,36 @@ class TestValidateNode:
                 published_date=None,
             )
         ]
-        result = validate_node(base_state)
+        result = validate_node(base_state, config)
         for vr in result.validation_results:
             assert not vr.date_match
             assert not vr.location_match
             assert not vr.passed
 
-    def test_article_with_missing_location(self, base_state: EnrichmentState) -> None:
+    def test_article_with_missing_location(
+        self, base_state: EnrichmentState, config: RunnableConfig
+    ) -> None:
         """Missing state location causes location_match=False and passed=False."""
         base_state.location = None
-        result = validate_node(base_state)
+        result = validate_node(base_state, config)
         for vr in result.validation_results:
             assert not vr.location_match
             assert not vr.passed
 
-    def test_date_match_location_mismatch(self, base_state: EnrichmentState) -> None:
+    def test_date_match_location_mismatch(
+        self, base_state: EnrichmentState, config: RunnableConfig
+    ) -> None:
         """Date matches but wrong location still fails validation."""
         base_state.location = "Dallas"
-        result = validate_node(base_state)
+        result = validate_node(base_state, config)
         for vr in result.validation_results:
             assert not vr.location_match
             assert vr.date_match
             assert not vr.passed
 
-    def test_pdf_url_excluded(self, base_state: EnrichmentState) -> None:
+    def test_pdf_url_excluded(
+        self, base_state: EnrichmentState, config: RunnableConfig
+    ) -> None:
         """Article with .pdf URL is auto-rejected without running checks."""
         base_state.retrieved_articles = [
             Article(
@@ -385,14 +408,16 @@ class TestValidateNode:
                 published_date=date(2018, 3, 15),
             )
         ]
-        result = validate_node(base_state)
+        result = validate_node(base_state, config)
         assert len(result.validation_results) == 1
         vr = result.validation_results[0]
         assert not vr.passed
         assert not vr.date_match
         assert not vr.location_match
 
-    def test_csv_url_excluded(self, base_state: EnrichmentState) -> None:
+    def test_csv_url_excluded(
+        self, base_state: EnrichmentState, config: RunnableConfig
+    ) -> None:
         """Article with .csv URL is auto-rejected."""
         base_state.retrieved_articles = [
             Article(
@@ -403,11 +428,13 @@ class TestValidateNode:
                 published_date=date(2018, 3, 15),
             )
         ]
-        result = validate_node(base_state)
+        result = validate_node(base_state, config)
         assert len(result.validation_results) == 1
         assert not result.validation_results[0].passed
 
-    def test_fatalencounters_url_excluded(self, base_state: EnrichmentState) -> None:
+    def test_fatalencounters_url_excluded(
+        self, base_state: EnrichmentState, config: RunnableConfig
+    ) -> None:
         """Article from fatalencounters.org is auto-rejected."""
         base_state.retrieved_articles = [
             Article(
@@ -418,11 +445,13 @@ class TestValidateNode:
                 published_date=None,
             )
         ]
-        result = validate_node(base_state)
+        result = validate_node(base_state, config)
         assert len(result.validation_results) == 1
         assert not result.validation_results[0].passed
 
-    def test_normal_url_not_excluded(self, base_state: EnrichmentState) -> None:
+    def test_normal_url_not_excluded(
+        self, base_state: EnrichmentState, config: RunnableConfig
+    ) -> None:
         """Regular news URL is still validated normally (not excluded)."""
         base_state.retrieved_articles = [
             Article(
@@ -433,9 +462,22 @@ class TestValidateNode:
                 published_date=date(2018, 3, 15),
             )
         ]
-        result = validate_node(base_state)
+        result = validate_node(base_state, config)
         assert len(result.validation_results) == 1
         vr = result.validation_results[0]
         assert vr.passed
         assert vr.date_match
         assert vr.location_match
+
+    def test_date_proximity_from_settings(
+        self, base_state: EnrichmentState
+    ) -> None:
+        """date_match honors Settings.date_proximity_days from config."""
+        strict_config = RunnableConfig(
+            {"configurable": {"settings": Settings(date_proximity_days=0)}}
+        )
+        result = validate_node(base_state, strict_config)
+        # article1 is on the incident date (diff=0) and still matches;
+        # article2 is one day off (diff=1) and now fails the stricter window.
+        assert result.validation_results[0].date_match
+        assert not result.validation_results[1].date_match

@@ -1,5 +1,8 @@
 """Tests for enrichment pipeline settings."""
 
+import pytest
+from pydantic import ValidationError
+
 from src.config import Settings
 
 
@@ -48,3 +51,9 @@ def test_search_window_covers_date_proximity():
     """
     settings = Settings()
     assert settings.search_window_back_days >= settings.date_proximity_days
+
+
+def test_search_window_validator_rejects_too_narrow():
+    """Settings raises if search_window_back_days < date_proximity_days."""
+    with pytest.raises(ValidationError):
+        Settings(search_window_back_days=3, date_proximity_days=5)

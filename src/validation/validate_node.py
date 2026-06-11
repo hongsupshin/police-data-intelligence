@@ -11,6 +11,7 @@ the article describes the same incident.
 
 from datetime import date
 
+from langchain_core.runnables import RunnableConfig
 from rapidfuzz import fuzz
 
 from src.agents.state import (
@@ -105,30 +106,37 @@ def check_name_match(article_name: str | None, name: str | None) -> bool:
     return fuzz.partial_ratio(article_name.lower(), name.lower()) >= 80
 
 
-def check_date_match(article_date: date | None, incident_date: date | None) -> bool:
-    """Check if article date is within ±5 days of incident date.
+def check_date_match(
+    article_date: date | None,
+    incident_date: date | None,
+    *,
+    proximity_days: int,
+) -> bool:
+    """Check if article date is within ``proximity_days`` of incident date.
 
     Args:
         article_date: Published date parsed from article metadata.
         incident_date: Incident date from database.
+        proximity_days: Maximum allowed difference in days for a match
+            (from ``Settings.date_proximity_days``).
 
     Returns:
-        True if dates are within 5 days of each other, False otherwise.
-        Returns False if either date is None.
+        True if the dates are within ``proximity_days`` of each other,
+        False otherwise. Returns False if either date is None.
 
     Examples:
         >>> from datetime import date
-        >>> check_date_match(date(2018, 3, 17), date(2018, 3, 15))
+        >>> check_date_match(date(2018, 3, 17), date(2018, 3, 15), proximity_days=5)
         True
-        >>> check_date_match(date(2018, 3, 25), date(2018, 3, 15))
+        >>> check_date_match(date(2018, 3, 25), date(2018, 3, 15), proximity_days=5)
         False
-        >>> check_date_match(None, date(2018, 3, 15))
+        >>> check_date_match(None, date(2018, 3, 15), proximity_days=5)
         False
     """
     if article_date is None or incident_date is None:
         return False
     diff = abs((article_date - incident_date).days)
-    return diff <= 5
+    return diff <= proximity_days
 
 
 def summarize_validation_failures(results: list[ValidationResult]) -> dict[str, int]:
@@ -181,7 +189,7 @@ def summarize_validation_failures(results: list[ValidationResult]) -> dict[str, 
     return summary
 
 
-def validate_node(state: EnrichmentState) -> EnrichmentState:
+def validate_node(state: EnrichmentState, config: RunnableConfig) -> EnrichmentState:
     """Validate retrieved articles against incident data.
 
     Loops through each article in state.retrieved_articles and checks
@@ -194,6 +202,8 @@ def validate_node(state: EnrichmentState) -> EnrichmentState:
     Args:
         state: Current enrichment state with incident fields and
             retrieved_articles populated by prior nodes.
+        config: RunnableConfig containing Settings under
+            ``configurable.settings``.
 
     Returns:
         Updated EnrichmentState with:
@@ -209,10 +219,12 @@ def validate_node(state: EnrichmentState) -> EnrichmentState:
         ...     incident_date=date(2018, 3, 15),
         ...     retrieved_articles=[...],
         ... )
-        >>> updated = validate_node(state)
+        >>> updated = validate_node(state, config)
         >>> updated.current_stage
         <PipelineStage.VALIDATE: 'validate'>
     """
+    settings = config["configurable"]["settings"]
+
     try:
         validation_results = []
         for article in state.retrieved_articles:
@@ -225,7 +237,9 @@ def validate_node(state: EnrichmentState) -> EnrichmentState:
             result = ValidationResult(article=article)
 
             result.date_match = check_date_match(
-                article.published_date, state.incident_date
+                article.published_date,
+                state.incident_date,
+                proximity_days=settings.date_proximity_days,
             )
 
             article_text = article.content or article.title
