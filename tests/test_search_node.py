@@ -167,31 +167,6 @@ class TestBuildSearchQueryTemporalExpanded:
         assert base_state.civilian_name in search_query, "Civilian name missing."
 
 
-class TestBuildSearchQueryEntityDropped:
-    """Tests for ENTITY_DROPPED strategy."""
-
-    def test_names_excluded(self, base_state: EnrichmentState) -> None:
-        """Officer and civilian names should not appear even when available."""
-        search_query = build_search_query(base_state, SearchStrategyType.ENTITY_DROPPED)
-        assert base_state.officer_name not in search_query, (
-            "Officer name still present in query."
-        )
-        assert base_state.civilian_name not in search_query, (
-            "Civilian name still present in query."
-        )
-
-    def test_location_and_date_kept(self, base_state: EnrichmentState) -> None:
-        """Location and date range should still be present."""
-        search_query = build_search_query(base_state, SearchStrategyType.ENTITY_DROPPED)
-        assert base_state.location in search_query, "Location missing."
-        assert base_state.incident_date.strftime("%B %Y") in search_query, (
-            "Expanded date missing."
-        )
-        assert base_state.incident_date.strftime("%Y-%m-%d") not in search_query, (
-            "Incorrect date format."
-        )
-
-
 # --- _date_window tests ---
 
 

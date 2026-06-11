@@ -279,11 +279,6 @@ def test_relevance_threshold_temporal_expanded() -> None:
     assert _relevance_threshold(SearchStrategyType.TEMPORAL_EXPANDED) == 0.55
 
 
-def test_relevance_threshold_entity_dropped() -> None:
-    """ENTITY_DROPPED threshold is 0.45."""
-    assert _relevance_threshold(SearchStrategyType.ENTITY_DROPPED) == 0.45
-
-
 # --- check_validate_results tests ---
 
 
