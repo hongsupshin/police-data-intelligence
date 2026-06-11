@@ -77,7 +77,7 @@ class EscalationReason(StrEnum):
     - Conflicting information across sources
     - Composite information requiring merge review
     - Overwriting existing non-null values
-    - Soft anchor match (date ±3-7 days)
+    - Soft anchor match (reserved; defined but not currently emitted)
     - Max retries reached without sufficient data
     """
 
@@ -244,10 +244,14 @@ class ValidationResult(BaseModel):
 
     Attributes:
         article: The original retrieved article.
-        date_match: Whether article date is within ±3 days of incident_date.
+        date_match: Whether article date is within the configured date-proximity
+            tolerance (``Settings.date_proximity_days``, default ±5 days).
         location_match: Whether location matches via string similarity or geocoding.
         victim_name_match: Whether victim name matches (None if unavailable).
-        passed: True if date AND location match (computed from above).
+        passed: Whether the article passed validation via the three-tier rule
+            (dated: date_match AND location_match; undated with a name:
+            location_match AND victim_name_match; undated without a name:
+            location_match alone).
     """
 
     article: Article

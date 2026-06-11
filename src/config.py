@@ -15,6 +15,7 @@ Example:
         settings = Settings(output_dir="/tmp/test")
 """
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -52,3 +53,18 @@ class Settings(BaseSettings):
     relevance_score_threshold: float = 0.5
     fuzzy_match_threshold: int = 80
     date_proximity_days: int = 5
+
+    @model_validator(mode="after")
+    def _check_search_window_covers_date_proximity(self) -> "Settings":
+        """Ensure the search window never excludes an article validation accepts.
+
+        ``search_window_back_days`` must be at least ``date_proximity_days`` so
+        the Tavily search window can never drop an article that the validate
+        node would otherwise accept on date proximity.
+        """
+        if self.search_window_back_days < self.date_proximity_days:
+            raise ValueError(
+                f"search_window_back_days ({self.search_window_back_days}) must be "
+                f">= date_proximity_days ({self.date_proximity_days})"
+            )
+        return self
