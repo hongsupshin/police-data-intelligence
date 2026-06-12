@@ -25,6 +25,8 @@ from src.agents.state import (
     SearchStrategyType,
     ValidationResult,
 )
+from src.config import Settings
+from src.synthesize.relevance_judge import RelevanceVerdict
 from src.synthesize.synthesize_node import (
     check_articles_match,
     check_reference_match,
@@ -868,3 +870,89 @@ def test_check_articles_match_weapon_embedding_similarity(
     )
     assert matched is True
     assert winner is not None
+
+
+class TestRelevanceGate:
+    """The officer relevance judge: flag-gated, officers-only, fail-open."""
+
+    @staticmethod
+    def _exts() -> list[FieldExtraction]:
+        return [
+            _make_extraction("officer_name", "James Rodriguez"),
+            _make_extraction("weapon", "handgun"),
+        ]
+
+    def _mock_llm(self, verdict=None, raise_on_judge: bool = False) -> MagicMock:
+        """Mock LLM: an extraction per article, then optionally a judge verdict."""
+        side = [
+            MergeExtractionResponse(extractions=self._exts()),
+            MergeExtractionResponse(extractions=self._exts()),
+        ]
+        if raise_on_judge:
+            side.append(RuntimeError("judge boom"))
+        elif verdict is not None:
+            side.append(verdict)
+        mock_llm = MagicMock()
+        mock_llm.with_structured_output.return_value.invoke.side_effect = side
+        return mock_llm
+
+    @staticmethod
+    def _config(mock_llm: MagicMock, flag: bool) -> RunnableConfig:
+        return RunnableConfig(
+            {
+                "configurable": {
+                    "llm_client": mock_llm,
+                    "settings": Settings(enable_relevance_gate=flag),
+                }
+            }
+        )
+
+    @staticmethod
+    def _officers(base_state: EnrichmentState) -> EnrichmentState:
+        state = base_state.model_copy(deep=True)
+        state.dataset_type = DatasetType.OFFICERS_SHOT
+        return state
+
+    @staticmethod
+    def _judge_called(mock_llm: MagicMock) -> bool:
+        models = [c.args[0] for c in mock_llm.with_structured_output.call_args_list]
+        return RelevanceVerdict in models
+
+    def test_veto_sets_flag(self, base_state: EnrichmentState) -> None:
+        """Officers + flag on + not-relevant verdict -> relevance_vetoed True."""
+        mock_llm = self._mock_llm(
+            RelevanceVerdict(relevant_any=False, reasoning="off-topic")
+        )
+        result = synthesize_node(self._officers(base_state), self._config(mock_llm, True))
+        assert result.relevance_vetoed is True
+        assert result.extracted_fields  # a real (would-be) completion was judged
+
+    def test_relevant_no_veto(self, base_state: EnrichmentState) -> None:
+        """Officers + flag on + relevant verdict -> no veto."""
+        mock_llm = self._mock_llm(
+            RelevanceVerdict(relevant_any=True, reasoning="match")
+        )
+        result = synthesize_node(self._officers(base_state), self._config(mock_llm, True))
+        assert result.relevance_vetoed is False
+        assert self._judge_called(mock_llm)
+
+    def test_flag_off_skips_judge(self, base_state: EnrichmentState) -> None:
+        """Flag off -> the judge never runs."""
+        mock_llm = self._mock_llm()
+        result = synthesize_node(self._officers(base_state), self._config(mock_llm, False))
+        assert result.relevance_vetoed is False
+        assert not self._judge_called(mock_llm)
+
+    def test_civilians_skip_judge(self, base_state: EnrichmentState) -> None:
+        """Civilians + flag on -> officers-only gate skips the judge."""
+        mock_llm = self._mock_llm()
+        result = synthesize_node(base_state, self._config(mock_llm, True))
+        assert result.relevance_vetoed is False
+        assert not self._judge_called(mock_llm)
+
+    def test_fail_open_on_judge_error(self, base_state: EnrichmentState) -> None:
+        """A judge error must not block the completion (fail-open, no veto)."""
+        mock_llm = self._mock_llm(raise_on_judge=True)
+        result = synthesize_node(self._officers(base_state), self._config(mock_llm, True))
+        assert result.relevance_vetoed is False
+        assert result.extracted_fields

@@ -842,6 +842,7 @@ def _infer_stage_reached(
         EscalationReason.CONFLICT.value,
         EscalationReason.MERGE_ERROR.value,
         EscalationReason.INSUFFICIENT_SOURCES.value,
+        EscalationReason.IRRELEVANT_SOURCES.value,
     ):
         return "synthesize"
     if reason == EscalationReason.EXTRACTION_ERROR.value:
