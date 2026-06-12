@@ -17,7 +17,7 @@ def test_default_values():
     assert settings.relevance_score_threshold == 0.5
     assert settings.fuzzy_match_threshold == 80
     assert settings.date_proximity_days == 5
-    assert settings.enable_relevance_gate is False
+    assert settings.enable_relevance_gate is True
 
 
 def test_env_var_override(monkeypatch):
@@ -61,7 +61,8 @@ def test_search_window_validator_rejects_too_narrow():
 
 
 def test_enable_relevance_gate_override(monkeypatch):
-    """enable_relevance_gate flips via constructor and ENRICHMENT_ env var."""
+    """enable_relevance_gate (on by default) flips off via constructor and env."""
+    assert Settings(enable_relevance_gate=False).enable_relevance_gate is False
     assert Settings(enable_relevance_gate=True).enable_relevance_gate is True
-    monkeypatch.setenv("ENRICHMENT_ENABLE_RELEVANCE_GATE", "true")
-    assert Settings().enable_relevance_gate is True
+    monkeypatch.setenv("ENRICHMENT_ENABLE_RELEVANCE_GATE", "false")
+    assert Settings().enable_relevance_gate is False

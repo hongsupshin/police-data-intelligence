@@ -43,8 +43,8 @@ class Settings(BaseSettings):
             dates for a date match.
         enable_relevance_gate: Feature flag for the (Tier 1) LLM relevance
             judge that vetoes a completion matched to the wrong article. Read
-            by the synthesize node for ``officers_shot``; off by default so the
-            eval gate can A/B the behavior in-process.
+            by the synthesize node for ``officers_shot``; on by default (set
+            ``ENRICHMENT_ENABLE_RELEVANCE_GATE=false`` to disable).
     """
 
     model_config = SettingsConfigDict(env_prefix="ENRICHMENT_")
@@ -57,7 +57,7 @@ class Settings(BaseSettings):
     relevance_score_threshold: float = 0.5
     fuzzy_match_threshold: int = 80
     date_proximity_days: int = 5
-    enable_relevance_gate: bool = False
+    enable_relevance_gate: bool = True
 
     @model_validator(mode="after")
     def _check_search_window_covers_date_proximity(self) -> "Settings":
