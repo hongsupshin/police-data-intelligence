@@ -15,6 +15,7 @@
   - [Escalation Triggers](#escalation-triggers)
   - [Validation Logic](#validation-logic)
   - [Synthesize Logic](#synthesize-logic)
+  - [Relevance Judge](#relevance-judge-llm-optional)
 - [Quick Start](#quick-start)
   - [Prerequisites](#prerequisites)
   - [Setup](#setup)
@@ -119,6 +120,8 @@ The Coordinator routes to human review when:
   while others conflict, the pipeline completes with the agreed fields and flags
   `requires_human_review = True` for the conflicts
 - Synthesize encounters an error
+- The relevance judge vetoes the source as not about this incident
+  (`officers_shot` only, when `ENRICHMENT_ENABLE_RELEVANCE_GATE` is on)
 
 ### Validation Logic
 
@@ -164,6 +167,32 @@ or `reference_mismatch`), the conflicting values with source URLs, and the
 database reference value when applicable.
 
 The database is treated as immutable ground truth (official government data).
+
+### Relevance Judge (LLM, optional)
+
+The first **agentic** precision gate. After extraction, for `officers_shot`
+completions only, an LLM reads the validated articles together with the known
+incident anchors (officer and suspect name, date, city, outcome) and decides
+whether at least one article actually reports _this_ incident. If none do, it
+vetoes the completion — setting `relevance_vetoed` so the Coordinator routes to
+human review (`IRRELEVANT_SOURCES`) instead of committing fields extracted from
+the wrong source.
+
+It catches the "right structure, wrong incident" failure that rule-based
+validation cannot. For example, incident 60's article _"SAPD: Officer wounded in
+NW Side shootout out of surgery"_ **passed** validation — right city (San
+Antonio), right date (July 26, 2017), an officer injured — yet the judge flagged
+that neither the record's officer (Nathan Becerra) nor suspect (Jovonie Luis
+Casiano) appears in it and the outcome differs, so it is a _different_ same-week
+shooting. Veto → human review.
+
+The gate is deliberately bounded, not open-ended: one structured-output LLM call
+per incident (no loop, no tools), read-only (sets a flag, never writes fields),
+fail-open (a judge error logs and the completion proceeds as if it had not run),
+`officers_shot` only, and **off by default** behind
+`ENRICHMENT_ENABLE_RELEVANCE_GATE`. It runs only on would-be completions that
+already passed rule-based validation — a second, semantic check layered on the
+cheap one.
 
 ## Quick Start
 
@@ -373,6 +402,7 @@ Environment variables (see `.env.example`):
 | `ENRICHMENT_SEARCH_WINDOW_FORWARD_DAYS` | `60`                | Days after incident date for the Tavily search window  |
 | `ENRICHMENT_FUZZY_MATCH_THRESHOLD`      | `80`                | Min rapidfuzz score for name matching                  |
 | `ENRICHMENT_DATE_PROXIMITY_DAYS`        | `5`                 | Max days between article and incident                  |
+| `ENRICHMENT_ENABLE_RELEVANCE_GATE`      | `false`             | Enable the LLM relevance judge (officers_shot wrong-article veto) |
 
 PostgreSQL connection variables (`DB_HOST`, `DB_PORT`, etc.) are configured in
 `.env.example` and used by the ETL pipeline (`data/`).
@@ -394,7 +424,8 @@ police-data-intelligence/
 │   ├── validation/
 │   │   └── validate_node.py     # Validate node (date/location/name matching)
 │   ├── synthesize/
-│   │   └── synthesize_node.py   # Synthesize node (LLM extraction + consistency)
+│   │   ├── synthesize_node.py   # Synthesize node (LLM extraction + consistency)
+│   │   └── relevance_judge.py   # LLM relevance judge (wrong-article veto, officers_shot)
 │   ├── database/
 │   │   └── connection.py        # PostgreSQL connection
 │   ├── eval/
@@ -409,6 +440,7 @@ police-data-intelligence/
 │   ├── test_search_node.py
 │   ├── test_validate_node.py
 │   ├── test_synthesize_node.py
+│   ├── test_relevance_judge.py
 │   ├── test_coordinate_node.py
 │   ├── test_graph.py            # Graph wiring + terminal node tests
 │   ├── test_run.py
@@ -498,6 +530,8 @@ principles:
 - N=100 holdout eval: **70% completion, 72% exact / 84% fuzzy precision** across
   6 fields (age 90%, time 94%, location 97% fuzzy, outcome 84%)
 - Adversarial evaluation: 20 fabricated incidents, **0 hallucinations**
+- LLM relevance judge — first agentic precision gate; vetoes officers_shot
+  completions built on wrong-article sources (off by default)
 
 **Next:**
 

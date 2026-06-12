@@ -147,17 +147,21 @@ def check_validate_results(state: EnrichmentState) -> EnrichmentState:
 def check_synthesize_results(state: EnrichmentState) -> EnrichmentState:
     """Gate after synthesize stage.
 
-    Checks for synthesize errors, conflicting fields, and empty
-    extractions. Marks pipeline as complete if all checks pass.
+    Checks for a relevance veto, synthesize errors, conflicting fields, and
+    empty extractions. Marks pipeline as complete if all checks pass.
 
     Args:
         state: Pipeline state after synthesize node.
 
     Returns:
         Updated state with current_stage set to COMPLETE (success)
-        or ESCALATE (error, conflict, or no data extracted).
+        or ESCALATE (irrelevant sources, error, conflict, or no data extracted).
     """
-    if state.error_message and "Synthesize failed" in state.error_message:
+    if state.relevance_vetoed:
+        state.escalation_reason = EscalationReason.IRRELEVANT_SOURCES
+        state.requires_human_review = True
+        state.next_stage = PipelineStage.ESCALATE
+    elif state.error_message and "Synthesize failed" in state.error_message:
         state.escalation_reason = EscalationReason.MERGE_ERROR
         state.requires_human_review = True
         state.next_stage = PipelineStage.ESCALATE

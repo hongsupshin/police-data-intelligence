@@ -721,6 +721,13 @@ class TestInferStageReached:
             == "synthesize"
         )
 
+    def test_irrelevant_sources(self) -> None:
+        """IRRELEVANT_SOURCES (relevance veto) reached 'synthesize'."""
+        assert (
+            _infer_stage_reached(PipelineOutcome.ESCALATE, "irrelevant_sources")
+            == "synthesize"
+        )
+
     def test_extraction_error(self) -> None:
         """EXTRACTION_ERROR escalation reached 'load'."""
         assert (

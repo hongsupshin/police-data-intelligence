@@ -22,6 +22,7 @@ from src.agents.state import (
     MergeExtractionResponse,
     PipelineStage,
 )
+from src.synthesize.relevance_judge import judge_relevance
 from src.synthesize.weapon_similarity import weapons_match
 
 logger = logging.getLogger(__name__)
@@ -463,5 +464,24 @@ def synthesize_node(state: EnrichmentState, config: RunnableConfig) -> Enrichmen
         state.conflicting_fields = None
         state.error_message = f"Synthesize failed: {str(e)}"
         state.current_stage = PipelineStage.SYNTHESIZE
+
+    # Relevance gate (officers_shot only, flag-gated): veto a would-be completion
+    # whose validated articles aren't about THIS incident. Runs only on the
+    # success path; fail-open so a judge outage never blocks a completion.
+    settings = config["configurable"].get("settings")
+    if (
+        settings is not None
+        and getattr(settings, "enable_relevance_gate", False)
+        and state.dataset_type == DatasetType.OFFICERS_SHOT
+        and state.extracted_fields
+        and not state.error_message
+        and validated_articles
+    ):
+        try:
+            verdict = judge_relevance(llm_client, state, validated_articles)
+            if not verdict.relevant_any:
+                state.relevance_vetoed = True
+        except Exception as e:
+            logger.warning("Relevance judge failed (fail-open, no veto): %s", e)
 
     return state

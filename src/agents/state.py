@@ -91,6 +91,7 @@ class EscalationReason(StrEnum):
     SOFT_ANCHOR = "soft_anchor"
     MAX_RETRIES = "max_retries"
     INSUFFICIENT_SOURCES = "insufficient_sources"
+    IRRELEVANT_SOURCES = "irrelevant_sources"
 
 
 class MediaFeatureField(StrEnum):
@@ -340,6 +341,7 @@ class EnrichmentState(BaseModel):
     # Escalation
     escalation_reason: EscalationReason | None = None
     requires_human_review: bool = False
+    relevance_vetoed: bool = False
 
     # Output (for human review)
     output_file_path: str | None = None

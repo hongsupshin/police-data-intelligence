@@ -342,6 +342,33 @@ def test_check_synthesize_results_error(merge_state: EnrichmentState) -> None:
     assert state.requires_human_review
 
 
+def test_check_synthesize_results_relevance_veto(merge_state: EnrichmentState) -> None:
+    """A relevance veto routes to ESCALATE with IRRELEVANT_SOURCES."""
+    updated_state = merge_state.model_copy()
+    updated_state.relevance_vetoed = True
+    state = check_synthesize_results(updated_state)
+    assert state.next_stage == PipelineStage.ESCALATE
+    assert state.escalation_reason == EscalationReason.IRRELEVANT_SOURCES
+    assert state.requires_human_review
+
+
+def test_relevance_veto_precedes_conflicts(merge_state: EnrichmentState) -> None:
+    """A relevance veto takes precedence over conflicting fields."""
+    updated_state = merge_state.model_copy()
+    updated_state.relevance_vetoed = True
+    updated_state.conflicting_fields = [
+        FieldConflict(
+            field_name=MediaFeatureField.WEAPON,
+            conflict_type=ConflictType.ARTICLES_DISAGREE,
+            values=["handgun", "knife"],
+            sources=[["https://a.com"], ["https://b.com"]],
+        )
+    ]
+    state = check_synthesize_results(updated_state)
+    assert state.next_stage == PipelineStage.ESCALATE
+    assert state.escalation_reason == EscalationReason.IRRELEVANT_SOURCES
+
+
 def test_check_synthesize_results_conflict(merge_state: EnrichmentState) -> None:
     """Conflicts with zero extractions triggers escalation with CONFLICT."""
     updated_state = merge_state.model_copy()

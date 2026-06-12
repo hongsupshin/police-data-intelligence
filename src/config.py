@@ -42,9 +42,9 @@ class Settings(BaseSettings):
         date_proximity_days: Maximum days between article and incident
             dates for a date match.
         enable_relevance_gate: Feature flag for the (Tier 1) LLM relevance
-            judge that vetoes a completion matched to the wrong article. Off
-            by default; no node reads it yet. Establishes the ``enable_*``
-            flag pattern so the eval gate can A/B a behavior in-process.
+            judge that vetoes a completion matched to the wrong article. Read
+            by the synthesize node for ``officers_shot``; off by default so the
+            eval gate can A/B the behavior in-process.
     """
 
     model_config = SettingsConfigDict(env_prefix="ENRICHMENT_")
