@@ -247,10 +247,10 @@ class TestCorrectnessGuard:
 
 
 class TestFairnessGuard:
-    """Completion equity is the hard veto; accuracy drops only warn."""
+    """Fairness is a non-gating signal: per-race drops warn, never veto."""
 
-    def test_completion_regression_vetoes(self) -> None:
-        """A sizeable group losing completion rejects the change."""
+    def test_completion_regression_warns_not_vetoes(self) -> None:
+        """A sizeable group losing completion warns but does not reject."""
         before = _report(
             [_inc(i, COMPLETE, "exact", race="BLACK") for i in range(1, 7)]
             + [_inc(i, ESCALATE, "missing", race="WHITE") for i in range(7, 13)]
@@ -260,10 +260,14 @@ class TestFairnessGuard:
             + [_inc(i, ESCALATE, "missing", race="BLACK") for i in range(3, 7)]
             + [_inc(i, COMPLETE, "exact", race="WHITE") for i in range(7, 13)]
         )
+        # BLACK completion crashes (6/6 -> 2/6) while overall completion rises
+        # (6/12 -> 8/12) — only fairness moves, and it must not veto.
         decision = gate(before, after, adversarial_after=0)
         fairness = next(g for g in decision.guards if g.name == "fairness")
-        assert not fairness.passed
-        assert not decision.accept
+        assert fairness.passed
+        assert decision.accept
+        assert not any("fairness" in r for r in decision.reasons)
+        assert any("fairness" in w and "black" in w for w in decision.warnings)
 
     def test_accuracy_regression_is_warning_not_veto(self) -> None:
         """A per-race mean_exact_accuracy drop warns but does not veto."""
@@ -432,8 +436,12 @@ class TestReplayPR52:
         assert not correctness.passed
         assert not decision.accept
 
-    def test_rejects_fairness_degrade_variant(self) -> None:
-        """Escalating an entire race group -> reject on completion equity."""
+    def test_fairness_degrade_does_not_veto(self) -> None:
+        """Escalating an entire race group warns but does not veto (non-gating).
+
+        Overall completion-collapse protection lives in the target guard
+        (test_target_regression_vetoes); fairness alone never rejects.
+        """
         before, after = self._load()
         degraded = after.model_copy(deep=True)
         for er in degraded.per_incident:
@@ -441,5 +449,7 @@ class TestReplayPR52:
                 er.pipeline_outcome = ESCALATE
         decision = gate(before, degraded, adversarial_after=0)
         fairness = next(g for g in decision.guards if g.name == "fairness")
-        assert not fairness.passed
-        assert not decision.accept
+        assert fairness.passed
+        assert decision.accept
+        assert not any("fairness" in r for r in decision.reasons)
+        assert any("fairness" in w and "black" in w for w in decision.warnings)

@@ -2,22 +2,26 @@
 
 A pure, offline, deterministic comparator over two :class:`HoldoutReport`
 objects (a *before* and an *after*). It decides whether a pipeline change is
-safe to ship by checking that a target metric improved while no guard metric
-regressed:
+safe to ship by checking that a target metric improved while no *hard guard*
+regressed. The three hard guards are:
 
 * **target** (default completion rate) must not go backwards,
-* **adversarial** hallucinations must stay at zero,
-* **fairness** (per-race completion equity) must not drop for any well-sized
-  group, and
+* **adversarial** hallucinations must stay at zero, and
 * **correctness** (volume-weighted field accuracy on the *stable cohort* of
   incidents completed in both runs) must not drop.
+
+**Fairness** (per-race completion equity) is computed and reported as a
+*non-gating signal* — surfaced as warnings, never a veto. The per-race
+completion-rate metric is statistically underpowered at our coarse 4-bucket
+race categories and typical group sizes (n~18-39, where a 0.05 threshold is
+well under one standard error), so it must not block a change on a 1-2 incident
+swing; the deltas are reported for human judgment instead.
 
 The cohort restriction and volume-weighting exist to avoid a real confound: a
 fix that *raises* completion pulls harder incidents into the completed set,
 which can lower naive full-set accuracy with no actual regression. Measuring
 correctness on the intersection cohort keeps the comparison apples-to-apples.
-For the same reason, per-race ``mean_exact_accuracy`` drops are surfaced as
-warnings, never hard vetoes — only completion equity is a hard fairness veto.
+Per-race ``mean_exact_accuracy`` drops are likewise surfaced as warnings.
 
 See ``Notes/spec-p0-eval-moat.md`` for the full design.
 """
@@ -46,9 +50,10 @@ class GateTolerances(BaseModel):
         target: Maximum allowed regression in the target metric. Default 0.0
             means the target must not go backwards at all.
         correctness: Maximum allowed drop in cohort weighted field accuracy.
-        fairness: Maximum allowed drop in any race group's completion rate.
+        fairness: Per-race completion-rate drop beyond which a (non-gating)
+            fairness warning is surfaced. Fairness does not veto.
         min_group_n: Minimum (after-run) group size for a fairness completion
-            regression to count as a hard veto; smaller groups produce a
+            drop to surface as a full warning; smaller groups produce a softer
             warning instead, since their rates are statistically noisy.
         min_cohort_n: Minimum stable-cohort size for the correctness comparison
             to be considered powered; below this a warning is emitted (an empty
@@ -82,7 +87,8 @@ class GateDecision(BaseModel):
     """Result of a gate evaluation.
 
     Attributes:
-        accept: True only if the target held and every hard guard passed.
+        accept: True only if the target held and every hard guard passed
+            (target, adversarial, correctness). Fairness is non-gating.
         target: Name of the target metric compared.
         target_before: Target value in the before report.
         target_after: Target value in the after report.
@@ -309,10 +315,14 @@ def gate(
     if not adversarial_ok:
         reasons.append(f"adversarial hallucinations: {adversarial_after}")
 
-    # 3. Fairness: completion equity is the hard veto; accuracy drops only warn.
+    # 3. Fairness: non-gating signal. Per-race completion/accuracy drops surface
+    #    as warnings only — never a veto. The per-race completion-rate metric is
+    #    statistically underpowered at our coarse 4-bucket race categories and
+    #    typical group sizes (n~18-39: a 0.05 threshold is well under one standard
+    #    error), so a 1-2 incident swing must not block a change. The deltas are
+    #    reported for human judgment, which is where significance is weighed.
     fair_before = recompute_fairness(before)
     fair_after = recompute_fairness(after)
-    fairness_ok = True
     worst_completion_delta: float | None = None
     for race in sorted(set(fair_before) & set(fair_after)):
         b = fair_before[race]
@@ -326,15 +336,16 @@ def gate(
         if accuracy_delta < -tol.correctness:
             warnings.append(
                 f"fairness: {race} mean_exact_accuracy {accuracy_delta:+.3f} "
-                "(warning, not a veto)"
+                "(warning, non-gating)"
             )
 
+        # tol.fairness / min_group_n now only decide which completion drops are
+        # worth surfacing as a warning — not whether to veto.
         if completion_delta < -tol.fairness:
             if n_after >= tol.min_group_n:
-                fairness_ok = False
-                reasons.append(
+                warnings.append(
                     f"fairness: {race} completion_rate {completion_delta:+.3f} "
-                    f"(n={n_after:.0f})"
+                    f"(n={n_after:.0f}) (warning, non-gating)"
                 )
             else:
                 warnings.append(
@@ -344,9 +355,9 @@ def gate(
     guards.append(
         GuardResult(
             name="fairness",
-            passed=fairness_ok,
+            passed=True,
             delta=worst_completion_delta,
-            detail="per-race completion equity",
+            detail="per-race completion equity (non-gating; reported only)",
         )
     )
 
@@ -391,7 +402,7 @@ def gate(
                 f"(full-set warning, coverage {fm.coverage:.2f})"
             )
 
-    accept = target_ok and adversarial_ok and fairness_ok and correctness_ok
+    accept = target_ok and adversarial_ok and correctness_ok
     return GateDecision(
         accept=accept,
         target=target,
