@@ -14,6 +14,7 @@ from src.agents.state import (
     Article,
     ConfidenceLevel,
     ConflictType,
+    DatasetType,
     EnrichmentState,
     FieldConflict,
     FieldExtraction,
@@ -40,6 +41,59 @@ FIELD_DEFINITIONS = {
 assert set(FIELD_DEFINITIONS.keys()) == set(
     MediaFeatureField
 ), "Field definitions and MediaFeatureField do not match."
+
+_DEFAULT_PREAMBLE = """
+    You are extracting structured information from a police shooting incident article.
+    For each of the following fields, extract the value from the article:
+    """
+
+_OFFICERS_PREAMBLE = """
+    You are extracting structured information from a news article about an
+    officer-involved shooting in which a police OFFICER was shot. The officer is
+    the VICTIM. Here, "civilian" refers to the SUSPECT/shooter - the non-officer
+    person involved - NOT the officer.
+    For each of the following fields, extract the value from the article:
+    """
+
+# officers_shot reframes the suspect-vs-officer roles; only these field
+# definitions differ from the civilian-centric defaults.
+_OFFICER_FIELD_OVERRIDES: dict[MediaFeatureField, str] = {
+    MediaFeatureField.CIVILIAN_AGE: (
+        "Age (integer) of the SUSPECT/civilian - the non-officer person "
+        "involved. Null if not stated."
+    ),
+    MediaFeatureField.CIVILIAN_RACE: (
+        "Race/ethnicity of the SUSPECT/civilian (the non-officer). Only if "
+        "explicitly stated; otherwise null. Do not guess."
+    ),
+    MediaFeatureField.OUTCOME: (
+        "Whether the police OFFICER (the victim who was shot) was killed "
+        "(=fatal) or injured/survived (=non-fatal). Map killed/died/slain to "
+        "fatal; injured/wounded/survived/recovering/hospitalized to non-fatal. "
+        "Null if unstated."
+    ),
+}
+
+
+def _prompt_parts(
+    dataset_type: DatasetType,
+) -> tuple[str, dict[MediaFeatureField, str]]:
+    """Return the (preamble, field-definitions) for the dataset.
+
+    officers_shot reframes the civilian fields as the suspect/shooter and
+    outcome as the officer-victim's fate; civilians_shot keeps the defaults
+    (its civilian-centric prompt is correct and stays byte-identical).
+
+    Args:
+        dataset_type: Which TJI dataset the incident belongs to.
+
+    Returns:
+        Tuple of (prompt preamble, field-name -> definition mapping).
+    """
+    if dataset_type == DatasetType.OFFICERS_SHOT:
+        return _OFFICERS_PREAMBLE, {**FIELD_DEFINITIONS, **_OFFICER_FIELD_OVERRIDES}
+    return _DEFAULT_PREAMBLE, FIELD_DEFINITIONS
+
 
 RAPIDFUZZ_THRESHOLD = 80
 
@@ -126,7 +180,10 @@ def normalize_name(value: str) -> str:
 
 # helper functions
 def extract_fields(
-    article: Article, llm_client: ChatAnthropic, fields: list[MediaFeatureField]
+    article: Article,
+    llm_client: ChatAnthropic,
+    fields: list[MediaFeatureField],
+    dataset_type: DatasetType,
 ) -> dict[str, FieldExtraction]:
     """Extract structured fields from a single article using an LLM.
 
@@ -138,6 +195,8 @@ def extract_fields(
         article: Article object containing content to extract from.
         llm_client: LangChain ChatAnthropic client for structured extraction.
         fields: List of MediaFeatureField enums to extract.
+        dataset_type: Which TJI dataset the incident belongs to; selects the
+            civilian- vs officer-framed extraction prompt.
 
     Returns:
         Dictionary mapping field names to FieldExtraction objects.
@@ -147,13 +206,11 @@ def extract_fields(
         logger.warning("Article content is None for %s", article.url)
         return {}
 
-    prompt = """
-    You are extracting structured information from a police shooting incident article.
-    For each of the following fields, extract the value from the article:
-    """
+    preamble, field_definitions = _prompt_parts(dataset_type)
+    prompt = preamble
     for field_name in fields:
         prompt += f"""
-        - "{field_name}": {FIELD_DEFINITIONS[field_name]}
+        - "{field_name}": {field_definitions[field_name]}
         """
     prompt += f"""
     Instructions:
@@ -342,7 +399,9 @@ def synthesize_node(state: EnrichmentState, config: RunnableConfig) -> Enrichmen
     try:
         all_extractions = []
         for article in validated_articles:
-            result = extract_fields(article, llm_client, list(MediaFeatureField))
+            result = extract_fields(
+                article, llm_client, list(MediaFeatureField), state.dataset_type
+            )
             all_extractions.append(result)
 
         # Group by field
