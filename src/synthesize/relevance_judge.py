@@ -8,7 +8,7 @@ incident" failure the mechanical gate cannot catch (e.g. a record "completed" on
 a coincidental same-city article).
 
 Ported from the offline A/B (vetoed ~8% of officer completions, well-calibrated).
-Off by default behind ``Settings.enable_relevance_gate``.
+On by default; gated by ``Settings.enable_relevance_gate`` (officers_shot only).
 """
 
 from langchain_anthropic import ChatAnthropic

@@ -121,7 +121,7 @@ The Coordinator routes to human review when:
   `requires_human_review = True` for the conflicts
 - Synthesize encounters an error
 - The relevance judge vetoes the source as not about this incident
-  (`officers_shot` only, when `ENRICHMENT_ENABLE_RELEVANCE_GATE` is on)
+  (`officers_shot` only; on by default, `ENRICHMENT_ENABLE_RELEVANCE_GATE`)
 
 ### Validation Logic
 
@@ -189,8 +189,8 @@ shooting. Veto → human review.
 The gate is deliberately bounded, not open-ended: one structured-output LLM call
 per incident (no loop, no tools), read-only (sets a flag, never writes fields),
 fail-open (a judge error logs and the completion proceeds as if it had not run),
-`officers_shot` only, and **off by default** behind
-`ENRICHMENT_ENABLE_RELEVANCE_GATE`. It runs only on would-be completions that
+`officers_shot` only, and **on by default**
+(`ENRICHMENT_ENABLE_RELEVANCE_GATE=false` disables). It runs only on would-be completions that
 already passed rule-based validation — a second, semantic check layered on the
 cheap one.
 
@@ -402,7 +402,7 @@ Environment variables (see `.env.example`):
 | `ENRICHMENT_SEARCH_WINDOW_FORWARD_DAYS` | `60`                | Days after incident date for the Tavily search window  |
 | `ENRICHMENT_FUZZY_MATCH_THRESHOLD`      | `80`                | Min rapidfuzz score for name matching                  |
 | `ENRICHMENT_DATE_PROXIMITY_DAYS`        | `5`                 | Max days between article and incident                  |
-| `ENRICHMENT_ENABLE_RELEVANCE_GATE`      | `false`             | Enable the LLM relevance judge (officers_shot wrong-article veto) |
+| `ENRICHMENT_ENABLE_RELEVANCE_GATE`      | `true`              | LLM relevance judge for officers_shot wrong-article veto (`false` disables) |
 
 PostgreSQL connection variables (`DB_HOST`, `DB_PORT`, etc.) are configured in
 `.env.example` and used by the ETL pipeline (`data/`).
@@ -531,7 +531,7 @@ principles:
   6 fields (age 90%, time 94%, location 97% fuzzy, outcome 84%)
 - Adversarial evaluation: 20 fabricated incidents, **0 hallucinations**
 - LLM relevance judge — first agentic precision gate; vetoes officers_shot
-  completions built on wrong-article sources (off by default)
+  completions built on wrong-article sources (on by default)
 
 **Next:**
 
