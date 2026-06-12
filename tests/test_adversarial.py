@@ -10,6 +10,7 @@ Three scenarios:
     C. Plausible but fake — articles with wrong dates, validation rejects → escalate
 """
 
+import json
 from datetime import date
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -17,6 +18,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from langchain_core.runnables import RunnableConfig
 
+import scripts.run_adversarial as adv
 from src.agents.graph import build_graph
 from src.agents.state import (
     Article,
@@ -377,3 +379,108 @@ class TestAdversarialUnit:
         assert result["extracted_fields"] == []
         assert result["requires_human_review"] is True
         assert_no_hallucination(result, "David Williams", "Michael Torres")
+
+
+# --- Suite aggregation (unit; mocks run_scenario, no live pipeline) ---
+
+
+class TestRunAdversarialSuite:
+    """run_adversarial_suite aggregates per-scenario results for the gate."""
+
+    @staticmethod
+    def _stub_scenarios(monkeypatch, halluc: dict[int, bool]) -> None:
+        """Patch the scenario list and run_scenario to canned hallucination flags."""
+        monkeypatch.setattr(
+            adv, "FABRICATED_INCIDENTS", [{"id": iid} for iid in halluc]
+        )
+        monkeypatch.setattr(
+            adv,
+            "run_scenario",
+            lambda s, settings=None: {
+                "id": s["id"], "hallucination_detected": halluc[s["id"]],
+            },
+        )
+
+    def test_aggregates_hallucinations(self, monkeypatch) -> None:
+        """Counts, ids, and per-scenario passthrough reflect the flagged set."""
+        self._stub_scenarios(monkeypatch, {10: False, 11: True, 12: True})
+        out = adv.run_adversarial_suite()
+        assert out["total_hallucinations"] == 2
+        assert out["n_scenarios"] == 3
+        assert out["hallucinated_ids"] == [11, 12]
+        assert [r["id"] for r in out["per_scenario"]] == [10, 11, 12]
+
+    def test_clean_suite_reports_zero(self, monkeypatch) -> None:
+        """A clean run reports zero hallucinations and an empty id list."""
+        self._stub_scenarios(monkeypatch, {1: False, 2: False})
+        out = adv.run_adversarial_suite()
+        assert out["total_hallucinations"] == 0
+        assert out["hallucinated_ids"] == []
+
+    def test_on_result_callback_invoked_per_scenario(self, monkeypatch) -> None:
+        """The optional callback fires once per scenario, in order."""
+        self._stub_scenarios(monkeypatch, {5: False, 6: True})
+        seen = []
+        adv.run_adversarial_suite(
+            on_result=lambda i, s, r: seen.append((i, s["id"], r["id"]))
+        )
+        assert seen == [(0, 5, 5), (1, 6, 6)]
+
+    def test_main_writes_results_and_summary(self, monkeypatch, tmp_path) -> None:
+        """main() consumes the suite and writes results.json + summary.md."""
+        scenarios = [
+            {"id": 1, "category": "A", "location": "Marfa",
+             "civilian_name": None, "dataset": "civilians_shot"},
+            {"id": 2, "category": "C", "location": "Houston",
+             "civilian_name": "Jane Doe", "dataset": "civilians_shot"},
+        ]
+        monkeypatch.setattr(adv, "FABRICATED_INCIDENTS", scenarios)
+        monkeypatch.setattr(adv, "OUTPUT_DIR", tmp_path)
+        monkeypatch.setattr(
+            adv,
+            "run_scenario",
+            lambda s, settings=None: {
+                "id": s["id"], "category": s["category"], "city": s["location"],
+                "dataset": s["dataset"], "current_stage": "escalate",
+                "escalation_reason": "None", "retry_count": 3,
+                "n_extracted": 0, "n_conflicts": 0,
+                "hallucination_detected": s["id"] == 2,
+            },
+        )
+
+        adv.main()
+
+        results = json.loads((tmp_path / "results.json").read_text())
+        assert [r["id"] for r in results] == [1, 2]
+        assert [r["hallucination_detected"] for r in results] == [False, True]
+        assert "**Hallucinations detected**: 1" in (tmp_path / "summary.md").read_text()
+
+    def test_suite_forwards_settings_to_run_scenario(self, monkeypatch) -> None:
+        """run_adversarial_suite forwards a settings override to each scenario."""
+        monkeypatch.setattr(adv, "FABRICATED_INCIDENTS", [{"id": 1}, {"id": 2}])
+        seen = []
+
+        def fake(s, settings=None):
+            seen.append(settings)
+            return {"id": s["id"], "hallucination_detected": False}
+
+        monkeypatch.setattr(adv, "run_scenario", fake)
+        sentinel = object()
+        adv.run_adversarial_suite(settings=sentinel)
+        assert seen == [sentinel, sentinel]
+
+    def test_run_scenario_forwards_settings_to_run(self, monkeypatch) -> None:
+        """run_scenario forwards its settings override into run()."""
+        # run_adversarial binds `run` at module import, so patch adv.run (not src.run.run).
+        mock_run = MagicMock(
+            return_value={"extracted_fields": [], "conflicting_fields": []}
+        )
+        monkeypatch.setattr(adv, "run", mock_run)
+        scenario = {
+            "id": 1, "dataset": "civilians_shot", "civilian_name": None,
+            "officer_name": None, "category": "A", "location": "X",
+            "severity": "fatal", "incident_date": "2020-01-01",
+        }
+        sentinel = object()
+        adv.run_scenario(scenario, settings=sentinel)
+        assert mock_run.call_args.kwargs["settings"] is sentinel

@@ -274,13 +274,17 @@ def extract_field_attr(obj, attr):
     return None
 
 
-def run_scenario(scenario):
-    """Run a single fabricated scenario and return structured results."""
+def run_scenario(scenario, settings=None):
+    """Run a single fabricated scenario and return structured results.
+
+    settings: optional pipeline settings override forwarded to run() so the
+    gate can adversarially test a config variant.
+    """
     iid = scenario["id"]
     dataset = scenario["dataset"]
 
     with patch("src.agents.load_node.fetch_incident", side_effect=fake_fetch):
-        result = run(iid, dataset)
+        result = run(iid, dataset, settings=settings)
 
     # Extract results
     extracted = result.get("extracted_fields", [])
@@ -337,6 +341,42 @@ def run_scenario(scenario):
     }
 
 
+def run_adversarial_suite(on_result=None, settings=None) -> dict:
+    """Run every fabricated scenario through the pipeline and aggregate.
+
+    Runs the live pipeline on all FABRICATED_INCIDENTS and summarizes the
+    hallucination outcome. Importable so a gate can obtain a programmatic
+    hallucination count (the offline gate's adversarial guard).
+
+    Args:
+        on_result: Optional callback invoked as on_result(index, scenario,
+            result) after each scenario, for progress reporting. The gate
+            calls with no callback for a silent run.
+        settings: Optional pipeline settings override forwarded to each
+            scenario's run() so the gate can adversarially test a variant.
+
+    Returns:
+        Aggregate dict with keys: total_hallucinations, n_scenarios,
+        hallucinated_ids, per_scenario (the raw run_scenario dicts).
+    """
+    results = []
+    for index, scenario in enumerate(FABRICATED_INCIDENTS):
+        result = run_scenario(scenario, settings=settings)
+        results.append(result)
+        if on_result is not None:
+            on_result(index, scenario, result)
+    return {
+        "total_hallucinations": sum(
+            1 for r in results if r["hallucination_detected"]
+        ),
+        "n_scenarios": len(results),
+        "hallucinated_ids": [
+            r["id"] for r in results if r["hallucination_detected"]
+        ],
+        "per_scenario": results,
+    }
+
+
 def write_summary_md(results):
     """Write a markdown summary table for the blog post."""
     lines = [
@@ -386,32 +426,28 @@ def write_summary_md(results):
     return "\n".join(lines) + "\n"
 
 
+def _print_progress(index, scenario, result):
+    """Print per-scenario progress for the CLI run."""
+    print(
+        f"\n[{index + 1}/{len(FABRICATED_INCIDENTS)}] "
+        f"Cat {scenario['category']}: {scenario['location']}, "
+        f"{scenario['civilian_name'] or '(no civilian name)'}"
+    )
+    print(
+        f"  → {result['current_stage']} | reason={result['escalation_reason']} | "
+        f"retries={result['retry_count']} | "
+        f"extracted={result['n_extracted']} | "
+        f"conflicts={result['n_conflicts']} | "
+        f"hallucination={'YES' if result['hallucination_detected'] else 'No'}"
+    )
+
+
 def main():
     """Run all 20 scenarios and save results."""
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-    results = []
-    for i, scenario in enumerate(FABRICATED_INCIDENTS):
-        iid = scenario["id"]
-        print(
-            f"\n[{i + 1}/{len(FABRICATED_INCIDENTS)}] "
-            f"Cat {scenario['category']}: {scenario['location']}, "
-            f"{scenario['civilian_name'] or '(no civilian name)'}"
-        )
-
-        result = run_scenario(scenario)
-        results.append(result)
-
-        # Print inline summary
-        stage = result["current_stage"]
-        reason = result["escalation_reason"]
-        print(
-            f"  → {stage} | reason={reason} | "
-            f"retries={result['retry_count']} | "
-            f"extracted={result['n_extracted']} | "
-            f"conflicts={result['n_conflicts']} | "
-            f"hallucination={'YES' if result['hallucination_detected'] else 'No'}"
-        )
+    summary = run_adversarial_suite(on_result=_print_progress)
+    results = summary["per_scenario"]
 
     # Save full results JSON
     results_path = OUTPUT_DIR / "results.json"
@@ -421,16 +457,16 @@ def main():
 
     # Save summary markdown
     summary_path = OUTPUT_DIR / "summary.md"
-    summary_md = write_summary_md(results)
-    summary_path.write_text(summary_md)
+    summary_path.write_text(write_summary_md(results))
     print(f"Summary saved to {summary_path}")
 
     # Print final summary
-    n_total = len(results)
     n_escalated = sum(1 for r in results if "escalate" in r["current_stage"])
-    n_halluc = sum(1 for r in results if r["hallucination_detected"])
     print(f"\n{'=' * 60}")
-    print(f"FINAL: {n_total} scenarios, {n_escalated} escalated, {n_halluc} hallucinations")
+    print(
+        f"FINAL: {summary['n_scenarios']} scenarios, {n_escalated} escalated, "
+        f"{summary['total_hallucinations']} hallucinations"
+    )
     print(f"{'=' * 60}")
 
 

@@ -31,7 +31,11 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def run(incident_id: str, dataset_type: str) -> dict:
+def run(
+    incident_id: str,
+    dataset_type: str,
+    settings: Settings | None = None,
+) -> dict:
     """Build and invoke the enrichment graph for a single incident.
 
     Sets up the LLM client, SQLite checkpointer, and pipeline settings,
@@ -40,6 +44,9 @@ def run(incident_id: str, dataset_type: str) -> dict:
     Args:
         incident_id: TJI record identifier to enrich.
         dataset_type: One of 'civilians_shot' or 'officers_shot'.
+        settings: Optional pipeline settings override. Defaults to a
+            fresh ``Settings()`` (env-driven). Lets the eval gate run a
+            config variant of the pipeline in-process.
 
     Returns:
         Final graph state as a dict, including 'outcome_summary'.
@@ -59,7 +66,7 @@ def run(incident_id: str, dataset_type: str) -> dict:
     config = RunnableConfig(
         {
             "configurable": {
-                "settings": Settings(),
+                "settings": settings or Settings(),
                 "llm_client": llm_client,
                 "thread_id": f"{dataset_type}_{incident_id}",
             }
