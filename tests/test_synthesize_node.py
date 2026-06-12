@@ -434,7 +434,9 @@ def test_extract_fields_errors(
     mock_llm.with_structured_output.return_value.invoke.side_effect = Exception(
         "API error"
     )
-    result = extract_fields(base_article, mock_llm, list(MediaFeatureField))
+    result = extract_fields(
+        base_article, mock_llm, list(MediaFeatureField), DatasetType.CIVILIANS_SHOT
+    )
     assert result == {}
 
 
@@ -449,7 +451,9 @@ def test_extract_fields_empty_results() -> None:
         source_name="",
         relevance_score=0,
     )
-    result = extract_fields(article, MagicMock(), list(MediaFeatureField))
+    result = extract_fields(
+        article, MagicMock(), list(MediaFeatureField), DatasetType.CIVILIANS_SHOT
+    )
     assert result == {}
 
 
@@ -478,6 +482,7 @@ def test_extract_fields_happy_path(
             MediaFeatureField.OFFICER_NAME,
             MediaFeatureField.LOCATION_DETAIL,
         ],
+        DatasetType.CIVILIANS_SHOT,
     )
     assert result["weapon"].field_name == "weapon"
     assert result["officer_name"].field_name == "officer_name"
@@ -487,6 +492,36 @@ def test_extract_fields_happy_path(
     assert result["location_detail"].value == "Houston"
     assert result["weapon"].sources == ["https://example.com/article"]
     assert result["weapon"].confidence == ConfidenceLevel.PENDING
+
+
+def test_extract_fields_officers_prompt(base_article: Article) -> None:
+    """officers_shot uses the officer-framed prompt (suspect vs officer-victim)."""
+    mock_llm = MagicMock()
+    mock_llm.with_structured_output.return_value.invoke.return_value = (
+        MergeExtractionResponse(extractions=[])
+    )
+    extract_fields(
+        base_article, mock_llm, list(MediaFeatureField), DatasetType.OFFICERS_SHOT
+    )
+    prompt = mock_llm.with_structured_output.return_value.invoke.call_args[0][0]
+    assert "officer-involved shooting" in prompt
+    assert "SUSPECT/shooter" in prompt
+    assert "the victim who was shot" in prompt  # officer outcome override
+
+
+def test_extract_fields_civilians_prompt_unchanged(base_article: Article) -> None:
+    """civilians_shot keeps the civilian-centric prompt (no officer framing)."""
+    mock_llm = MagicMock()
+    mock_llm.with_structured_output.return_value.invoke.return_value = (
+        MergeExtractionResponse(extractions=[])
+    )
+    extract_fields(
+        base_article, mock_llm, list(MediaFeatureField), DatasetType.CIVILIANS_SHOT
+    )
+    prompt = mock_llm.with_structured_output.return_value.invoke.call_args[0][0]
+    assert "police shooting incident article" in prompt
+    assert "SUSPECT/shooter" not in prompt
+    assert "officer-involved shooting" not in prompt
 
 
 # --- synthesize_node tests ---
