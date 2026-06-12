@@ -41,6 +41,10 @@ class Settings(BaseSettings):
             name, and cross-article consistency matching.
         date_proximity_days: Maximum days between article and incident
             dates for a date match.
+        enable_relevance_gate: Feature flag for the (Tier 1) LLM relevance
+            judge that vetoes a completion matched to the wrong article. Off
+            by default; no node reads it yet. Establishes the ``enable_*``
+            flag pattern so the eval gate can A/B a behavior in-process.
     """
 
     model_config = SettingsConfigDict(env_prefix="ENRICHMENT_")
@@ -53,6 +57,7 @@ class Settings(BaseSettings):
     relevance_score_threshold: float = 0.5
     fuzzy_match_threshold: int = 80
     date_proximity_days: int = 5
+    enable_relevance_gate: bool = False
 
     @model_validator(mode="after")
     def _check_search_window_covers_date_proximity(self) -> "Settings":

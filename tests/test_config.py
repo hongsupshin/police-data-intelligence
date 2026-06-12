@@ -17,6 +17,7 @@ def test_default_values():
     assert settings.relevance_score_threshold == 0.5
     assert settings.fuzzy_match_threshold == 80
     assert settings.date_proximity_days == 5
+    assert settings.enable_relevance_gate is False
 
 
 def test_env_var_override(monkeypatch):
@@ -57,3 +58,10 @@ def test_search_window_validator_rejects_too_narrow():
     """Settings raises if search_window_back_days < date_proximity_days."""
     with pytest.raises(ValidationError):
         Settings(search_window_back_days=3, date_proximity_days=5)
+
+
+def test_enable_relevance_gate_override(monkeypatch):
+    """enable_relevance_gate flips via constructor and ENRICHMENT_ env var."""
+    assert Settings(enable_relevance_gate=True).enable_relevance_gate is True
+    monkeypatch.setenv("ENRICHMENT_ENABLE_RELEVANCE_GATE", "true")
+    assert Settings().enable_relevance_gate is True

@@ -6,13 +6,17 @@ period bucket fallback cases. Also tests aggregate_metrics.
 """
 
 from datetime import time
+from unittest.mock import patch
 
 import pytest
 
 from src.agents.state import ConfidenceLevel, DatasetType, MediaFeatureField
+from src.config import Settings
 from src.eval.holdout import (
+    DEV_SET_IDS,
     EVAL_FIELDS,
     FIELD_COMPARATORS,
+    TEST_SET_IDS,
     EvalError,
     EvalResult,
     FieldMetrics,
@@ -20,6 +24,7 @@ from src.eval.holdout import (
     HoldoutSample,
     MatchResult,
     PipelineOutcome,
+    _excluded_ids,
     _infer_stage_reached,
     aggregate_metrics,
     comparators_for_dataset,
@@ -30,6 +35,10 @@ from src.eval.holdout import (
     compare_time,
     compare_weapon,
     compute_fairness_metrics,
+    evaluate_holdout,
+    evaluate_holdout_stratified,
+    evaluate_single,
+    evaluate_test_split,
     sum_validation_failures,
 )
 
@@ -914,3 +923,87 @@ class TestValidationFailureTelemetry:
             pipeline_outcome=PipelineOutcome.ESCALATE,
         )
         assert sum_validation_failures([escalated]) == {}
+
+
+class TestSettingsThreading:
+    """A settings override flows from the eval entry points down to run()."""
+
+    @staticmethod
+    def _escalated() -> EvalResult:
+        return EvalResult(
+            incident_id=1,
+            dataset_type=DatasetType.CIVILIANS_SHOT,
+            pipeline_outcome=PipelineOutcome.ESCALATE,
+        )
+
+    def test_evaluate_single_forwards_settings_to_run(self) -> None:
+        """evaluate_single passes its settings override into run()."""
+        custom = Settings(enable_relevance_gate=True)
+        with patch("src.run.run") as mock_run:
+            mock_run.return_value = {"current_stage": "escalate", "extracted_fields": []}
+            evaluate_single(1, DatasetType.CIVILIANS_SHOT, {}, settings=custom)
+        assert mock_run.call_args.kwargs["settings"] is custom
+
+    @patch("src.database.connection.get_connection")
+    @patch("src.eval.holdout.fetch_ground_truth", return_value={})
+    @patch("src.eval.holdout.evaluate_single")
+    def test_evaluate_holdout_forwards_settings(
+        self, mock_single, mock_gt, mock_conn
+    ) -> None:
+        """evaluate_holdout passes its settings override to evaluate_single."""
+        mock_single.return_value = self._escalated()
+        custom = Settings(enable_relevance_gate=True)
+        evaluate_holdout(DatasetType.CIVILIANS_SHOT, incident_ids=[1], settings=custom)
+        assert mock_single.call_args.kwargs["settings"] is custom
+
+    @patch("src.database.connection.get_connection")
+    @patch("src.eval.holdout.fetch_ground_truth", return_value={})
+    @patch("src.eval.holdout.select_holdout_stratified")
+    @patch("src.eval.holdout.evaluate_single")
+    def test_evaluate_holdout_stratified_forwards_settings(
+        self, mock_single, mock_select, mock_gt, mock_conn
+    ) -> None:
+        """evaluate_holdout_stratified passes its settings override to evaluate_single."""
+        mock_select.return_value = [
+            HoldoutSample(incident_id=1, year=2020, race="BLACK", n_eval_fields=2)
+        ]
+        mock_single.return_value = self._escalated()
+        custom = Settings(enable_relevance_gate=True)
+        evaluate_holdout_stratified(DatasetType.CIVILIANS_SHOT, settings=custom)
+        assert mock_single.call_args.kwargs["settings"] is custom
+
+
+class TestTestSplit:
+    """The frozen TEST split: per-dataset, DEV-disjoint, excluded from sampling."""
+
+    def test_test_set_is_per_dataset_and_sized(self) -> None:
+        """Both datasets have a 40-id TEST set."""
+        assert set(TEST_SET_IDS) == {
+            DatasetType.OFFICERS_SHOT,
+            DatasetType.CIVILIANS_SHOT,
+        }
+        for ids in TEST_SET_IDS.values():
+            assert len(ids) == 40
+
+    def test_test_set_disjoint_from_dev_set(self) -> None:
+        """TEST never overlaps DEV (would leak the smoke set into the benchmark)."""
+        for ids in TEST_SET_IDS.values():
+            assert ids.isdisjoint(DEV_SET_IDS)
+
+    def test_excluded_ids_unions_dev_and_test(self) -> None:
+        """_excluded_ids returns DEV ∪ TEST[dataset] and honors the flags."""
+        dt = DatasetType.OFFICERS_SHOT
+        assert _excluded_ids(dt) == DEV_SET_IDS | TEST_SET_IDS[dt]
+        assert _excluded_ids(dt, exclude_test_set=False) == DEV_SET_IDS
+        assert _excluded_ids(dt, exclude_dev_set=False) == TEST_SET_IDS[dt]
+        assert _excluded_ids(dt, exclude_dev_set=False, exclude_test_set=False) == set()
+
+    @patch("src.eval.holdout.evaluate_holdout")
+    def test_evaluate_test_split_runs_test_ids(self, mock_holdout) -> None:
+        """evaluate_test_split evaluates exactly the sorted TEST ids, forwarding settings."""
+        dt = DatasetType.CIVILIANS_SHOT
+        custom = Settings(enable_relevance_gate=True)
+        evaluate_test_split(dt, settings=custom)
+        mock_holdout.assert_called_once_with(
+            dt, incident_ids=sorted(TEST_SET_IDS[dt]), settings=custom
+        )

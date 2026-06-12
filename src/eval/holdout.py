@@ -32,6 +32,7 @@ from src.agents.state import (
     MediaFeatureField,
     PipelineStage,
 )
+from src.config import Settings
 from src.synthesize.synthesize_node import RAPIDFUZZ_THRESHOLD
 
 logger = logging.getLogger(__name__)
@@ -771,6 +772,49 @@ def select_holdout_incidents(
 
 DEV_SET_IDS: set[int] = {3710, 5388, 3630, 3669, 833, 792, 5168, 697, 3744, 330}
 
+# Frozen, never-tuned-against TEST split (per dataset — the two datasets share an
+# id namespace, so ids must be keyed by DatasetType). Derived offline from the
+# saved PR #52 baseline reports' stratified `samples` via a year-stratified pick
+# (limit=40, min 4/stratum, ordered by field_count desc then id asc), and verified
+# disjoint from DEV_SET_IDS. A fix is promoted only if it passes the gate on TEST,
+# not just DEV; exploratory sampling excludes DEV ∪ TEST so tuning can never touch it.
+TEST_SET_IDS: dict[DatasetType, set[int]] = {
+    DatasetType.OFFICERS_SHOT: {
+        1, 2, 4, 5, 7, 8, 10, 12, 43, 44, 45, 46, 47, 49, 51, 52, 53, 54, 69, 70,
+        71, 72, 73, 74, 75, 76, 77, 78, 95, 96, 97, 98, 138, 139, 140, 141, 175,
+        176, 177, 178,
+    },
+    DatasetType.CIVILIANS_SHOT: {
+        1, 46, 139, 144, 146, 147, 150, 151, 152, 154, 156, 157, 244, 245, 247,
+        248, 251, 252, 253, 254, 255, 407, 408, 409, 412, 583, 584, 585, 586, 770,
+        771, 772, 773, 951, 952, 953, 954, 1720, 3394, 5068,
+    },
+}
+
+
+def _excluded_ids(
+    dataset_type: DatasetType,
+    exclude_dev_set: bool = True,
+    exclude_test_set: bool = True,
+) -> set[int]:
+    """Incident ids to hold out of exploratory holdout sampling.
+
+    Args:
+        dataset_type: Which dataset's TEST set applies.
+        exclude_dev_set: Exclude the 10-id DEV smoke set.
+        exclude_test_set: Exclude the frozen per-dataset TEST split.
+
+    Returns:
+        The union of the requested hold-out sets (DEV is dataset-agnostic;
+        TEST is per-dataset).
+    """
+    excluded: set[int] = set()
+    if exclude_dev_set:
+        excluded |= DEV_SET_IDS
+    if exclude_test_set:
+        excluded |= TEST_SET_IDS.get(dataset_type, set())
+    return excluded
+
 
 def _infer_stage_reached(
     pipeline_outcome: PipelineOutcome,
@@ -811,11 +855,13 @@ def select_holdout_stratified(
     min_fields: int = 2,
     limit: int = 40,
     exclude_dev_set: bool = True,
+    exclude_test_set: bool = True,
 ) -> list[HoldoutSample]:
     """Select holdout incidents with proportional year stratification.
 
     Selects incidents proportionally across years (2015-2019), ensuring
-    a minimum of 4 per stratum. Excludes dev-set incidents by default.
+    a minimum of 4 per stratum. Excludes the DEV and frozen TEST sets by
+    default so exploratory sampling never touches held-out data.
 
     Args:
         conn: Active PostgreSQL connection.
@@ -823,6 +869,7 @@ def select_holdout_stratified(
         min_fields: Minimum number of non-NULL eval fields required.
         limit: Total number of incidents to return.
         exclude_dev_set: Whether to exclude dev-set IDs.
+        exclude_test_set: Whether to exclude the frozen TEST-split IDs.
 
     Returns:
         List of HoldoutSample with year/race metadata.
@@ -830,8 +877,9 @@ def select_holdout_stratified(
     cursor = conn.cursor()
 
     exclusion_clause = ""
-    if exclude_dev_set and DEV_SET_IDS:
-        ids_str = ", ".join(str(i) for i in DEV_SET_IDS)
+    excluded = _excluded_ids(dataset_type, exclude_dev_set, exclude_test_set)
+    if excluded:
+        ids_str = ", ".join(str(i) for i in sorted(excluded))
         exclusion_clause = f"AND i.incident_id NOT IN ({ids_str})"
 
     if dataset_type == DatasetType.CIVILIANS_SHOT:
@@ -936,6 +984,7 @@ def evaluate_single(
     incident_id: int,
     dataset_type: DatasetType,
     ground_truth: dict[str, object],
+    settings: Settings | None = None,
 ) -> EvalResult:
     """Evaluate a single incident by running the pipeline and comparing results.
 
@@ -946,6 +995,8 @@ def evaluate_single(
         incident_id: TJI incident identifier.
         dataset_type: Which dataset this incident belongs to.
         ground_truth: Dict mapping field names to ground truth values.
+        settings: Optional pipeline settings override forwarded to run()
+            (lets the eval gate run a config variant).
 
     Returns:
         EvalResult with comparison results for all evaluable fields.
@@ -953,7 +1004,7 @@ def evaluate_single(
     from src.run import run
 
     start = time_mod.monotonic()
-    result = run(str(incident_id), dataset_type.value)
+    result = run(str(incident_id), dataset_type.value, settings=settings)
     elapsed = time_mod.monotonic() - start
 
     pipeline_outcome = (
@@ -1115,6 +1166,7 @@ def evaluate_holdout(
     limit: int = 20,
     min_fields: int = 2,
     incident_ids: list[int] | None = None,
+    settings: Settings | None = None,
 ) -> HoldoutReport:
     """Run holdout evaluation on a dataset.
 
@@ -1127,6 +1179,8 @@ def evaluate_holdout(
         min_fields: Minimum non-NULL eval fields per incident.
         incident_ids: Specific incident IDs to evaluate. When provided,
             skips DB-based incident selection.
+        settings: Optional pipeline settings override forwarded to each
+            run (lets the eval gate evaluate a config variant in-process).
 
     Returns:
         Complete HoldoutReport with per-field metrics and per-incident
@@ -1144,7 +1198,7 @@ def evaluate_holdout(
         eval_results: list[EvalResult] = []
         for incident_id in incident_ids:
             gt = fetch_ground_truth(conn, incident_id, dataset_type)
-            result = evaluate_single(incident_id, dataset_type, gt)
+            result = evaluate_single(incident_id, dataset_type, gt, settings=settings)
             eval_results.append(result)
     finally:
         conn.close()
@@ -1232,6 +1286,8 @@ def evaluate_holdout_stratified(
     limit: int = 40,
     min_fields: int = 2,
     exclude_dev_set: bool = True,
+    exclude_test_set: bool = True,
+    settings: Settings | None = None,
 ) -> HoldoutReport:
     """Run stratified holdout evaluation on a dataset.
 
@@ -1243,6 +1299,9 @@ def evaluate_holdout_stratified(
         limit: Total number of incidents to evaluate.
         min_fields: Minimum non-NULL eval fields per incident.
         exclude_dev_set: Whether to exclude dev-set IDs.
+        exclude_test_set: Whether to exclude the frozen TEST-split IDs.
+        settings: Optional pipeline settings override forwarded to each
+            run (lets the eval gate evaluate a config variant in-process).
 
     Returns:
         Complete HoldoutReport with stratified samples, timing,
@@ -1253,7 +1312,7 @@ def evaluate_holdout_stratified(
     conn = get_connection()
     try:
         samples = select_holdout_stratified(
-            conn, dataset_type, min_fields, limit, exclude_dev_set
+            conn, dataset_type, min_fields, limit, exclude_dev_set, exclude_test_set
         )
 
         eval_results: list[EvalResult] = []
@@ -1266,7 +1325,9 @@ def evaluate_holdout_stratified(
                 sample.year,
             )
             gt = fetch_ground_truth(conn, sample.incident_id, dataset_type)
-            result = evaluate_single(sample.incident_id, dataset_type, gt)
+            result = evaluate_single(
+                sample.incident_id, dataset_type, gt, settings=settings
+            )
             eval_results.append(result)
     finally:
         conn.close()
@@ -1296,6 +1357,35 @@ def evaluate_holdout_stratified(
         total_elapsed_seconds=round(total_elapsed, 2),
         fairness_metrics=compute_fairness_metrics(eval_results, samples),
         validation_failure_totals=sum_validation_failures(eval_results),
+    )
+
+
+def evaluate_test_split(
+    dataset_type: DatasetType,
+    settings: Settings | None = None,
+) -> HoldoutReport:
+    """Evaluate the frozen TEST split for a dataset.
+
+    Runs the pipeline on exactly ``TEST_SET_IDS[dataset_type]`` — the
+    never-tuned-against benchmark a fix must pass before promotion. Pairs with
+    a baseline-vs-variant call through the gate.
+
+    Note:
+        Because this uses the ``incident_ids`` path, the returned report's
+        ``fairness_metrics`` is empty (no stratified ``samples`` are built);
+        the gate recomputes fairness from ``per_incident``.
+
+    Args:
+        dataset_type: Which dataset's TEST split to evaluate.
+        settings: Optional pipeline settings override forwarded to each run.
+
+    Returns:
+        HoldoutReport over the TEST incidents.
+    """
+    return evaluate_holdout(
+        dataset_type,
+        incident_ids=sorted(TEST_SET_IDS[dataset_type]),
+        settings=settings,
     )
 
 
