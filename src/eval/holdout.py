@@ -33,6 +33,7 @@ from src.agents.state import (
     PipelineStage,
 )
 from src.config import Settings
+from src.race_taxonomy import normalize_race
 from src.synthesize.synthesize_node import RAPIDFUZZ_THRESHOLD
 
 logger = logging.getLogger(__name__)
@@ -190,15 +191,6 @@ class HoldoutReport(BaseModel):
 # Comparison Helpers
 # ---------------------------------------------------------------------------
 
-_GENDER_WORDS = re.compile(r"\b(male|female|man|woman)\b")
-
-_RACE_KEYWORDS: list[tuple[re.Pattern[str], str]] = [
-    (re.compile(r"\b(black|african)\b"), "black"),
-    (re.compile(r"\b(hispanic|latino|latina)\b"), "hispanic"),
-    (re.compile(r"\b(white|caucasian)\b"), "white"),
-    (re.compile(r"\basian\b"), "asian"),
-]
-
 TIME_PERIOD_BUCKETS: dict[str, tuple[int, int]] = {
     "morning": (6, 11),
     "afternoon": (12, 17),
@@ -210,19 +202,13 @@ FATAL_KEYWORDS = {"killed", "died", "death", "fatal", "fatally"}
 NON_FATAL_KEYWORDS = {"injured", "survived", "wounded", "non-fatal", "nonfatal"}
 
 
-def _normalize_race(value: str) -> str:
-    """Normalize a race string via keyword matching.
-
-    Strips gender words, then checks for race keywords in priority
-    order. Unmatched values default to "other".
-    """
-    lowered = value.strip().lower()
-    lowered = _GENDER_WORDS.sub("", lowered).strip()
-    lowered = re.sub(r"\s+", " ", lowered)
-    for pattern, canonical in _RACE_KEYWORDS:
-        if pattern.search(lowered):
-            return canonical
-    return "other"
+# Race normalization now lives in src.race_taxonomy (shared with the pipeline).
+# Kept as a module-level alias so existing imports (e.g. gate.py) keep resolving.
+# Note: after the taxonomy fix this maps to TJI's coarse 4-bucket scheme, so the
+# civilian_race metric measures *fidelity to TJI's scheme*, not "correct race"
+# (it cannot reward granularity — "Asian" scores as OTHER); the granular value
+# and any divergence are carried by classify_race / RaceTaxonomyFlag.
+_normalize_race = normalize_race
 
 
 def _normalize_outcome_str(value: str) -> str | None:

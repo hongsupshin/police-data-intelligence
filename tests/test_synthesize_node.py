@@ -850,9 +850,9 @@ def test_normalize_race_latino() -> None:
     assert normalize_race("Latino") == "hispanic"
 
 
-def test_normalize_race_passthrough() -> None:
-    """Known single-word values are matched by keyword."""
-    assert normalize_race("Asian") == "asian"
+def test_normalize_race_asian_maps_to_other() -> None:
+    """'Asian' maps to TJI's 'other' bucket (TJI has no Asian category)."""
+    assert normalize_race("Asian") == "other"
 
 
 def test_normalize_race_strips_whitespace() -> None:
@@ -1158,3 +1158,73 @@ class TestRaceVerification:
         result = synthesize_node(base_state, self._config(mock_llm, True))
         assert self._verify_called(mock_llm)
         assert self._race(result) is not None  # kept on error
+
+
+class TestRaceTaxonomyFlag:
+    """civilian_race_taxonomy is set for any committed race (civilians + officers)."""
+
+    @staticmethod
+    def _config(
+        mock_llm: MagicMock, *, race_verification: bool = False
+    ) -> RunnableConfig:
+        return RunnableConfig(
+            {
+                "configurable": {
+                    "llm_client": mock_llm,
+                    "settings": Settings(
+                        enable_race_verification=race_verification,
+                        enable_relevance_gate=False,
+                    ),
+                }
+            }
+        )
+
+    @staticmethod
+    def _mock_llm(
+        race_value: str, verdict: RaceVerificationVerdict | None = None
+    ) -> MagicMock:
+        exts = [
+            _make_extraction("civilian_race", race_value),
+            _make_extraction("weapon", "handgun"),
+        ]
+        side: list = [
+            MergeExtractionResponse(extractions=exts),
+            MergeExtractionResponse(extractions=exts),
+        ]
+        if verdict is not None:
+            side.append(verdict)
+        mock_llm = MagicMock()
+        mock_llm.with_structured_output.return_value.invoke.side_effect = side
+        return mock_llm
+
+    def test_civilians_committed_race_sets_flag(
+        self, base_state: EnrichmentState
+    ) -> None:
+        """Verify on + supported -> race kept -> taxonomy flag computed."""
+        mock_llm = self._mock_llm(
+            "Black", RaceVerificationVerdict(supported=True, reasoning="stated")
+        )
+        result = synthesize_node(base_state, self._config(mock_llm, race_verification=True))
+        assert result.civilian_race_taxonomy is not None
+        assert result.civilian_race_taxonomy.tji_bucket == "black"
+        assert result.civilian_race_taxonomy.diverges is False
+
+    def test_officers_divergent_race_flagged(
+        self, base_state: EnrichmentState
+    ) -> None:
+        """Any dataset: a divergent committed race is flagged (officers, no verify)."""
+        state = base_state.model_copy(deep=True)
+        state.dataset_type = DatasetType.OFFICERS_SHOT
+        result = synthesize_node(state, self._config(self._mock_llm("Asian")))
+        assert result.civilian_race_taxonomy is not None
+        assert result.civilian_race_taxonomy.tji_bucket == "other"
+        assert result.civilian_race_taxonomy.divergence_type == "race_absent_from_scheme"
+        assert result.civilian_race_taxonomy.diverges is True
+
+    def test_nulled_race_no_flag(self, base_state: EnrichmentState) -> None:
+        """Verify on + unsupported -> race nulled -> no taxonomy flag."""
+        mock_llm = self._mock_llm(
+            "Black", RaceVerificationVerdict(supported=False, reasoning="unsourced")
+        )
+        result = synthesize_node(base_state, self._config(mock_llm, race_verification=True))
+        assert result.civilian_race_taxonomy is None

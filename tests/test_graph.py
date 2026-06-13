@@ -29,6 +29,7 @@ from src.agents.state import (
     FieldConflict,
     FieldExtraction,
     PipelineStage,
+    RaceTaxonomyFlag,
     SearchAttempt,
     SearchStrategyType,
     ValidationResult,
@@ -146,6 +147,27 @@ def test_complete_node(base_state: EnrichmentState, tmp_path: Path) -> None:
         data["outcome_summary"]
         == f"Enriched {len(state.extracted_fields)} fields for incident {state.incident_id} ({state.dataset_type})"
     )
+
+
+def test_complete_node_writes_race_taxonomy(
+    base_state: EnrichmentState, tmp_path: Path
+) -> None:
+    """A committed race's taxonomy flag reaches the output JSON for reviewers."""
+    config = RunnableConfig(
+        {"configurable": {"settings": Settings(output_dir=str(tmp_path))}}
+    )
+    state = base_state.model_copy()
+    state.civilian_race_taxonomy = RaceTaxonomyFlag(
+        extracted="Asian",
+        tji_bucket="other",
+        divergence_type="race_absent_from_scheme",
+        diverges=True,
+    )
+    result = complete_node(state, config)
+    data = json.loads(Path(result.output_file_path).read_text())
+    assert data["civilian_race_taxonomy"]["extracted"] == "Asian"
+    assert data["civilian_race_taxonomy"]["tji_bucket"] == "other"
+    assert data["civilian_race_taxonomy"]["diverges"] is True
 
 
 def test_complete_node_preserves_human_review_with_conflicts(
@@ -485,6 +507,7 @@ def test_complete_node_json_keys(
         "search_strategy",
         "retry_count",
         "conflicting_fields",
+        "civilian_race_taxonomy",
         "outcome_summary",
     }
     assert set(data.keys()) == expected_keys
@@ -513,6 +536,7 @@ def test_escalate_node_json_keys(
         "validation_failure_summary",
         "extracted_fields",
         "conflicting_fields",
+        "civilian_race_taxonomy",
         "outcome_summary",
     }
     assert set(data.keys()) == expected_keys
