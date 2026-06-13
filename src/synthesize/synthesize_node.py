@@ -22,6 +22,7 @@ from src.agents.state import (
     MergeExtractionResponse,
     PipelineStage,
 )
+from src.race_taxonomy import classify_race, normalize_race
 from src.synthesize.race_verifier import verify_race
 from src.synthesize.relevance_judge import judge_relevance
 from src.synthesize.weapon_similarity import weapons_match
@@ -102,44 +103,6 @@ RAPIDFUZZ_THRESHOLD = 80
 FIELD_FUZZY_THRESHOLDS: dict[MediaFeatureField, int] = {
     MediaFeatureField.LOCATION_DETAIL: 75,
 }
-
-_GENDER_WORDS = re.compile(r"\b(male|female|man|woman)\b")
-
-_RACE_KEYWORDS: list[tuple[re.Pattern[str], str]] = [
-    (re.compile(r"\b(black|african)\b"), "black"),
-    (re.compile(r"\b(hispanic|latino|latina)\b"), "hispanic"),
-    (re.compile(r"\b(white|caucasian)\b"), "white"),
-    (re.compile(r"\basian\b"), "asian"),
-]
-
-
-def normalize_race(value: str) -> str:
-    """Normalize a race/ethnicity string via keyword matching.
-
-    Strips gender words, then checks for race keywords in priority
-    order. Unmatched values default to "other".
-
-    Args:
-        value: Raw race string (e.g., "African American", "Hispanic/Latino male").
-
-    Returns:
-        Canonical lowercase form (e.g., "black", "hispanic", "other").
-
-    Examples:
-        >>> normalize_race("African-American/Black")
-        'black'
-        >>> normalize_race("Hispanic/Latino male")
-        'hispanic'
-        >>> normalize_race("Iranian")
-        'other'
-    """
-    lowered = value.strip().lower()
-    lowered = _GENDER_WORDS.sub("", lowered).strip()
-    lowered = re.sub(r"\s+", " ", lowered)
-    for pattern, canonical in _RACE_KEYWORDS:
-        if pattern.search(lowered):
-            return canonical
-    return "other"
 
 
 _HONORIFICS = re.compile(
@@ -569,5 +532,20 @@ def synthesize_node(state: EnrichmentState, config: RunnableConfig) -> Enrichmen
                     )
             except Exception as e:
                 logger.warning("Race verifier failed (fail-open, no null): %s", e)
+
+    # Race taxonomy flag (any dataset): annotate where a committed civilian_race
+    # is more specific than TJI's coarse 4-bucket scheme — a deterministic signal
+    # for human review and the aggregate divergence finding. Runs after verify, so
+    # a verified-and-nulled race produces no flag.
+    race_committed = next(
+        (
+            f
+            for f in state.extracted_fields
+            if f.field_name == MediaFeatureField.CIVILIAN_RACE.value and f.value
+        ),
+        None,
+    )
+    if race_committed is not None:
+        state.civilian_race_taxonomy = classify_race(race_committed.value)
 
     return state

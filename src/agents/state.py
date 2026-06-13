@@ -262,6 +262,30 @@ class ValidationResult(BaseModel):
     passed: bool = False
 
 
+class RaceTaxonomyFlag(BaseModel):
+    """Where an extracted race sits relative to TJI's coarse race scheme.
+
+    TJI codes race in four buckets (WHITE/BLACK/HISPANIC/OTHER) with no Asian
+    category and no nationalities. This records the bucket a source-stated race
+    maps to for comparison, plus whether the source was *more specific* than the
+    bucket (a taxonomy divergence) — a deterministic annotation for human review
+    and the aggregate "TX coarser than the source" finding. The granular value
+    is preserved on the FieldExtraction; this never replaces it.
+
+    Attributes:
+        extracted: Raw extracted race string (e.g. "Asian", "Honduran").
+        tji_bucket: The TJI bucket it maps to (white/black/hispanic/other).
+        divergence_type: none | nationality_as_ethnicity |
+            race_absent_from_scheme | uncategorized.
+        diverges: True when the source is more specific than the bucket.
+    """
+
+    extracted: str
+    tji_bucket: str
+    divergence_type: str
+    diverges: bool
+
+
 class EnrichmentState(BaseModel):
     """Complete state for enrichment pipeline.
 
@@ -298,6 +322,10 @@ class EnrichmentState(BaseModel):
 
         extracted_fields: Only enriched/updated fields with provenance.
         conflicting_fields: Field names with conflicts (for escalation).
+        civilian_race_taxonomy: Taxonomy annotation for a committed
+            civilian_race (any dataset) — the TJI bucket it maps to and whether
+            the source was more specific than that bucket. None when no race
+            was committed.
 
         retry_count: Number of retry attempts made.
         max_retries: Maximum retries before escalation (default 3).
@@ -339,6 +367,7 @@ class EnrichmentState(BaseModel):
     # Synthesize outputs (Synthesize Node)
     extracted_fields: list[FieldExtraction] = Field(default_factory=list)
     conflicting_fields: list[FieldConflict] | None = None
+    civilian_race_taxonomy: RaceTaxonomyFlag | None = None
 
     # Coordinator control
     retry_count: int = 0
