@@ -22,6 +22,7 @@ from src.agents.state import (
     MergeExtractionResponse,
     PipelineStage,
 )
+from src.field_normalizers import normalize_outcome, time_period_bucket
 from src.race_taxonomy import classify_race, normalize_race
 from src.synthesize.race_verifier import verify_race
 from src.synthesize.relevance_judge import judge_relevance
@@ -312,6 +313,28 @@ def check_articles_match(
     # Weapon field: use embedding-based similarity
     if field == MediaFeatureField.WEAPON:
         if all(weapons_match(most_common, other) for other in others):
+            winner = next(r for r in non_null_results if r.value == most_common)
+            winner.confidence = ConfidenceLevel.MEDIUM
+            return (True, winner)
+
+    # Outcome field: articles often phrase the same fatal/non-fatal result
+    # differently ("killed" vs "shot dead"); resolve on the canonical category.
+    if field == MediaFeatureField.OUTCOME:
+        normalized_common = normalize_outcome(most_common)
+        if normalized_common is not None and all(
+            normalize_outcome(other) == normalized_common for other in others
+        ):
+            winner = next(r for r in non_null_results if r.value == most_common)
+            winner.confidence = ConfidenceLevel.MEDIUM
+            return (True, winner)
+
+    # Time-of-day field: resolve when sources agree on a coarse period bucket
+    # ("around 1 p.m." vs "this afternoon") even if exact phrasings differ.
+    if field == MediaFeatureField.TIME_OF_DAY:
+        bucket_common = time_period_bucket(most_common)
+        if bucket_common is not None and all(
+            time_period_bucket(other) == bucket_common for other in others
+        ):
             winner = next(r for r in non_null_results if r.value == most_common)
             winner.confidence = ConfidenceLevel.MEDIUM
             return (True, winner)
