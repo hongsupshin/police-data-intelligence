@@ -51,6 +51,11 @@ class Settings(BaseSettings):
             by the synthesize node for ``civilians_shot``; on by default
             (earn-confirmed 2026-06-13; set
             ``ENRICHMENT_ENABLE_RACE_VERIFICATION=false`` to disable).
+        enable_conflict_annotation: Feature flag for the advisory LLM
+            conflict-annotator that writes a reviewer triage note on records
+            with deep flagged conflicts (advisory only — never commits a value).
+            Read by the synthesize node (any dataset); off by default (set
+            ``ENRICHMENT_ENABLE_CONFLICT_ANNOTATION=true`` to enable).
     """
 
     model_config = SettingsConfigDict(env_prefix="ENRICHMENT_")
@@ -65,6 +70,7 @@ class Settings(BaseSettings):
     date_proximity_days: int = 5
     enable_relevance_gate: bool = True
     enable_race_verification: bool = True
+    enable_conflict_annotation: bool = False
 
     @model_validator(mode="after")
     def _check_search_window_covers_date_proximity(self) -> "Settings":

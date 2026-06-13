@@ -23,6 +23,7 @@ from src.agents.graph import (
 from src.agents.state import (
     Article,
     ConfidenceLevel,
+    ConflictAnnotation,
     ConflictType,
     DatasetType,
     EnrichmentState,
@@ -168,6 +169,22 @@ def test_complete_node_writes_race_taxonomy(
     assert data["civilian_race_taxonomy"]["extracted"] == "Asian"
     assert data["civilian_race_taxonomy"]["tji_bucket"] == "other"
     assert data["civilian_race_taxonomy"]["diverges"] is True
+
+
+def test_complete_node_writes_conflict_annotation(
+    base_state: EnrichmentState, tmp_path: Path
+) -> None:
+    """An advisory conflict annotation reaches the output JSON for reviewers."""
+    config = RunnableConfig(
+        {"configurable": {"settings": Settings(output_dir=str(tmp_path))}}
+    )
+    state = base_state.model_copy()
+    state.conflict_annotation = ConflictAnnotation(
+        note="Ages differ (41 vs 18); the 18-year-old appears to be a bystander."
+    )
+    result = complete_node(state, config)
+    data = json.loads(Path(result.output_file_path).read_text())
+    assert "bystander" in data["conflict_annotation"]["note"]
 
 
 def test_complete_node_preserves_human_review_with_conflicts(
@@ -508,6 +525,7 @@ def test_complete_node_json_keys(
         "retry_count",
         "conflicting_fields",
         "civilian_race_taxonomy",
+        "conflict_annotation",
         "outcome_summary",
     }
     assert set(data.keys()) == expected_keys
@@ -537,6 +555,7 @@ def test_escalate_node_json_keys(
         "extracted_fields",
         "conflicting_fields",
         "civilian_race_taxonomy",
+        "conflict_annotation",
         "outcome_summary",
     }
     assert set(data.keys()) == expected_keys

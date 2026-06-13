@@ -14,6 +14,7 @@ from langchain_core.runnables import RunnableConfig
 from src.agents.state import (
     Article,
     ConfidenceLevel,
+    ConflictAnnotation,
     ConflictType,
     DatasetType,
     EnrichmentState,
@@ -1268,6 +1269,105 @@ class TestRaceVerification:
         result = synthesize_node(base_state, self._config(mock_llm, True))
         assert self._verify_called(mock_llm)
         assert self._race(result) is not None  # kept on error
+
+
+class TestConflictAnnotation:
+    """Advisory conflict annotator: flag-gated, deep-conflicts-only, dataset-agnostic, fail-open."""
+
+    def _mock_llm(
+        self,
+        art1_exts: list[FieldExtraction],
+        art2_exts: list[FieldExtraction],
+        annotation: ConflictAnnotation | None = None,
+        raise_on_annotate: bool = False,
+    ) -> MagicMock:
+        """Mock LLM: an extraction per article (2), then optionally an annotation."""
+        side: list = [
+            MergeExtractionResponse(extractions=art1_exts),
+            MergeExtractionResponse(extractions=art2_exts),
+        ]
+        if raise_on_annotate:
+            side.append(RuntimeError("annotate boom"))
+        elif annotation is not None:
+            side.append(annotation)
+        mock_llm = MagicMock()
+        mock_llm.with_structured_output.return_value.invoke.side_effect = side
+        return mock_llm
+
+    @staticmethod
+    def _config(mock_llm: MagicMock, flag: bool) -> RunnableConfig:
+        # other gates off so the annotator is isolated.
+        return RunnableConfig(
+            {
+                "configurable": {
+                    "llm_client": mock_llm,
+                    "settings": Settings(
+                        enable_conflict_annotation=flag,
+                        enable_relevance_gate=False,
+                        enable_race_verification=False,
+                    ),
+                }
+            }
+        )
+
+    @staticmethod
+    def _annotate_called(mock_llm: MagicMock) -> bool:
+        models = [c.args[0] for c in mock_llm.with_structured_output.call_args_list]
+        return ConflictAnnotation in models
+
+    def test_deep_conflict_sets_annotation(self, base_state: EnrichmentState) -> None:
+        """A deep (civilian_age) conflict -> the annotator runs and sets the note."""
+        a1 = [_make_extraction("weapon", "handgun"), _make_extraction("civilian_age", "51")]
+        a2 = [_make_extraction("weapon", "handgun"), _make_extraction("civilian_age", "57")]
+        mock_llm = self._mock_llm(a1, a2, ConflictAnnotation(note="ages differ: 51 vs 57"))
+        result = synthesize_node(base_state, self._config(mock_llm, True))
+        assert self._annotate_called(mock_llm)
+        assert result.conflict_annotation is not None
+        assert result.conflict_annotation.note
+
+    def test_dataset_agnostic_officers(self, base_state: EnrichmentState) -> None:
+        """The annotator is dataset-agnostic -> also fires on officers_shot."""
+        state = base_state.model_copy(deep=True)
+        state.dataset_type = DatasetType.OFFICERS_SHOT
+        a1 = [_make_extraction("civilian_age", "51")]
+        a2 = [_make_extraction("civilian_age", "57")]
+        mock_llm = self._mock_llm(a1, a2, ConflictAnnotation(note="x"))
+        result = synthesize_node(state, self._config(mock_llm, True))
+        assert self._annotate_called(mock_llm)
+        assert result.conflict_annotation is not None
+
+    def test_flag_off_skips(self, base_state: EnrichmentState) -> None:
+        """Flag off -> the annotator never runs."""
+        a1 = [_make_extraction("civilian_age", "51")]
+        a2 = [_make_extraction("civilian_age", "57")]
+        mock_llm = self._mock_llm(a1, a2)
+        result = synthesize_node(base_state, self._config(mock_llm, False))
+        assert not self._annotate_called(mock_llm)
+        assert result.conflict_annotation is None
+
+    def test_shallow_only_conflict_skips(self, base_state: EnrichmentState) -> None:
+        """A conflict only on a non-deep field (circumstance) -> annotator skipped."""
+        a1 = [
+            _make_extraction("weapon", "handgun"),
+            _make_extraction("circumstance", "Officer responded to a domestic call."),
+        ]
+        a2 = [
+            _make_extraction("weapon", "handgun"),
+            _make_extraction("circumstance", "A robbery suspect fled on foot downtown."),
+        ]
+        mock_llm = self._mock_llm(a1, a2)
+        result = synthesize_node(base_state, self._config(mock_llm, True))
+        assert not self._annotate_called(mock_llm)
+        assert result.conflict_annotation is None
+
+    def test_fail_open_on_error(self, base_state: EnrichmentState) -> None:
+        """An annotator error must not break the node (fail-open, no annotation)."""
+        a1 = [_make_extraction("civilian_age", "51")]
+        a2 = [_make_extraction("civilian_age", "57")]
+        mock_llm = self._mock_llm(a1, a2, raise_on_annotate=True)
+        result = synthesize_node(base_state, self._config(mock_llm, True))
+        assert self._annotate_called(mock_llm)
+        assert result.conflict_annotation is None  # fail-open
 
 
 class TestRaceTaxonomyFlag:

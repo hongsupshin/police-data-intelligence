@@ -82,6 +82,9 @@ def complete_node(state: EnrichmentState, config: RunnableConfig) -> EnrichmentS
         "civilian_race_taxonomy": state.civilian_race_taxonomy.model_dump()
         if state.civilian_race_taxonomy
         else None,
+        "conflict_annotation": state.conflict_annotation.model_dump()
+        if state.conflict_annotation
+        else None,
         "outcome_summary": state.outcome_summary,
     }
 
@@ -141,6 +144,7 @@ def escalate_node(state: EnrichmentState, config: RunnableConfig) -> EnrichmentS
         "extracted_fields": [f.model_dump() for f in state.extracted_fields],
         "conflicting_fields": [c.model_dump() for c in state.conflicting_fields] if state.conflicting_fields else state.conflicting_fields,
         "civilian_race_taxonomy": state.civilian_race_taxonomy.model_dump() if state.civilian_race_taxonomy else None,
+        "conflict_annotation": state.conflict_annotation.model_dump() if state.conflict_annotation else None,
         "outcome_summary": state.outcome_summary,
     }
 

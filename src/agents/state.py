@@ -286,6 +286,24 @@ class RaceTaxonomyFlag(BaseModel):
     diverges: bool
 
 
+class ConflictAnnotation(BaseModel):
+    """Advisory LLM triage note for a record with deep flagged conflicts.
+
+    When articles disagree on identity/structured fields (name/age/weapon/
+    location/race) or a multi-subject source blends people, an LLM reads the
+    disagreeing quotes and writes a short note explaining *why* they differ and
+    what the reviewer should check. It is advisory only — nothing is committed
+    or overwritten — so it can only aid the human-review default, never corrupt
+    data. Produced at synthesize; written to the output JSON for review.
+
+    Attributes:
+        note: The reviewer-facing triage note (cites quotes, flags uncertainty,
+            never asserts a person's race or any fact the articles don't state).
+    """
+
+    note: str
+
+
 class EnrichmentState(BaseModel):
     """Complete state for enrichment pipeline.
 
@@ -326,6 +344,8 @@ class EnrichmentState(BaseModel):
             civilian_race (any dataset) — the TJI bucket it maps to and whether
             the source was more specific than that bucket. None when no race
             was committed.
+        conflict_annotation: Advisory LLM triage note for a record with deep
+            flagged conflicts (any dataset). None when not generated.
 
         retry_count: Number of retry attempts made.
         max_retries: Maximum retries before escalation (default 3).
@@ -368,6 +388,7 @@ class EnrichmentState(BaseModel):
     extracted_fields: list[FieldExtraction] = Field(default_factory=list)
     conflicting_fields: list[FieldConflict] | None = None
     civilian_race_taxonomy: RaceTaxonomyFlag | None = None
+    conflict_annotation: ConflictAnnotation | None = None
 
     # Coordinator control
     retry_count: int = 0
