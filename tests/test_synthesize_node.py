@@ -26,6 +26,7 @@ from src.agents.state import (
     ValidationResult,
 )
 from src.config import Settings
+from src.synthesize.race_verifier import RaceVerificationVerdict
 from src.synthesize.relevance_judge import RelevanceVerdict
 from src.synthesize.synthesize_node import (
     check_articles_match,
@@ -1046,3 +1047,114 @@ class TestRelevanceGate:
         result = synthesize_node(self._officers(base_state), self._config(mock_llm, True))
         assert result.relevance_vetoed is False
         assert result.extracted_fields
+
+
+class TestRaceVerification:
+    """The civilian race verifier: flag-gated, civilians-only, fail-open, nulls one field."""
+
+    @staticmethod
+    def _exts(with_race: bool = True) -> list[FieldExtraction]:
+        exts = [_make_extraction("weapon", "handgun")]
+        if with_race:
+            exts.insert(0, _make_extraction("civilian_race", "Black"))
+        return exts
+
+    def _mock_llm(
+        self,
+        verdict: RaceVerificationVerdict | None = None,
+        raise_on_verify: bool = False,
+        with_race: bool = True,
+    ) -> MagicMock:
+        """Mock LLM: an extraction per article (2), then optionally a verify verdict."""
+        exts = self._exts(with_race=with_race)
+        side: list = [
+            MergeExtractionResponse(extractions=exts),
+            MergeExtractionResponse(extractions=exts),
+        ]
+        if raise_on_verify:
+            side.append(RuntimeError("verify boom"))
+        elif verdict is not None:
+            side.append(verdict)
+        mock_llm = MagicMock()
+        mock_llm.with_structured_output.return_value.invoke.side_effect = side
+        return mock_llm
+
+    @staticmethod
+    def _config(mock_llm: MagicMock, flag: bool) -> RunnableConfig:
+        # relevance gate off so the race verifier is isolated (officers test).
+        return RunnableConfig(
+            {
+                "configurable": {
+                    "llm_client": mock_llm,
+                    "settings": Settings(
+                        enable_race_verification=flag, enable_relevance_gate=False
+                    ),
+                }
+            }
+        )
+
+    @staticmethod
+    def _officers(base_state: EnrichmentState) -> EnrichmentState:
+        state = base_state.model_copy(deep=True)
+        state.dataset_type = DatasetType.OFFICERS_SHOT
+        return state
+
+    @staticmethod
+    def _verify_called(mock_llm: MagicMock) -> bool:
+        models = [c.args[0] for c in mock_llm.with_structured_output.call_args_list]
+        return RaceVerificationVerdict in models
+
+    @staticmethod
+    def _race(state: EnrichmentState) -> FieldExtraction | None:
+        return next(
+            (f for f in state.extracted_fields if f.field_name == "civilian_race"), None
+        )
+
+    def test_unsupported_nulls_race(self, base_state: EnrichmentState) -> None:
+        """Civilians + flag on + unsupported -> civilian_race removed, rest survive."""
+        mock_llm = self._mock_llm(
+            RaceVerificationVerdict(supported=False, reasoning="not stated in source")
+        )
+        result = synthesize_node(base_state, self._config(mock_llm, True))
+        assert self._verify_called(mock_llm)
+        assert self._race(result) is None  # nulled
+        assert result.extracted_fields  # other fields (weapon) survive
+
+    def test_supported_keeps_race(self, base_state: EnrichmentState) -> None:
+        """Civilians + flag on + supported -> civilian_race kept."""
+        mock_llm = self._mock_llm(
+            RaceVerificationVerdict(
+                supported=True, quote="a Black man", reasoning="explicitly stated"
+            )
+        )
+        result = synthesize_node(base_state, self._config(mock_llm, True))
+        assert self._verify_called(mock_llm)
+        race = self._race(result)
+        assert race is not None and race.value == "Black"
+
+    def test_flag_off_skips_verifier(self, base_state: EnrichmentState) -> None:
+        """Flag off -> the verifier never runs; race kept."""
+        mock_llm = self._mock_llm()
+        result = synthesize_node(base_state, self._config(mock_llm, False))
+        assert not self._verify_called(mock_llm)
+        assert self._race(result) is not None
+
+    def test_officers_skip_verifier(self, base_state: EnrichmentState) -> None:
+        """Officers + flag on -> civilians-only gate skips the verifier."""
+        mock_llm = self._mock_llm()
+        synthesize_node(self._officers(base_state), self._config(mock_llm, True))
+        assert not self._verify_called(mock_llm)
+
+    def test_no_race_extraction_skips_verifier(self, base_state: EnrichmentState) -> None:
+        """No civilian_race extracted -> the verifier is not called."""
+        mock_llm = self._mock_llm(with_race=False)
+        result = synthesize_node(base_state, self._config(mock_llm, True))
+        assert not self._verify_called(mock_llm)
+        assert self._race(result) is None
+
+    def test_fail_open_on_error(self, base_state: EnrichmentState) -> None:
+        """A verifier error must not null the race (fail-open)."""
+        mock_llm = self._mock_llm(raise_on_verify=True)
+        result = synthesize_node(base_state, self._config(mock_llm, True))
+        assert self._verify_called(mock_llm)
+        assert self._race(result) is not None  # kept on error

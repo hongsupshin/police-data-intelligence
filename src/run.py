@@ -58,6 +58,8 @@ def run(
     llm_client = ChatAnthropic(
         model=os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-6"),
         api_key=os.environ["ANTHROPIC_API_KEY"],
+        timeout=float(os.getenv("ANTHROPIC_TIMEOUT", "90")),
+        max_retries=int(os.getenv("ANTHROPIC_MAX_RETRIES", "2")),
     )
     conn = sqlite3.connect("./checkpoints.db", check_same_thread=False)
 
