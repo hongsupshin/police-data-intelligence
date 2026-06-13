@@ -22,6 +22,7 @@ from src.agents.state import (
     MergeExtractionResponse,
     PipelineStage,
 )
+from src.synthesize.race_verifier import verify_race
 from src.synthesize.relevance_judge import judge_relevance
 from src.synthesize.weapon_similarity import weapons_match
 
@@ -535,5 +536,38 @@ def synthesize_node(state: EnrichmentState, config: RunnableConfig) -> Enrichmen
                 state.relevance_vetoed = True
         except Exception as e:
             logger.warning("Relevance judge failed (fail-open, no veto): %s", e)
+
+    # Race verification (civilians_shot only, flag-gated): null a committed
+    # civilian_race the source doesn't explicitly state for THIS victim (no proxy
+    # inference). Fail-open so a verifier outage never blocks a completion.
+    if (
+        settings is not None
+        and getattr(settings, "enable_race_verification", False)
+        and state.dataset_type == DatasetType.CIVILIANS_SHOT
+        and not state.error_message
+        and validated_articles
+    ):
+        race_ext = next(
+            (
+                f
+                for f in state.extracted_fields
+                if f.field_name == MediaFeatureField.CIVILIAN_RACE.value and f.value
+            ),
+            None,
+        )
+        if race_ext is not None:
+            try:
+                verdict = verify_race(
+                    llm_client, state, race_ext.value, validated_articles
+                )
+                if not verdict.supported:
+                    state.extracted_fields.remove(race_ext)  # honest null
+                    logger.info(
+                        "civilian_race '%s' nulled (unsupported by source): %s",
+                        race_ext.value,
+                        verdict.reasoning,
+                    )
+            except Exception as e:
+                logger.warning("Race verifier failed (fail-open, no null): %s", e)
 
     return state

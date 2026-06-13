@@ -45,6 +45,11 @@ class Settings(BaseSettings):
             judge that vetoes a completion matched to the wrong article. Read
             by the synthesize node for ``officers_shot``; on by default (set
             ``ENRICHMENT_ENABLE_RELEVANCE_GATE=false`` to disable).
+        enable_race_verification: Feature flag for the (Tier 2) LLM race
+            verifier that nulls a ``civilian_race`` the source doesn't
+            explicitly state for the record's victim (no proxy inference). Read
+            by the synthesize node for ``civilians_shot``; off by default until
+            earn-confirmation (set ``ENRICHMENT_ENABLE_RACE_VERIFICATION=true``).
     """
 
     model_config = SettingsConfigDict(env_prefix="ENRICHMENT_")
@@ -58,6 +63,7 @@ class Settings(BaseSettings):
     fuzzy_match_threshold: int = 80
     date_proximity_days: int = 5
     enable_relevance_gate: bool = True
+    enable_race_verification: bool = False
 
     @model_validator(mode="after")
     def _check_search_window_covers_date_proximity(self) -> "Settings":
