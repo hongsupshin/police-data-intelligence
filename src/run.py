@@ -61,6 +61,13 @@ def run(
         timeout=float(os.getenv("ANTHROPIC_TIMEOUT", "90")),
         max_retries=int(os.getenv("ANTHROPIC_MAX_RETRIES", "2")),
     )
+    # Cheaper model for high-frequency advisory tasks (the conflict annotator).
+    llm_client_cheap = ChatAnthropic(
+        model=os.getenv("ANTHROPIC_CHEAP_MODEL", "claude-haiku-4-5-20251001"),
+        api_key=os.environ["ANTHROPIC_API_KEY"],
+        timeout=float(os.getenv("ANTHROPIC_TIMEOUT", "90")),
+        max_retries=int(os.getenv("ANTHROPIC_MAX_RETRIES", "2")),
+    )
     conn = sqlite3.connect("./checkpoints.db", check_same_thread=False)
 
     checkpointer = SqliteSaver(conn=conn)
@@ -70,6 +77,7 @@ def run(
             "configurable": {
                 "settings": settings or Settings(),
                 "llm_client": llm_client,
+                "llm_client_cheap": llm_client_cheap,
                 "thread_id": f"{dataset_type}_{incident_id}",
             }
         }

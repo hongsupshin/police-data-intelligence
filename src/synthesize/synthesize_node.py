@@ -24,6 +24,7 @@ from src.agents.state import (
 )
 from src.field_normalizers import normalize_outcome, time_period_bucket
 from src.race_taxonomy import classify_race, normalize_race
+from src.synthesize.conflict_annotator import annotate_conflicts
 from src.synthesize.race_verifier import verify_race
 from src.synthesize.relevance_judge import judge_relevance
 from src.synthesize.weapon_similarity import weapons_match
@@ -103,6 +104,18 @@ RAPIDFUZZ_THRESHOLD = 80
 
 FIELD_FUZZY_THRESHOLDS: dict[MediaFeatureField, int] = {
     MediaFeatureField.LOCATION_DETAIL: 75,
+}
+
+# Identity/structured fields whose conflicts are "deep" (reasoning-shaped) and
+# worth an advisory annotation; free-text circumstance and the now-deterministic
+# outcome/time are excluded (low annotation value).
+_DEEP_CONFLICT_FIELDS: set[str] = {
+    MediaFeatureField.CIVILIAN_NAME.value,
+    MediaFeatureField.OFFICER_NAME.value,
+    MediaFeatureField.CIVILIAN_AGE.value,
+    MediaFeatureField.WEAPON.value,
+    MediaFeatureField.LOCATION_DETAIL.value,
+    MediaFeatureField.CIVILIAN_RACE.value,
 }
 
 
@@ -570,5 +583,30 @@ def synthesize_node(state: EnrichmentState, config: RunnableConfig) -> Enrichmen
     )
     if race_committed is not None:
         state.civilian_race_taxonomy = classify_race(race_committed.value)
+
+    # Conflict annotation (any dataset, flag-gated, advisory-only): when deep
+    # (identity/structured) conflicts survive to human review, an LLM writes a
+    # triage note explaining why the articles disagree. Never commits a value;
+    # gated on conflicting_fields (so it also fires on the escalate-on-conflict
+    # path); fail-open. Uses the cheap (Haiku) client when one is provided.
+    if (
+        settings is not None
+        and getattr(settings, "enable_conflict_annotation", False)
+        and state.conflicting_fields
+        and not state.error_message
+        and validated_articles
+    ):
+        deep_conflicts = [
+            c for c in state.conflicting_fields
+            if c.field_name in _DEEP_CONFLICT_FIELDS
+        ]
+        if deep_conflicts:
+            annot_llm = config["configurable"].get("llm_client_cheap") or llm_client
+            try:
+                state.conflict_annotation = annotate_conflicts(
+                    annot_llm, state, deep_conflicts, validated_articles
+                )
+            except Exception as e:
+                logger.warning("Conflict annotator failed (fail-open): %s", e)
 
     return state
