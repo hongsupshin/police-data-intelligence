@@ -20,6 +20,7 @@ def _state() -> EnrichmentState:
         incident_date=date(2019, 5, 1),
         location="Killeen",
         severity="injury",
+        civilian_outcome="killed",
     )
 
 
@@ -49,6 +50,17 @@ class TestBuildPrompt:
         assert "Killeen" in prompt
         assert "An officer was shot in Killeen" in prompt
         assert "[0] title:" in prompt
+
+    def test_includes_civilian_outcome_anchor(self) -> None:
+        """The suspect/civilian outcome is part of the anchors (Lever A)."""
+        prompt = _build_prompt(_state(), [_article()])
+        assert "suspect/civilian killed" in prompt
+
+    def test_unnamed_article_guidance_present(self) -> None:
+        """Unnamed-but-matching is OK, and outcome differences are non-veto."""
+        prompt = _build_prompt(_state(), [_article()])
+        assert "If no name matches" in prompt
+        assert "a differing outcome is a data conflict" in prompt
 
     def test_truncates_long_content(self) -> None:
         long = "x" * 5000

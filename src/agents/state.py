@@ -281,6 +281,8 @@ class EnrichmentState(BaseModel):
         incident_date: Date of the incident.
         location: City/county where incident occurred.
         severity: Outcome severity (fatal, injured, etc.).
+        civilian_outcome: Suspect/civilian outcome for officers_shot
+            (killed/injured/not harmed/unknown); None for civilians_shot.
 
         search_attempts: History of all search attempts for audit.
         retrieved_articles: Current set of articles from latest search.
@@ -318,6 +320,7 @@ class EnrichmentState(BaseModel):
     incident_date: date | None = None
     location: str | None = None
     severity: str | None = None
+    civilian_outcome: str | None = None
 
     # Search tracking (Search Node)
     search_attempts: list[SearchAttempt] = Field(default_factory=list)
