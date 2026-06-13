@@ -12,7 +12,6 @@ Modules:
 
 import json
 import logging
-import re
 import time as time_mod
 from collections import defaultdict
 from collections.abc import Callable
@@ -33,6 +32,18 @@ from src.agents.state import (
     PipelineStage,
 )
 from src.config import Settings
+from src.field_normalizers import (
+    detect_period as _detect_period,
+)
+from src.field_normalizers import (
+    hour_in_bucket as _hour_in_bucket,
+)
+from src.field_normalizers import (
+    normalize_outcome as _normalize_outcome_str,
+)
+from src.field_normalizers import (
+    parse_hour as _parse_hour,
+)
 from src.race_taxonomy import normalize_race
 from src.synthesize.synthesize_node import RAPIDFUZZ_THRESHOLD
 
@@ -191,16 +202,10 @@ class HoldoutReport(BaseModel):
 # Comparison Helpers
 # ---------------------------------------------------------------------------
 
-TIME_PERIOD_BUCKETS: dict[str, tuple[int, int]] = {
-    "morning": (6, 11),
-    "afternoon": (12, 17),
-    "evening": (18, 21),
-    "night": (22, 5),
-}
-
-FATAL_KEYWORDS = {"killed", "died", "death", "fatal", "fatally"}
-NON_FATAL_KEYWORDS = {"injured", "survived", "wounded", "non-fatal", "nonfatal"}
-
+# Outcome / time-of-day normalizers (and TIME_PERIOD_BUCKETS) now live in
+# src.field_normalizers, shared with the pipeline's conflict resolver. They are
+# imported at module top under their historical private names so the comparators
+# below keep resolving unchanged.
 
 # Race normalization now lives in src.race_taxonomy (shared with the pipeline).
 # Kept as a module-level alias so existing imports (e.g. gate.py) keep resolving.
@@ -209,76 +214,6 @@ NON_FATAL_KEYWORDS = {"injured", "survived", "wounded", "non-fatal", "nonfatal"}
 # (it cannot reward granularity — "Asian" scores as OTHER); the granular value
 # and any divergence are carried by classify_race / RaceTaxonomyFlag.
 _normalize_race = normalize_race
-
-
-def _normalize_outcome_str(value: str) -> str | None:
-    """Normalize an outcome string to 'fatal' or 'non-fatal'.
-
-    Returns:
-        'fatal', 'non-fatal', or None if unrecognized.
-    """
-    lowered = value.strip().lower()
-    # Check non-fatal first since "non-fatal" contains "fatal"
-    if any(kw in lowered for kw in NON_FATAL_KEYWORDS):
-        return "non-fatal"
-    if any(kw in lowered for kw in FATAL_KEYWORDS):
-        return "fatal"
-    return None
-
-
-def _parse_hour(time_str: str) -> int | None:
-    """Extract hour from a time string (e.g., '2:30 PM', '14:30', '2 a.m.').
-
-    Returns:
-        Hour as 0-23 integer, or None if unparseable.
-    """
-    # Try HH:MM patterns (24h or 12h)
-    match = re.search(
-        r"(\d{1,2}):(\d{2})\s*(am|pm|a\.m\.|p\.m\.)?", time_str, re.IGNORECASE
-    )
-    if match:
-        hour = int(match.group(1))
-        period = match.group(3)
-        if period:
-            period = period.lower().replace(".", "")
-            if period == "pm" and hour != 12:
-                hour += 12
-            elif period == "am" and hour == 12:
-                hour = 0
-        return hour
-
-    # Try bare hour with AM/PM (e.g., "2 PM", "11 a.m.")
-    match = re.search(
-        r"(\d{1,2})\s*(am|pm|a\.m\.|p\.m\.)", time_str, re.IGNORECASE
-    )
-    if match:
-        hour = int(match.group(1))
-        period = match.group(2).lower().replace(".", "")
-        if period == "pm" and hour != 12:
-            hour += 12
-        elif period == "am" and hour == 12:
-            hour = 0
-        return hour
-
-    return None
-
-
-def _hour_in_bucket(hour: int, bucket_name: str) -> bool:
-    """Check if an hour falls within a named time period bucket."""
-    start, end = TIME_PERIOD_BUCKETS[bucket_name]
-    if start <= end:
-        return start <= hour <= end
-    # Wraps around midnight (night: 22-5)
-    return hour >= start or hour <= end
-
-
-def _detect_period(text: str) -> str | None:
-    """Detect a time period keyword in text."""
-    lowered = text.strip().lower()
-    for period in TIME_PERIOD_BUCKETS:
-        if period in lowered:
-            return period
-    return None
 
 
 # ---------------------------------------------------------------------------

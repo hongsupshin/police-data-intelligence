@@ -426,6 +426,116 @@ def test_check_articles_match_genuinely_different_names() -> None:
     assert winner is None
 
 
+# --- check_articles_match with outcome / time normalization ---
+
+
+def test_check_articles_match_outcome_consensus() -> None:
+    """Different fatal phrasings converge on the fatal category."""
+    killed = FieldExtraction(
+        field_name="outcome",
+        value="The suspect was shot and killed.",
+        confidence=ConfidenceLevel.PENDING,
+        sources=["https://example.com/a1"],
+    )
+    died = FieldExtraction(
+        field_name="outcome",
+        value="The man died at the scene.",
+        confidence=ConfidenceLevel.PENDING,
+        sources=["https://example.com/a2"],
+    )
+    matched, winner = check_articles_match(
+        MediaFeatureField.OUTCOME, [killed, died]
+    )
+    assert matched is True
+    assert winner is not None
+    assert winner.confidence == ConfidenceLevel.MEDIUM
+
+
+def test_check_articles_match_outcome_conflict() -> None:
+    """Fatal vs non-fatal stays a conflict (no spurious consensus)."""
+    killed = FieldExtraction(
+        field_name="outcome",
+        value="The suspect was killed.",
+        confidence=ConfidenceLevel.PENDING,
+        sources=["https://example.com/a1"],
+    )
+    survived = FieldExtraction(
+        field_name="outcome",
+        value="The victim survived after being shot.",
+        confidence=ConfidenceLevel.PENDING,
+        sources=["https://example.com/a2"],
+    )
+    matched, winner = check_articles_match(
+        MediaFeatureField.OUTCOME, [killed, survived]
+    )
+    assert matched is False
+    assert winner is None
+
+
+def test_check_articles_match_outcome_unparseable_breaks_consensus() -> None:
+    """An unparseable outcome (canonical None) prevents a commit."""
+    killed = FieldExtraction(
+        field_name="outcome",
+        value="The suspect was killed.",
+        confidence=ConfidenceLevel.PENDING,
+        sources=["https://example.com/a1"],
+    )
+    unclear = FieldExtraction(
+        field_name="outcome",
+        value="The outcome was not reported.",
+        confidence=ConfidenceLevel.PENDING,
+        sources=["https://example.com/a2"],
+    )
+    matched, winner = check_articles_match(
+        MediaFeatureField.OUTCOME, [killed, unclear]
+    )
+    assert matched is False
+    assert winner is None
+
+
+def test_check_articles_match_time_consensus() -> None:
+    """A clock time and a period word converge on the same bucket."""
+    clock = FieldExtraction(
+        field_name="time_of_day",
+        value="around 1 p.m.",
+        confidence=ConfidenceLevel.PENDING,
+        sources=["https://example.com/a1"],
+    )
+    period = FieldExtraction(
+        field_name="time_of_day",
+        value="in the afternoon",
+        confidence=ConfidenceLevel.PENDING,
+        sources=["https://example.com/a2"],
+    )
+    matched, winner = check_articles_match(
+        MediaFeatureField.TIME_OF_DAY, [clock, period]
+    )
+    assert matched is True
+    assert winner is not None
+    assert winner.confidence == ConfidenceLevel.MEDIUM
+
+
+def test_check_articles_match_time_conflict() -> None:
+    """Different time buckets stay a conflict."""
+    morning = FieldExtraction(
+        field_name="time_of_day",
+        value="early in the morning",
+        confidence=ConfidenceLevel.PENDING,
+        sources=["https://example.com/a1"],
+    )
+    night = FieldExtraction(
+        field_name="time_of_day",
+        value="around 11 p.m.",
+        confidence=ConfidenceLevel.PENDING,
+        sources=["https://example.com/a2"],
+    )
+    matched, winner = check_articles_match(
+        MediaFeatureField.TIME_OF_DAY, [morning, night]
+    )
+    assert matched is False
+    assert winner is None
+
+
 # --- extract_fields tests ---
 
 
