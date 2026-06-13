@@ -42,6 +42,10 @@ def fetch_incident(
     """
     cursor = conn.cursor()
 
+    # Suspect/civilian outcome is an officers_shot concept (the civilian is the
+    # shooter); civilians_shot leaves it None (there the civilian is the victim).
+    civilian_outcome = None
+
     if dataset_type == DatasetType.CIVILIANS_SHOT:
         # Query for civilians_shot incidents
         # Gets first officer (shooter) and civilian (victim) names via JOINs
@@ -114,7 +118,8 @@ def fetch_incident(
                 o.name_last AS officer_last,
                 c.name_first AS civilian_first,
                 c.name_last AS civilian_last,
-                v.officer_harm
+                v.officer_harm,
+                i.civilian_harm
             FROM incidents_officers_shot i
             LEFT JOIN incident_officers_shot_victims v
                 ON i.incident_id = v.incident_id
@@ -140,6 +145,7 @@ def fetch_incident(
             civilian_first,
             civilian_last,
             officer_harm,
+            civilian_harm,
         ) = row
 
         # Build full names
@@ -161,6 +167,16 @@ def fetch_incident(
         else:
             severity = "unknown"
 
+        # Map the suspect/civilian (shooter) outcome for the relevance judge
+        if civilian_harm == "DEATH":
+            civilian_outcome = "killed"
+        elif civilian_harm == "INJURY":
+            civilian_outcome = "injured"
+        elif civilian_harm == "NONE":
+            civilian_outcome = "not harmed"
+        else:
+            civilian_outcome = "unknown"
+
     cursor.close()
 
     # Determine location (prefer city, fallback to county)
@@ -172,6 +188,7 @@ def fetch_incident(
         "incident_date": incident_date,
         "location": location,
         "severity": severity,
+        "civilian_outcome": civilian_outcome,
     }
 
 
@@ -231,6 +248,7 @@ def load_node(state: EnrichmentState) -> EnrichmentState:
 
         state.location = incident_data["location"]
         state.severity = incident_data["severity"]
+        state.civilian_outcome = incident_data.get("civilian_outcome")
 
         # Update pipeline stage
         state.current_stage = PipelineStage.LOAD
