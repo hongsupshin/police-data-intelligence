@@ -180,11 +180,44 @@ def normalize_name(value: str) -> str:
 
 
 # helper functions
+def _target_civilian_block(target_civilian: dict[str, str | int | None]) -> str:
+    """Build the TARGET CIVILIAN anchor block for civilians_shot extraction.
+
+    Anchors extraction to the record's single victim so a multi-subject source
+    (a multi-victim event or an aggregator list) does not blend everyone into
+    each per-person field. Keys on the name when present, else age + gender; the
+    single-subject path stays dominant so records without a name (~25%) are not
+    over-nulled.
+
+    Args:
+        target_civilian: Mapping with ``name``, ``age``, ``gender`` for the
+            record's victim (any may be None).
+
+    Returns:
+        The anchor block to prepend to the extraction prompt.
+    """
+    name = target_civilian.get("name") or "unknown / not recorded"
+    return f"""
+    TARGET CIVILIAN (the ONE specific person this record is about):
+    - name: {name}
+    - age: {target_civilian.get("age")}
+    - gender: {target_civilian.get("gender")}
+
+    If the article describes MULTIPLE people, extract each field ONLY for the
+    person matching the TARGET CIVILIAN above (use the name when given; otherwise
+    match on age + gender). If the article describes ONE person, extract theirs -
+    do NOT require a name match (the record may have no name, and early coverage
+    often withholds names). Only return null when the article's people clearly are
+    not this civilian. NEVER combine multiple people's values into one field.
+    """
+
+
 def extract_fields(
     article: Article,
     llm_client: ChatAnthropic,
     fields: list[MediaFeatureField],
     dataset_type: DatasetType,
+    target_civilian: dict[str, str | int | None] | None = None,
 ) -> dict[str, FieldExtraction]:
     """Extract structured fields from a single article using an LLM.
 
@@ -198,6 +231,10 @@ def extract_fields(
         fields: List of MediaFeatureField enums to extract.
         dataset_type: Which TJI dataset the incident belongs to; selects the
             civilian- vs officer-framed extraction prompt.
+        target_civilian: Record victim anchors (name/age/gender) used to
+            disambiguate the record's victim in multi-subject sources. Applied
+            only for ``CIVILIANS_SHOT``; ``None`` (the officers_shot path) leaves
+            the prompt byte-identical to the un-anchored version.
 
     Returns:
         Dictionary mapping field names to FieldExtraction objects.
@@ -209,6 +246,8 @@ def extract_fields(
 
     preamble, field_definitions = _prompt_parts(dataset_type)
     prompt = preamble
+    if dataset_type == DatasetType.CIVILIANS_SHOT and target_civilian is not None:
+        prompt += _target_civilian_block(target_civilian)
     for field_name in fields:
         prompt += f"""
         - "{field_name}": {field_definitions[field_name]}
@@ -396,12 +435,25 @@ def synthesize_node(state: EnrichmentState, config: RunnableConfig) -> Enrichmen
         a for a in state.retrieved_articles if a.url in validated_urls
     ]
 
-    # Extract from validated articles
+    # Extract from validated articles. For civilians_shot, anchor extraction to
+    # the record's victim so multi-subject sources are de-blended; officers_shot
+    # passes no anchor (prompt stays byte-identical).
     try:
+        target_civilian = None
+        if state.dataset_type == DatasetType.CIVILIANS_SHOT:
+            target_civilian = {
+                "name": state.civilian_name,
+                "age": state.civilian_age,
+                "gender": state.civilian_gender,
+            }
         all_extractions = []
         for article in validated_articles:
             result = extract_fields(
-                article, llm_client, list(MediaFeatureField), state.dataset_type
+                article,
+                llm_client,
+                list(MediaFeatureField),
+                state.dataset_type,
+                target_civilian,
             )
             all_extractions.append(result)
 
