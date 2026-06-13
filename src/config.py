@@ -43,7 +43,9 @@ class Settings(BaseSettings):
             dates for a date match.
         enable_relevance_gate: Feature flag for the (Tier 1) LLM relevance
             judge that vetoes a completion matched to the wrong article. Read
-            by the synthesize node for ``officers_shot``; on by default (set
+            by the synthesize node for BOTH datasets (the prompt is
+            dataset-aware: officer-victim for ``officers_shot``, civilian-victim
+            for ``civilians_shot``); on by default (set
             ``ENRICHMENT_ENABLE_RELEVANCE_GATE=false`` to disable).
         enable_race_verification: Feature flag for the (Tier 2) LLM race
             verifier that nulls a ``civilian_race`` the source doesn't
