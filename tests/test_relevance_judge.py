@@ -24,6 +24,18 @@ def _state() -> EnrichmentState:
     )
 
 
+def _civilian_state() -> EnrichmentState:
+    return EnrichmentState(
+        incident_id="142",
+        dataset_type=DatasetType.CIVILIANS_SHOT,
+        civilian_name="John Doe",
+        civilian_age=34,
+        incident_date=date(2018, 3, 15),
+        location="Houston",
+        severity="fatal",
+    )
+
+
 def _article(
     url: str = "https://x.com/a",
     title: str = "Killeen officer shot during standoff",
@@ -68,6 +80,26 @@ class TestBuildPrompt:
         # content is truncated to 600 chars in the block
         assert "x" * 600 in prompt
         assert "x" * 601 not in prompt
+
+
+class TestCivilianBuildPrompt:
+    """For civilians_shot the prompt anchors on the civilian victim, not the officer."""
+
+    def test_civilian_victim_framing(self) -> None:
+        prompt = _build_prompt(_civilian_state(), [_article()])
+        assert "civilian-shot-by-police" in prompt
+        assert "Civilian (victim) name: John Doe" in prompt
+        assert "Officer (victim)" not in prompt  # not officer-framed
+
+    def test_unnamed_victim_guidance_present(self) -> None:
+        """Missing victim name must not auto-veto (~25% of civilians have no name)."""
+        prompt = _build_prompt(_civilian_state(), [_article()])
+        assert "withholds victim names" in prompt
+        assert "must NOT be vetoed merely because the victim is unnamed" in prompt
+
+    def test_date_hard_test_present(self) -> None:
+        prompt = _build_prompt(_civilian_state(), [_article()])
+        assert "DATE is a hard test" in prompt
 
 
 class TestJudgeRelevance:

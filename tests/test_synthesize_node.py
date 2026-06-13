@@ -1075,7 +1075,7 @@ def test_check_articles_match_weapon_embedding_similarity(
 
 
 class TestRelevanceGate:
-    """The officer relevance judge: flag-gated, officers-only, fail-open."""
+    """The relevance judge: flag-gated, both datasets (dataset-aware), fail-open."""
 
     @staticmethod
     def _exts() -> list[FieldExtraction]:
@@ -1145,12 +1145,14 @@ class TestRelevanceGate:
         assert result.relevance_vetoed is False
         assert not self._judge_called(mock_llm)
 
-    def test_civilians_skip_judge(self, base_state: EnrichmentState) -> None:
-        """Civilians + flag on -> officers-only gate skips the judge."""
-        mock_llm = self._mock_llm()
+    def test_civilians_also_judged(self, base_state: EnrichmentState) -> None:
+        """Civilians + flag on -> the dataset-aware judge runs and can veto."""
+        mock_llm = self._mock_llm(
+            RelevanceVerdict(relevant_any=False, reasoning="wrong incident")
+        )
         result = synthesize_node(base_state, self._config(mock_llm, True))
-        assert result.relevance_vetoed is False
-        assert not self._judge_called(mock_llm)
+        assert self._judge_called(mock_llm)
+        assert result.relevance_vetoed is True
 
     def test_fail_open_on_judge_error(self, base_state: EnrichmentState) -> None:
         """A judge error must not block the completion (fail-open, no veto)."""

@@ -517,14 +517,15 @@ def synthesize_node(state: EnrichmentState, config: RunnableConfig) -> Enrichmen
         state.error_message = f"Synthesize failed: {str(e)}"
         state.current_stage = PipelineStage.SYNTHESIZE
 
-    # Relevance gate (officers_shot only, flag-gated): veto a would-be completion
-    # whose validated articles aren't about THIS incident. Runs only on the
-    # success path; fail-open so a judge outage never blocks a completion.
+    # Relevance gate (both datasets, flag-gated): veto a would-be completion
+    # whose validated articles aren't about THIS incident (the dataset-aware
+    # judge anchors on the officer victim for officers_shot, the civilian victim
+    # for civilians_shot). Runs only on the success path; fail-open so a judge
+    # outage never blocks a completion.
     settings = config["configurable"].get("settings")
     if (
         settings is not None
         and getattr(settings, "enable_relevance_gate", False)
-        and state.dataset_type == DatasetType.OFFICERS_SHOT
         and state.extracted_fields
         and not state.error_message
         and validated_articles
