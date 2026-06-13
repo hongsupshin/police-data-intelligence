@@ -15,7 +15,7 @@
   - [Escalation Triggers](#escalation-triggers)
   - [Validation Logic](#validation-logic)
   - [Synthesize Logic](#synthesize-logic)
-  - [Relevance Judge](#relevance-judge-llm-optional)
+  - [Relevance Judge](#relevance-judge-llm)
 - [Quick Start](#quick-start)
   - [Prerequisites](#prerequisites)
   - [Setup](#setup)
@@ -168,7 +168,7 @@ database reference value when applicable.
 
 The database is treated as immutable ground truth (official government data).
 
-### Relevance Judge (LLM, optional)
+### Relevance Judge (LLM)
 
 The first **agentic** precision gate. After extraction, for `officers_shot`
 completions only, an LLM reads the validated articles together with the known
@@ -179,20 +179,31 @@ human review (`IRRELEVANT_SOURCES`) instead of committing fields extracted from
 the wrong source.
 
 It catches the "right structure, wrong incident" failure that rule-based
-validation cannot. For example, incident 60's article _"SAPD: Officer wounded in
-NW Side shootout out of surgery"_ **passed** validation — right city (San
-Antonio), right date (July 26, 2017), an officer injured — yet the judge flagged
-that neither the record's officer (Nathan Becerra) nor suspect (Jovonie Luis
-Casiano) appears in it and the outcome differs, so it is a _different_ same-week
-shooting. Veto → human review.
+validation cannot. Incident 75 is illustrative: for a March 6, 2018 San Antonio
+officer shooting, the pipeline retrieved and used an article — _"Capital murder
+trial of man accused of killing SAPD officer during 2013 chase begins"_ — that
+passed the rule-based checks (San Antonio, an SAPD officer) and surfaced because
+it was published on the incident's date. But it reports a _2013_ case — a
+different officer and a fatal outcome. The judge, reading the text, caught the
+wrong-incident mismatch the rules could not. Veto → human review.
+
+Why an LLM and not just a stricter rule? The discriminator is semantic — same
+city, a real SAPD officer, but a different event years earlier. And the ways an
+article can be the _wrong_ incident are open-ended — you discover them case by
+case (wrong year, coincidental publish date, same-name different-incident, an
+article that never names the officer), you can't enumerate them up front. Rather
+than grow a brittle rule set forever, the judge answers the general "is this the
+same event?" question. It's a precision aid, not perfect: because a veto only
+routes to human review (never fabricates), an over-flag costs a review, not a
+wrong record.
 
 The gate is deliberately bounded, not open-ended: one structured-output LLM call
 per incident (no loop, no tools), read-only (sets a flag, never writes fields),
 fail-open (a judge error logs and the completion proceeds as if it had not run),
 `officers_shot` only, and **on by default**
-(`ENRICHMENT_ENABLE_RELEVANCE_GATE=false` disables). It runs only on would-be completions that
-already passed rule-based validation — a second, semantic check layered on the
-cheap one.
+(`ENRICHMENT_ENABLE_RELEVANCE_GATE=false` disables). It runs only on would-be
+completions that already passed rule-based validation — a second, semantic check
+layered on the cheap one.
 
 ## Quick Start
 
@@ -389,19 +400,19 @@ fairness metrics, adversarial evaluation, and discussion.
 
 Environment variables (see `.env.example`):
 
-| Variable                                | Default             | Description                                            |
-| --------------------------------------- | ------------------- | ------------------------------------------------------ |
-| `ANTHROPIC_API_KEY`                     | (required)          | Anthropic API key                                      |
-| `ANTHROPIC_MODEL`                       | `claude-sonnet-4-6` | Model for LLM-powered nodes                            |
-| `TAVILY_API_KEY`                        | (required)          | Tavily API key for news search                         |
-| `LOG_LEVEL`                             | `INFO`              | Logging level                                          |
-| `ENRICHMENT_OUTPUT_DIR`                 | `output/enrichment` | Output directory for JSON results                      |
-| `ENRICHMENT_MAX_SEARCH_RESULTS`         | `10`                | Max articles per search                                |
-| `ENRICHMENT_SEARCH_DEPTH`               | `advanced`          | Tavily search depth                                    |
-| `ENRICHMENT_SEARCH_WINDOW_BACK_DAYS`    | `14`                | Days before incident date for the Tavily search window |
-| `ENRICHMENT_SEARCH_WINDOW_FORWARD_DAYS` | `60`                | Days after incident date for the Tavily search window  |
-| `ENRICHMENT_FUZZY_MATCH_THRESHOLD`      | `80`                | Min rapidfuzz score for name matching                  |
-| `ENRICHMENT_DATE_PROXIMITY_DAYS`        | `5`                 | Max days between article and incident                  |
+| Variable                                | Default             | Description                                                                 |
+| --------------------------------------- | ------------------- | --------------------------------------------------------------------------- |
+| `ANTHROPIC_API_KEY`                     | (required)          | Anthropic API key                                                           |
+| `ANTHROPIC_MODEL`                       | `claude-sonnet-4-6` | Model for LLM-powered nodes                                                 |
+| `TAVILY_API_KEY`                        | (required)          | Tavily API key for news search                                              |
+| `LOG_LEVEL`                             | `INFO`              | Logging level                                                               |
+| `ENRICHMENT_OUTPUT_DIR`                 | `output/enrichment` | Output directory for JSON results                                           |
+| `ENRICHMENT_MAX_SEARCH_RESULTS`         | `10`                | Max articles per search                                                     |
+| `ENRICHMENT_SEARCH_DEPTH`               | `advanced`          | Tavily search depth                                                         |
+| `ENRICHMENT_SEARCH_WINDOW_BACK_DAYS`    | `14`                | Days before incident date for the Tavily search window                      |
+| `ENRICHMENT_SEARCH_WINDOW_FORWARD_DAYS` | `60`                | Days after incident date for the Tavily search window                       |
+| `ENRICHMENT_FUZZY_MATCH_THRESHOLD`      | `80`                | Min rapidfuzz score for name matching                                       |
+| `ENRICHMENT_DATE_PROXIMITY_DAYS`        | `5`                 | Max days between article and incident                                       |
 | `ENRICHMENT_ENABLE_RELEVANCE_GATE`      | `true`              | LLM relevance judge for officers_shot wrong-article veto (`false` disables) |
 
 PostgreSQL connection variables (`DB_HOST`, `DB_PORT`, etc.) are configured in
