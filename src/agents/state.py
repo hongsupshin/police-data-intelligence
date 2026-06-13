@@ -283,6 +283,10 @@ class EnrichmentState(BaseModel):
         severity: Outcome severity (fatal, injured, etc.).
         civilian_outcome: Suspect/civilian outcome for officers_shot
             (killed/injured/not harmed/unknown); None for civilians_shot.
+        civilian_age: Victim age from database (civilians_shot only); used as an
+            extraction anchor to disambiguate multi-subject sources. None otherwise.
+        civilian_gender: Victim gender from database (civilians_shot only); a
+            secondary extraction anchor when the victim name is absent. None otherwise.
 
         search_attempts: History of all search attempts for audit.
         retrieved_articles: Current set of articles from latest search.
@@ -321,6 +325,8 @@ class EnrichmentState(BaseModel):
     location: str | None = None
     severity: str | None = None
     civilian_outcome: str | None = None
+    civilian_age: int | None = None
+    civilian_gender: str | None = None
 
     # Search tracking (Search Node)
     search_attempts: list[SearchAttempt] = Field(default_factory=list)

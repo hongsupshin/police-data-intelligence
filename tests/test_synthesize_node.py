@@ -526,6 +526,78 @@ def test_extract_fields_civilians_prompt_unchanged(base_article: Article) -> Non
     assert "officer-involved shooting" not in prompt
 
 
+def test_extract_fields_anchored_civilians(base_article: Article) -> None:
+    """civilians_shot with a target civilian prepends the TARGET CIVILIAN anchor."""
+    mock_llm = MagicMock()
+    mock_llm.with_structured_output.return_value.invoke.return_value = (
+        MergeExtractionResponse(extractions=[])
+    )
+    extract_fields(
+        base_article,
+        mock_llm,
+        list(MediaFeatureField),
+        DatasetType.CIVILIANS_SHOT,
+        {"name": "Jane Roe", "age": 41, "gender": "FEMALE"},
+    )
+    prompt = mock_llm.with_structured_output.return_value.invoke.call_args[0][0]
+    assert "TARGET CIVILIAN" in prompt
+    assert "Jane Roe" in prompt
+    assert "41" in prompt
+    assert "FEMALE" in prompt
+    assert "NEVER combine multiple people" in prompt
+    # single-subject path must stay dominant (don't over-null named-less records)
+    assert "extract theirs" in prompt
+
+
+def test_extract_fields_anchor_name_absent(base_article: Article) -> None:
+    """When the record victim has no name (~25%), the anchor falls back to age+gender."""
+    mock_llm = MagicMock()
+    mock_llm.with_structured_output.return_value.invoke.return_value = (
+        MergeExtractionResponse(extractions=[])
+    )
+    extract_fields(
+        base_article,
+        mock_llm,
+        list(MediaFeatureField),
+        DatasetType.CIVILIANS_SHOT,
+        {"name": None, "age": 29, "gender": "MALE"},
+    )
+    prompt = mock_llm.with_structured_output.return_value.invoke.call_args[0][0]
+    assert "unknown / not recorded" in prompt
+    assert "29" in prompt
+    assert "match on age + gender" in prompt
+
+
+def test_extract_fields_civilians_no_anchor_when_none(base_article: Article) -> None:
+    """No TARGET CIVILIAN block when no anchor is supplied (backward compatible)."""
+    mock_llm = MagicMock()
+    mock_llm.with_structured_output.return_value.invoke.return_value = (
+        MergeExtractionResponse(extractions=[])
+    )
+    extract_fields(
+        base_article, mock_llm, list(MediaFeatureField), DatasetType.CIVILIANS_SHOT
+    )
+    prompt = mock_llm.with_structured_output.return_value.invoke.call_args[0][0]
+    assert "TARGET CIVILIAN" not in prompt
+
+
+def test_extract_fields_officers_ignores_anchor(base_article: Article) -> None:
+    """officers_shot never gets the civilian anchor block, even if one is passed."""
+    mock_llm = MagicMock()
+    mock_llm.with_structured_output.return_value.invoke.return_value = (
+        MergeExtractionResponse(extractions=[])
+    )
+    extract_fields(
+        base_article,
+        mock_llm,
+        list(MediaFeatureField),
+        DatasetType.OFFICERS_SHOT,
+        {"name": "Jane Roe", "age": 41, "gender": "FEMALE"},
+    )
+    prompt = mock_llm.with_structured_output.return_value.invoke.call_args[0][0]
+    assert "TARGET CIVILIAN" not in prompt
+
+
 # --- synthesize_node tests ---
 
 
@@ -592,6 +664,24 @@ class TestSynthesizeNode:
         # Confidence should be HIGH (both articles agree)
         weapon = next(e for e in result.extracted_fields if e.field_name == "weapon")
         assert weapon.confidence == ConfidenceLevel.HIGH
+
+    def test_civilian_anchor_reaches_extraction_prompt(
+        self, base_state: EnrichmentState
+    ) -> None:
+        """synthesize_node anchors civilian extraction on the record's victim."""
+        state = base_state.model_copy(
+            update={"civilian_age": 34, "civilian_gender": "MALE"}
+        )
+        mock_llm = _build_mock_llm([[_make_extraction("civilian_age", "34")]] * 2)
+        config = RunnableConfig({"configurable": {"llm_client": mock_llm}})
+        synthesize_node(state, config)
+        prompt = (
+            mock_llm.with_structured_output.return_value.invoke.call_args_list[0][0][0]
+        )
+        assert "TARGET CIVILIAN" in prompt
+        assert "John Doe" in prompt  # base_state.civilian_name
+        assert "34" in prompt
+        assert "MALE" in prompt
 
     def test_reference_conflict(self, base_state: EnrichmentState) -> None:
         """Articles agree with each other but disagree with DB reference."""

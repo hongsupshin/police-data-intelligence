@@ -46,6 +46,11 @@ def fetch_incident(
     # shooter); civilians_shot leaves it None (there the civilian is the victim).
     civilian_outcome = None
 
+    # Victim age/gender anchors are a civilians_shot concept (disambiguate the
+    # record's victim in multi-subject sources); officers_shot leaves them None.
+    civ_age = None
+    civ_gender = None
+
     if dataset_type == DatasetType.CIVILIANS_SHOT:
         # Query for civilians_shot incidents
         # Gets first officer (shooter) and civilian (victim) names via JOINs
@@ -58,6 +63,8 @@ def fetch_incident(
                 o.name_last AS officer_last,
                 c.name_first AS civilian_first,
                 c.name_last AS civilian_last,
+                c.age AS civilian_age,
+                c.gender AS civilian_gender,
                 v.civilian_died
             FROM incidents_civilians_shot i
             LEFT JOIN incident_civilians_shot_officers_involved oi
@@ -83,6 +90,8 @@ def fetch_incident(
             officer_last,
             civilian_first,
             civilian_last,
+            civ_age,
+            civ_gender,
             civilian_died,
         ) = row
 
@@ -189,6 +198,8 @@ def fetch_incident(
         "location": location,
         "severity": severity,
         "civilian_outcome": civilian_outcome,
+        "civilian_age": civ_age,
+        "civilian_gender": civ_gender,
     }
 
 
@@ -249,6 +260,8 @@ def load_node(state: EnrichmentState) -> EnrichmentState:
         state.location = incident_data["location"]
         state.severity = incident_data["severity"]
         state.civilian_outcome = incident_data.get("civilian_outcome")
+        state.civilian_age = incident_data.get("civilian_age")
+        state.civilian_gender = incident_data.get("civilian_gender")
 
         # Update pipeline stage
         state.current_stage = PipelineStage.LOAD
