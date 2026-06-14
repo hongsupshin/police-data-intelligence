@@ -34,6 +34,28 @@ except ModuleNotFoundError:
 # ============================================================================
 
 
+def _reset_data(conn: "psycopg2.extensions.connection") -> None:
+    """Clear all data tables so re-running the load is idempotent.
+
+    ``incident_id`` is ``SERIAL`` and the incident tables have no natural-key
+    dedup, so without this a repeated ``load_data.py`` run appends a fresh full
+    copy of every incident (duplicating the data). ``TRUNCATE ... RESTART
+    IDENTITY CASCADE`` clears the five base tables — CASCADE also clears the
+    junction and media tables that reference them — and resets the SERIAL
+    counters so ids start at 1 each run.
+    """
+    cursor = conn.cursor()
+    try:
+        cursor.execute(
+            "TRUNCATE TABLE incidents_civilians_shot, incidents_officers_shot, "
+            "officers, civilians, agencies RESTART IDENTITY CASCADE"
+        )
+        conn.commit()
+        print("✓ Existing data cleared (idempotent reload)")
+    finally:
+        cursor.close()
+
+
 def main() -> None:
     """Main entry point for the ETL script.
 
@@ -87,6 +109,11 @@ def main() -> None:
             sys.exit(1)
         finally:
             cursor.close()
+
+    # Clear existing data so re-running is idempotent (incident_id is SERIAL with
+    # no natural-key dedup; without this a repeated run appends duplicate incidents).
+    print("\nClearing existing data...")
+    _reset_data(conn)
 
     # Load data
     print("\n" + "=" * 60)
