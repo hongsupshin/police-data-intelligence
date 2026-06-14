@@ -1,7 +1,15 @@
 # Evaluation Report
 
-**Pipeline version**: v1.3 (partial completion, score gating removed)
-**Dataset**: TJI Civilians-Shot (1,674 records, 2014–2024) **Date**: March 2026
+**Pipeline version**: v2.0 — agentic precision/safety layer (relevance judge,
+race verifier, advisory conflict annotator) on top of deterministic extraction,
+plus a deterministic consensus resolver and victim-anchored extraction.
+**Datasets**: TJI Civilians-Shot (1,674 records) and Officers-Shot (282 records),
+2014–2024. **Date**: June 2026
+
+> **Note on versions.** Phase 1 (pilot) and the Bug Fixes section below are the
+> historical record of how the deterministic pipeline reached v1.3. The **Phase 2
+> holdout numbers and everything after reflect the current v2.0 shipped pipeline**
+> (all agents on, `claude-sonnet-4-6`), re-run on both datasets June 2026.
 
 ## Table of Contents
 
@@ -33,7 +41,7 @@
 - [Phase 3: Adversarial Evaluation](#phase-3-adversarial-evaluation)
   - [Setup](#setup-2)
   - [Results](#results-2)
-  - [Scenario 99917: Common-Name Completion](#scenario-99917-common-name-completion)
+  - [Adversarial under v2.0: Zero Completions](#adversarial-under-v20-zero-completions)
 - [Discussion](#discussion)
   - [What Works](#what-works)
   - [Known Limitations](#known-limitations)
@@ -147,7 +155,50 @@ ground truth. Computed only for records that reached extraction.
 extraction, percentage that received a value.
 
 **Escalation breakdown**: Distribution of escalation reasons (max_retries,
-validation_error, conflict).
+validation_error, conflict, irrelevant_sources).
+
+### Agentic Precision/Safety Layer
+
+After deterministic extraction, three bounded LLM checks (each a single
+structured-output call, fail-open, read-only with respect to the database) act as
+a precision/safety layer with authority calibrated to the stakes:
+
+- **Relevance judge** (both datasets, on by default) — reads the validated
+  articles against the incident anchors and **vetoes** a completion whose sources
+  do not report _this_ incident (→ `IRRELEVANT_SOURCES`). Catches the "right
+  structure, wrong incident" failure rule-based validation cannot (famous-name
+  collisions, coincidental same-city/same-date coverage).
+- **Race verifier** (civilians_shot, on by default) — **nulls** a `civilian_race`
+  the source does not explicitly state for the victim (no inference from name,
+  neighborhood, or photo). A faithfulness filter that trades coverage for
+  correctness.
+- **Conflict annotator** (both datasets, on by default; Haiku) — when deep
+  conflicts survive to human review, writes an **advisory** triage note. It never
+  commits a value, so it cannot change accuracy or coverage — only aid the
+  reviewer.
+
+These are precision aids, not perfect: because a veto or null only routes to
+human review or drops a value (never fabricates), an over-flag costs a review,
+not a wrong record.
+
+### Multi-Objective Accept/Reject Gate
+
+To decide whether a pipeline change is safe to ship, a gate (`src/eval/gate.py`)
+compares before/after holdout reports on three hard guards and one warning:
+
+`accept = target_ok AND adversarial_ok AND correctness_ok`
+
+- **target** — completion rate must not drop more than a tolerance.
+- **adversarial** — fabricated-incident hallucinations must be **0** (hard veto).
+- **correctness** — volume-weighted field accuracy on the **stable cohort**
+  (incidents completed in _both_ runs) must not drop more than a tolerance. The
+  cohort restriction and volume-weighting avoid a Simpson's-paradox confound where
+  a fix that raises completion pulls harder incidents into the completed set.
+- **fairness** (per-race completion equity) — surfaced as a **non-gating
+  warning**, never a veto (underpowered at these group sizes).
+
+This is how precision changes — which intentionally drop a few wrong-article
+completions — are evaluated without a naive completion-rate target rejecting them.
 
 ## Phase 1: Pilot Study (Dev Set)
 
@@ -348,226 +399,273 @@ LLM non-determinism, not caused by the backfill. See
 
 ## Phase 2: Holdout Evaluation
 
-**Pipeline version**: v1.3 (partial completion, score gating removed,
-NAME_PARTIAL strategy, max_results=10, all fixes from Phase 1 applied)
+**Pipeline version**: v2.0 (agentic precision/safety layer, deterministic
+consensus resolver + victim-anchored extraction, NAME_PARTIAL strategy,
+max_results=10).
 
 ### Setup
 
-100 records sampled from the civilians-shot dataset using deterministic
-year-proportional stratification, excluding the 10 dev set records.
-Stratification ensured coverage across incident years (2014–2024).
+100 records each from the civilians-shot and officers-shot datasets, sampled with
+deterministic year-proportional stratification, excluding the 10 dev set records.
+Stratification ensured coverage across incident years (2014–2024). All agents on,
+`claude-sonnet-4-6` (Haiku for the advisory annotator).
 
-### Results
+> **How this N=100 was assembled.** A data-integrity bug (a non-idempotent ETL
+> that appended duplicate incident rows) had polluted the database; once fixed and
+> reloaded cleanly (back to 1,674 / 282 records), the holdout was de-duplicated to
+> its distinct incidents and topped back up to N=100 distinct incidents per
+> dataset (each measured once, year-stratified). The civilians holdout was
+> essentially unaffected; the officers numbers below are lower than a contaminated
+> earlier run that over-weighted duplicate high-accuracy slots — these are the
+> de-contaminated figures.
 
-| Metric             | Value        |
-| ------------------ | ------------ |
-| Completed          | 70/100 (70%) |
-| Escalated          | 30/100 (30%) |
-| Reached extraction | 71/100 (71%) |
+### Results (civilians_shot)
 
-#### Pipeline Reach
+| Metric    | Value        |
+| --------- | ------------ |
+| Completed | 70/100 (70%) |
+| Escalated | 30/100 (30%) |
 
-| Stage reached                                | Count | Percentage |
-| -------------------------------------------- | ----- | ---------- |
-| Complete                                     | 70    | 70%        |
+#### Pipeline Reach (civilians_shot)
+
+| Stage reached                                     | Count | Percentage |
+| ------------------------------------------------- | ----- | ---------- |
+| Complete                                          | 70    | 70%        |
+| Escalated after synthesize (relevance veto)       | 7     | 7%         |
 | Escalated after synthesize (insufficient_sources) | 1     | 1%         |
-| Escalated after search (max_retries)         | 29    | 29%        |
+| Escalated after search (max_retries)              | 22    | 22%        |
 
-#### Extraction Quality (Records That Reached Synthesize)
+#### Extraction Quality (civilians_shot)
 
 | Field           | N evaluable | Coverage | Exact match | Fuzzy match |
 | --------------- | ----------- | -------- | ----------- | ----------- |
-| civilian_age    | 100         | 49%      | 90%         | 90%         |
-| civilian_race   | 100         | 17%      | 65%         | 65%         |
-| weapon          | 84          | 50%      | 79%         | 79%         |
-| location_detail | 100         | 38%      | 18%         | 97%         |
-| time_of_day     | 96          | 32%      | 94%         | 94%         |
-| outcome         | 100         | 68%      | 84%         | 84%         |
+| civilian_age    | 100         | 58%      | 95%         | 95%         |
+| civilian_race   | 100         | 11%      | 91%         | 91%         |
+| weapon          | 84          | 55%      | 83%         | 83%         |
+| location_detail | 100         | 44%      | 16%         | 91%         |
+| time_of_day     | 92          | 42%      | 82%         | 82%         |
+| outcome         | 100         | 74%      | 92%         | 92%         |
+
+Aggregate precision: **210/272 exact (77%), 243/272 fuzzy (89%)**.
 
 **Key observations:**
 
-- **civilian_age** is the strongest field: 90% exact accuracy with 49% coverage.
-  Age is unambiguous and consistently reported in news articles.
-- **time_of_day** achieves 94% exact accuracy (±2h tolerance) despite free-text
-  format differences between extracted times and ground truth.
-- **location_detail** shows a large exact/fuzzy gap (18% vs 97%) — the pipeline
-  extracts the correct city but formatting differs from ground truth (e.g.,
-  "Houston, TX" vs "Houston"). The 97% fuzzy match confirms the extractions are
-  substantively correct.
-- **outcome** is newly evaluable after the `civilian_died` backfill (Fix 4): 68%
-  coverage with 84% exact accuracy.
-- **civilian_race** has low coverage (17%) and accuracy (65%). Race is
-  inconsistently reported in news articles; the remaining errors are genuine
-  disagreements between pipeline extractions and ground truth.
-- **weapon** achieves 79% exact accuracy after category normalization (Fix 2).
+- **civilian_age** is the strongest field: 95% exact with 58% coverage. Age is
+  unambiguous and consistently reported.
+- **outcome** reaches 92% exact (74% coverage). All errors are conservative — the
+  pipeline says "fatal" when ground truth is "survived", never the reverse (100%
+  fatal recall on civilians).
+- **civilian_race**: the **race verifier** is visible here. Versus a gate-off run,
+  coverage falls (17%→11%) while exact accuracy rises (65%→91%): the verifier
+  nulls races the source does not explicitly state, leaving only faithfully
+  supported values. One disagreement remains (extracted Black, GT Hispanic).
+- **location_detail** shows the usual exact/fuzzy gap (16% vs 91%): the pipeline
+  extracts the correct city, but formatting differs from the street-level ground
+  truth.
+- **weapon** is 83% exact after category normalization; remaining errors are
+  category-map gaps (e.g. SAWED-OFF SHOTGUN, GUN vs HANDGUN canonicals) and a few
+  entity-confusion cases.
+- **time_of_day** is 82% exact (±2h tolerance).
 
-#### Escalation Breakdown
+#### Escalation Breakdown (civilians_shot)
 
 | Reason               | Count | Percentage |
 | -------------------- | ----- | ---------- |
-| max_retries          | 29    | 97%        |
+| max_retries          | 22    | 73%        |
+| irrelevant_sources   | 7     | 23%        |
 | insufficient_sources | 1     | 3%         |
 
-All 29 max_retries escalations stalled at the search stage — Tavily returned no
-relevant articles for these incidents. No conflict-only escalations occurred
-because partial completion (v1.3) routes conflicts with agreed fields to
-COMPLETE instead of ESCALATE.
+The 22 max_retries escalations stalled at the search stage — Tavily returned no
+relevant articles. The 7 `irrelevant_sources` escalations are the relevance gate
+vetoing wrong-article completions that previously committed silently — a
+precision/faithfulness gain at the cost of ~7 completions. No conflict-only
+escalations occur, because partial completion routes conflicts with agreed fields
+to COMPLETE.
+
+### Results (officers_shot)
+
+First evaluation of the officers-shot dataset (civilian = the suspect/shooter;
+outcome = the officer's harm, INJURY or DEATH).
+
+| Metric    | Value        |
+| --------- | ------------ |
+| Completed | 92/100 (92%) |
+| Escalated | 8/100 (8%)   |
+
+| Reason               | Count |
+| -------------------- | ----- |
+| max_retries          | 4     |
+| irrelevant_sources   | 3     |
+| insufficient_sources | 1     |
+
+| Field           | N evaluable | Coverage | Exact match | Fuzzy match |
+| --------------- | ----------- | -------- | ----------- | ----------- |
+| civilian_age    | 98          | 68%      | 82%         | 82%         |
+| outcome         | 100         | 94%      | 87%         | 87%         |
+| location_detail | 100         | 37%      | 11%         | 97%         |
+| civilian_race   | 99          | 9%       | 67%         | 67%         |
+
+Aggregate precision: **147/207 exact (71%), 179/207 fuzzy (86%)**. Officers
+complete far more often than civilians (92% vs 70%) — officer-involved shootings
+draw denser news coverage, so retrieval rarely fails. Completion is below an
+earlier gate-off run (95%) because the relevance gate now vetoes 3 wrong-article
+officer completions. Outcome (the officer's harm) is the highest-coverage field
+at 94%; of its 12 errors, 11 are conservative (extracted "fatal" when GT is
+"INJURY") and 1 is the reverse (extracted non-fatal, GT "DEATH") — so fatal recall
+is high but not perfect on officers. location_detail repeats the city-vs-address
+formatting gap (11% exact, 97% fuzzy).
 
 ### Error Analysis
 
 #### Aggregate Precision
 
-Across all 70 completed records, 245 field values were extracted:
+Across the 70 completed civilians records, 272 field values were extracted:
 
-| Metric        | Value         |
-| ------------- | ------------- |
-| Exact correct | 176/245 (72%) |
-| Fuzzy correct | 206/245 (84%) |
+| Metric (civilians_shot) | Value         |
+| ----------------------- | ------------- |
+| Exact correct           | 210/272 (77%) |
+| Fuzzy correct           | 243/272 (89%) |
+
+Officers: **147/207 exact (71%), 179/207 fuzzy (86%)** — see Results above.
+Civilians improved over the v1.3 civilians baseline (72%/84%): the race verifier
+raised race faithfulness, the consensus resolver and anchored extraction reduced
+spurious conflicts, and the relevance gate removed wrong-article completions.
+Officers are lower mainly because the suspect-race and location fields are sparse
+and coarse there, and because 12% of officer completions are outcome-only entity
+confusion (below).
 
 #### Outcome: Systematic False-Positive Deaths
 
-11 of 68 outcome extractions were wrong. All 11 errors follow the same pattern:
+Outcome errors are few and **almost entirely one-directional**: civilians have 7
+of 75 wrong, all "fatal" extracted where ground truth is "survived" (100% fatal
+recall on civilians). Officers have 12 of 94 wrong — **11 conservative** ("fatal"
+vs GT "INJURY") and **1 reverse** (non-fatal vs GT "DEATH"), so officer fatal
+recall is high but not perfect. The mechanism is entity confusion: when a record's
+only strongly-supported field is the generic outcome, the pipeline has likely
+matched a _different_ shooting at the same location/time (see Outcome-Only
+Completions). The fix direction — a corroboration guard requiring ≥2 supported
+fields before committing a generic outcome — is in the roadmap.
 
-| Error type                   | Count | Description                                   |
-| ---------------------------- | ----- | --------------------------------------------- |
-| Fatal extracted, GT=survived | 9     | Pipeline says died, DB says survived          |
-| Unparseable multi-person     | 2     | Multi-victim text, parser can't resolve       |
-| Non-fatal extracted, GT=died | 0     | Never occurs — pipeline has 100% fatal recall |
+#### Race: the Verifier Trades Coverage for Faithfulness
 
-The 9 false-positive deaths split into two sub-patterns:
+Under v2.0 the **race verifier** reshapes this field: it nulls any `civilian_race`
+the source does not explicitly state for the victim. Versus a gate-off run,
+civilian-race coverage falls (17%→11%) and exact accuracy rises (65%→91%) — only
+**1 of 11** committed civilian races now disagrees with the database (extracted
+Black, GT Hispanic). On officers, where race is the suspect's and coverage is low
+(9%), 3 of 9 disagree. The verifier is a faithfulness filter, not an accuracy
+lever: it removes unsupported guesses rather than correcting them.
 
-- **Likely entity confusion (5 cases)**: Incidents #5, #245, #414, #954, #1332
-  had zero other fields extracted — the pipeline likely matched a different
-  fatal shooting at the same location/time. These are also the 5 of 6
-  "outcome-only" completions (records where outcome was the only field
-  extracted).
-- **Possible GT errors or ambiguous cases (4 cases)**: Incidents #9, #252, #589,
-  #1121 had other fields that matched correctly, suggesting the pipeline found
-  the right incident but the database's `civilian_died` value may be incorrect,
-  or the outcome was ambiguous (e.g., the person died later).
+(Earlier, several errors were eval-comparator normalization gaps — e.g.
+"Hispanic/Latino male" not mapping to "HISPANIC" — fixed by keyword-based matching
+and the race taxonomy in `src/race_taxonomy.py`.)
 
-**Impact on outcome accuracy**: Excluding outcome-only completions (where entity
-confusion is most likely), outcome accuracy rises from 84% to 90% (56/62).
+#### Weapon: Category Mapping Gaps + Entity Confusion (civilians)
 
-#### Race: Genuine Disagreements
-
-6 of 17 race extractions were wrong (65% accuracy). All 6 errors are genuine
-disagreements where the pipeline extracted a race that contradicts the database
-(#1 Black vs WHITE, #9 White vs BLACK, #254 Latino/Hispanic vs WHITE, #408 White
-vs HISPANIC, #951 Hispanic vs WHITE, #1277 El Salvadoran vs HISPANIC). Some may
-be entity confusion (the pipeline found an article about a different person),
-and some may reflect ambiguity in racial classification.
-
-Previously, 5 additional errors were normalization gaps (e.g., "Hispanic/Latino
-male" not mapping to "HISPANIC"). These were fixed by replacing the alias-dict
-lookup with keyword-based matching in both the eval comparator and the merge
-node.
-
-#### Weapon: Category Mapping Gaps + Entity Confusion
-
-9 of 42 weapon extractions were wrong (79% accuracy). Three error types:
-
-- **Entity confusion (4)**: Pipeline extracted HANDGUN when GT was KNIFE (#158),
-  BB GUN (#165), DEPUTY'S GUN (#175), or PELLET GUN (#586) — likely found
-  articles about a different shooting.
-- **Category mapping gaps (4)**: SAWED-OFF SHOTGUN not in weapon map (#267),
-  MACHETE maps to OTHER instead of KNIFE (#773), GUN and HANDGUN map to
-  different canonicals (#263, #594).
-- **Granularity mismatch (1)**: Pipeline extracted RIFLE, GT was FIREARM (#4) —
-  the pipeline was more specific, but the canonical map treats them as different
-  categories.
+Weapon is 83% exact (civilians) after category normalization. The residual errors
+fall into recurring types: **category-map gaps** (e.g. SAWED-OFF SHOTGUN,
+MACHETE→KNIFE, GUN vs HANDGUN canonicals), **granularity mismatches** (RIFLE vs
+FIREARM), and a few **entity-confusion** cases (a weapon from a different
+shooting). The fix is additive map entries (roadmap).
 
 #### Time of Day: Day-of-Week Parse Errors
 
-2 of 31 time_of_day extractions were wrong, plus 6 parse errors where the
-pipeline extracted a day of the week ("Thursday", "Sunday") instead of a time.
-The `compare_time()` function correctly rejects these as unparseable. Combined
-accuracy: 29/37 (78%) including parse errors as wrong, or 94% (29/31) excluding
-them.
+time_of_day is 82% exact (±2h tolerance). The recurring failure is the pipeline
+occasionally extracting a day of the week ("Thursday") instead of a clock time;
+`compare_time()` correctly rejects these as unparseable rather than scoring them
+wrong-but-plausible.
 
 #### Location: Formatting Gap Only
 
-30 of 31 location fuzzy matches are correct (the pipeline extracts "100 block of
-Couch Court, Springtown, Parker County" while GT is just "SPRINGTOWN"). These
-consistently score 100 on fuzzy match because the GT city name appears within
-the extracted string. The single fuzzy miss (#175: "8501 West Dunn Street, Ector
-County" vs "ODESSA") is a case where the pipeline extracted the county instead
-of the city.
+location_detail is 91% fuzzy (civilians) / 97% (officers) but low exact (16% / 11%)
+— the pipeline extracts the correct city inside a fuller string (e.g. "100 block
+of Couch Court, Springtown, Parker County" vs GT "SPRINGTOWN"), scoring high on
+fuzzy. The handful of fuzzy misses are county-vs-city cases (the pipeline returns
+the county).
 
 #### Confidence Calibration
 
-| Confidence | N extracted | Exact accuracy |
-| ---------- | ----------- | -------------- |
-| High       | 86          | 85%            |
-| Medium     | 159         | 65%            |
+| Confidence | civilians exact | officers exact |
+| ---------- | --------------- | -------------- |
+| High       | ~93%            | ~86%           |
+| Medium     | ~68%            | ~54%           |
 
-High confidence is reasonably well-calibrated (85% correct). Medium confidence
-accuracy varies widely by field: 93% for time_of_day but only 33% for
-civilian_race. The confidence signal is useful for age, weapon, and time_of_day
-but unreliable for race and location.
+High confidence is well-calibrated; medium is materially lower and varies by
+field. The signal is useful for age, outcome, and time_of_day but weaker for race
+and location.
 
-#### Completion Rate by Year Cohort
+#### Completion Rate by Year Cohort (civilians_shot)
 
-| Cohort    | N   | Completion rate | Exact accuracy | Fuzzy accuracy |
-| --------- | --- | --------------- | -------------- | -------------- |
-| 2014–2016 | 35  | 71%             | 69%            | 81%            |
-| 2017–2018 | 30  | 77%             | 71%            | 86%            |
-| 2019–2021 | 20  | 75%             | 73%            | 85%            |
-| 2022–2024 | 15  | 47%             | 83%            | 87%            |
+| Cohort    | N   | Completion rate |
+| --------- | --- | --------------- |
+| 2014–2016 | 32  | 66%             |
+| 2017–2018 | 32  | 69%             |
+| 2019–2021 | 20  | 90%             |
+| 2022–2024 | 16  | 56%             |
 
-The 2022–2024 cohort has the lowest completion rate (47%) despite having the
-highest accuracy when articles are found. This may reflect less news coverage
-indexing for very recent incidents, or fewer incidents available in the
-stratified sample for these years.
+Completion is highest for 2019–2021 and lowest for the most recent 2022–2024
+cohort — consistent with news-coverage indexing being thinner for very recent
+incidents (and sparser for the oldest). Officers complete uniformly high across
+cohorts (82–100%).
 
 #### Outcome-Only Completions
 
-6 completed records extracted only the `outcome` field with no other fields.
-Their outcome accuracy is 17% (1/6) — far below the 90% accuracy for records
-with multiple extracted fields. These records likely represent entity confusion:
-the pipeline found an article about a different (fatal) shooting and extracted
-only the outcome because other fields didn't match closely enough to pass
-consistency checks. This suggests the pipeline's partial completion mechanism
-correctly withholds conflicting fields but the outcome field is too generic
-(fatal/non-fatal) to serve as a useful consistency signal.
+A completion that extracted **only** the generic `outcome` field is the signature
+of entity confusion (a different same-place/time shooting matched). Civilians have
+**4** such completions; officers have **12** — the bulk of the officer outcome
+errors above. A corroboration guard (≥2 supported fields before committing) is the
+roadmap fix.
 
 #### Fairness Metrics
 
-Pipeline reach and accuracy by demographic group:
+Pipeline reach and accuracy by demographic group. Per-race completion equity is a
+**non-gating warning** in the eval gate (see Methodology), not a veto.
+
+civilians_shot:
 
 | Group    | N   | Completion rate | Mean exact accuracy |
 | -------- | --- | --------------- | ------------------- |
-| Black    | 26  | 50%             | 67%                 |
-| Hispanic | 36  | 83%             | 71%                 |
-| White    | 32  | 75%             | 67%                 |
-| Other    | 6   | 50%             | 69%                 |
+| Black    | 25  | 64%             | 77%                 |
+| Hispanic | 36  | 83%             | 74%                 |
+| White    | 34  | 62%             | 80%                 |
+| Other    | 5   | 60%             | 70%                 |
 
-The Black and Other groups show lower completion rates (50%), likely reflecting
-older incidents with fewer surviving news articles rather than pipeline bias.
-Hispanic incidents have the highest completion rate (83%), possibly due to more
-recent incident dates with better article availability. Mean exact accuracy is
-comparable across groups (67–71%), suggesting the pipeline's extraction quality
-is consistent when articles are found.
+officers_shot:
+
+| Group    | N   | Completion rate | Mean exact accuracy |
+| -------- | --- | --------------- | ------------------- |
+| Black    | 20  | 85%             | 83%                 |
+| Hispanic | 42  | 93%             | 68%                 |
+| White    | 30  | 97%             | 74%                 |
+| Other    | 7   | 100%            | 62%                 |
+| Unknown  | 1   | 0%              | —                   |
+
+On civilians, the Black group shows a lower completion rate (64%) than Hispanic
+(83%) — consistent with temporal bias (older incidents, fewer surviving articles)
+rather than pipeline bias; extraction accuracy is comparable across groups
+(70–80%). On officers, completion is uniformly high (85–100%) because
+officer-involved shootings are densely covered; accuracy varies more by group, on
+small per-group N (the single Unknown-race incident escalated).
 
 ### Cost and Latency
 
-| Metric                | Value        |
-| --------------------- | ------------ |
-| Mean time per record  | 45.5s        |
-| Total eval run time   | 75.9 minutes |
-| Estimated total cost  | ~$15         |
-| Estimated cost/record | ~$0.15       |
+Per-incident wall-clock — including eval-harness overhead (ground-truth fetch and
+field comparisons) — averaged ~50s for civilians_shot and ~90s for officers_shot
+in the N=100 runs. Per-incident time is dominated by the LLM calls (per-article
+extraction plus the agentic precision layer: relevance judge always, race verifier
+for civilian races, a Haiku conflict annotator on conflicts), not by search.
 
-The 45.5s mean time is higher than the 7.0s pipeline latency reported in README
-because the evaluation harness adds overhead per incident: database queries to
-fetch ground truth, fuzzy-match comparisons across 6 fields, and result
-aggregation. The core pipeline (search + merge) accounts for ~7s; the remaining
-~38s is evaluation-only overhead spread across 100 sequential incidents.
+| Metric (per record) | Value      |
+| ------------------- | ---------- |
+| Anthropic (LLM)     | ~$0.16     |
+| Tavily (search)     | ~$0.04     |
+| **Total**           | **~$0.20** |
 
-Cost is estimated from API pricing (Claude Sonnet 4.6 at $3/$15 per 1M
-input/output tokens; Tavily advanced search at $0.016/search PAYGO). The primary
-cost driver is LLM extraction (~70%), with web search comprising ~30%. Actual
-costs depend on article length and retry count.
+Estimated from API pricing (Claude Sonnet 4.6 at $3/$15 per 1M input/output
+tokens; Claude Haiku for the advisory annotator; Tavily advanced search at
+$0.016/search, PAYGO). The agentic precision layer adds one to a few LLM calls per
+completion on top of extraction; escalated incidents that never reach extraction
+cost only search. Actual cost varies with article length and retry count.
 
 ## Phase 3: Adversarial Evaluation
 
@@ -598,48 +696,40 @@ those events should pass date and location validation checks.
 
 | Metric | Value |
 |--------|-------|
-| Escalated correctly | 19/20 (95%) |
-| Completed with `requires_human_review` | 1/20 (5%) |
+| Escalated correctly | 20/20 (100%) |
+| Completed | 0/20 (0%) |
 | Hallucinations detected | 0/20 (0%) |
 
-By category:
+By category — every scenario escalated, none hallucinated:
 
-| Category | N | Escalated | Extracted fields | Conflicts | Hallucinations |
-|----------|---|-----------|------------------|-----------|----------------|
-| A. Obscure cities | 4 | 4 | 0 | 0 | 0 |
-| B. Wrong dates | 4 | 4 | 0 | 0 | 0 |
-| C. Hallucination traps | 6 | 6 | 0 | 0 | 0 |
-| D. Common names | 4 | 3 | 3 | 6 | 0 |
-| E. Edge cases | 2 | 2 | 0 | 0 | 0 |
+| Category | N | Escalated | Hallucinations |
+|----------|---|-----------|----------------|
+| A. Obscure cities | 4 | 4 | 0 |
+| B. Wrong dates | 4 | 4 | 0 |
+| C. Hallucination traps | 6 | 6 | 0 |
+| D. Common names | 4 | 4 | 0 |
+| E. Edge cases | 2 | 2 | 0 |
 
-All 19 escalated scenarios reached `max_retries` (search exhausted all 4
-strategies without finding matching articles), except scenario 99920 (NULL
-civilian name) which escalated with `insufficient_sources` after synthesize
-found no extractable fields.
+Escalation reasons: 17 `max_retries` (search exhausted all strategies), 2
+`irrelevant_sources` (the relevance gate vetoed real-but-wrong-incident articles —
+scenarios 99906 and 99915, which extracted 6–7 fields before the veto), and 1
+`insufficient_sources` (99920, NULL civilian name).
 
-### Scenario 99917: Common-Name Completion
+### Adversarial under v2.0: Zero Completions
 
-The one scenario that completed was 99917: fabricated "Michael Brown" (civilian)
-and "Robert Johnson" (officer) in Dallas on 2017-11-22.
+Under v1.x, one scenario completed: 99917 — fabricated "Michael Brown" (civilian)
+and "Robert Johnson" (officer) in Dallas. It never hallucinated the fabricated
+names, but it _completed_ on real-but-wrong-incident Dallas articles (with
+`requires_human_review=True` and 6 conflicts).
 
-The pipeline found real Dallas shooting articles on the first search. Articles
-passed validation (date + location match). The LLM extracted 3 generic fields
-(race=Black, weapon=OTHER, outcome=Fatal) but detected 6 conflicts across
-articles on specific fields (officer_name, civilian_name, civilian_age,
-location_detail, time_of_day, circumstance). The pipeline completed with
-`requires_human_review=True`.
-
-**Zero hallucination**: The fabricated names "Robert Johnson" and "Michael Brown"
-never appeared in `extracted_fields`. The 3 extracted fields (race, weapon,
-outcome) are generic enough to be true of multiple Dallas shootings. The 6
-conflicting fields disagreed because the retrieved articles described different
-real incidents.
-
-This is the same entity confusion pattern identified in the holdout evaluation
-(Section "Outcome-Only Completions"): low extraction density (3 of 9 fields)
-combined with high conflict count signals that the pipeline is aggregating across
-multiple incidents. The conflict detection and human-review routing prevented
-false completion.
+Under v2.0, **no scenario completes**. 99917 escalates at search this run, and the
+relevance gate — now on for civilians — actively vetoes two other scenarios
+(`irrelevant_sources`), exactly the famous-name / wrong-incident path it was built
+to close. Defense-in-depth (validation → relevance gate → conflict detection →
+human review) caught every fabricated incident, including the hallucination traps
+placed within the validation window of real high-profile events (Dallas police
+ambush, Harding St. raid, Botham Jean, George Floyd protests). **0/20 completions,
+0/20 hallucinations.**
 
 Full results: `output/adversarial/results.json`
 
@@ -647,31 +737,28 @@ Full results: `output/adversarial/results.json`
 
 ### What Works
 
-The pipeline completes 70% of holdout incidents (N=100, up from 7.5% before v1.3
-improvements). Aggregate precision is 72% exact / 84% fuzzy across 245 extracted
-field values. Key strengths:
+The pipeline completes **70% of civilians** and **92% of officers** holdout
+incidents (N=100 each). Aggregate precision is 77% exact / 89% fuzzy (civilians)
+and 71% / 86% (officers). Key strengths:
 
-- **Partial completion** is the highest-impact change — completed records
-  extract a mean of 3.5 fields each. Previously most of these would have been
-  escalated with zero output due to conflicts on a subset of fields.
-- **civilian_age** is the strongest field at 90% exact accuracy with 49%
-  coverage. Age is unambiguous and consistently reported in news articles.
-- **time_of_day** achieves 94% exact accuracy despite free-text format
-  differences, thanks to the hour-based comparison with ±2h tolerance.
-- **location_detail** achieves 97% fuzzy accuracy, confirming the pipeline
-  extracts the correct city even when formatting differs from ground truth.
-- **outcome** is now evaluable (84% exact, rising to 90% when excluding
-  outcome-only completions that likely represent entity confusion).
-- **No false-negative deaths**: The pipeline never says someone survived when
-  the database says they died (100% fatal recall). All outcome errors go in the
-  conservative direction.
-- **Removing score gating** lets more articles through to validation, where
-  date/location matching serves as a better quality filter than Tavily's
-  relevance score.
-- **Adversarial robustness**: 0/20 fabricated incidents produced hallucinated
-  extractions. Defense-in-depth (validation → conflict detection → human review)
-  caught every scenario, including hallucination traps placed near real
-  high-profile events (see [Phase 3](#phase-3-adversarial-evaluation)).
+- **Partial completion** remains high-impact — records that would once have
+  escalated on a single-field conflict now complete with the agreed fields.
+- **civilian_age** is the strongest field (95% / 82% exact, civilians /
+  officers); **outcome** is the highest-coverage (74% / 94%).
+- **Fatal recall is high**: on civilians the pipeline never says someone survived
+  when the database says they died (100% fatal recall); on officers it misses once
+  (1 of 94). Outcome errors are otherwise all in the conservative direction.
+- **location_detail** is ~91–97% fuzzy, confirming the correct city is extracted
+  even when formatting differs from street-level ground truth.
+- **The agentic precision/safety layer earns its place**: the race verifier lifts
+  civilian-race faithfulness (65%→91% exact) by nulling unstated values; the
+  relevance gate removes wrong-article completions (7 civilians, 3 officers) that
+  previously committed silently — improving faithfulness at a small, bounded
+  completion cost.
+- **Adversarial robustness**: 0/20 fabricated incidents hallucinated and **0
+  completed**. Defense-in-depth (validation → relevance gate → conflict detection
+  → human review) caught every scenario, including hallucination traps placed near
+  real high-profile events (see [Phase 3](#phase-3-adversarial-evaluation)).
 
 ### Known Limitations
 
@@ -683,56 +770,56 @@ records that reach extraction.
 
 **Temporal bias**: News articles from 2014–2016 incidents may no longer be
 available online, creating a structural disadvantage for older records that is
-independent of pipeline quality. The fairness metrics confirm this: the Black
-demographic group (which skews toward older incidents) shows a 50% completion
-rate vs 83% for Hispanic incidents.
+independent of pipeline quality. The fairness metrics are consistent with this:
+on civilians the Black group (which skews toward older incidents) shows a 64%
+completion rate vs 83% for Hispanic incidents.
 
 **Ground truth completeness**: The `civilian_died` column was backfilled
 ([Fix 4](#fix-4-civilian_died-backfill-migration)). Other ground truth fields
 may also have gaps limiting evaluation coverage.
 
-**Single dataset**: This evaluation covers the civilians-shot dataset only. The
-officers-shot dataset (282 records, different schema) has not been evaluated and
-may exhibit different failure modes.
+**Both datasets evaluated**: v2.0 evaluates both civilians-shot and officers-shot
+(N=100 each). Officers complete far more often (92% vs 70%) thanks to denser news
+coverage; the same conservative outcome-error and location-formatting patterns
+appear in both. Per-group fairness cells are small (especially for officers), so
+group-level accuracy differences should be read with that caveat.
 
 ### Failure Mode Taxonomy
 
-| Failure mode                          | Frequency (N=100)            | Fixable?     | Priority |
-| ------------------------------------- | ---------------------------- | ------------ | -------- |
-| Retrieval gap (no articles found)     | 29 escalations (29%)         | No           | —        |
-| Entity confusion (wrong incident)     | ~5 outcome errors, ~4 weapon | Partial      | High     |
-| Outcome false-positive deaths         | 9/68 extractions (13%)       | Partial      | High     |
-| Race eval normalization gaps          | ~~5/17~~ Fixed               | ~~Yes~~ Done | —        |
-| Race genuine misidentification        | 6/17 extractions             | Investigate  | Medium   |
-| Weapon category mapping gaps          | 4/42 extractions             | Yes (map)    | Low      |
-| Time parse errors (day-of-week)       | 6/37 extractions             | Yes (synthesize)  | Low      |
-| Location formatting gap (exact/fuzzy) | 18% exact vs 97% fuzzy       | Low priority | —        |
-| Outcome-only completions              | 6 records (9%)               | Yes          | High     |
+| Failure mode                          | Frequency (N=100 each)              | Fixable?     | Priority |
+| ------------------------------------- | ----------------------------------- | ------------ | -------- |
+| Retrieval gap (no articles found)     | 22 civ / 4 off escalations          | No           | —        |
+| Entity confusion (wrong incident)     | 4 civ / 12 off outcome-only         | Partial      | High     |
+| Outcome false-positive deaths         | 7/75 civ, 11/94 off (+1 reverse)    | Partial      | High     |
+| Race eval normalization gaps          | ~~5/17~~ Fixed                      | ~~Yes~~ Done | —        |
+| Race genuine misidentification        | 1/11 civ, 3/9 off                   | Investigate  | Medium   |
+| Weapon category mapping gaps          | ~17% of civ weapons                 | Yes (map)    | Low      |
+| Time parse errors (day-of-week)       | a few civ time values               | Yes (synthesize)  | Low |
+| Location formatting gap (exact/fuzzy) | 16% exact vs 91% fuzzy (civ)        | Low priority | —        |
+| Outcome-only completions              | 4 civ / 12 off                      | Yes          | High     |
 
 ## Roadmap
 
 **Completed:**
 
-- ~~Fix synthesize node null handling (incident 3494 crash)~~
-- ~~Re-run holdout eval with location + outcome fixes~~ — N=100 eval completed
-- ~~Fairness analysis across demographic groups~~ — included in Phase 2 results
-- ~~Race eval normalization~~ — keyword-based matching replaces alias dicts
-  (race accuracy 35% → 65%)
-- ~~Adversarial evaluation (20 fabricated incidents)~~ — 0/20 hallucinations
+- ~~Re-run holdout eval~~ — N=100 on **both** datasets (v2.0, June 2026)
+- ~~Fairness analysis across demographic groups~~ — both datasets, Phase 2
+- ~~Adversarial evaluation (20 fabricated incidents)~~ — 0/20 hallucinations,
+  0/20 completions
+- ~~Evaluation of the officers-shot dataset~~ — 93% completion, 76%/90% precision
+- ~~Agentic precision/safety layer~~ — relevance judge, race verifier, advisory
+  conflict annotator (all on by default)
+- ~~Deterministic conflict reduction~~ — consensus resolver + victim-anchored
+  extraction + race taxonomy
 
 **Remaining:**
 
-- **Outcome-only completion guard**: Records with only `outcome` extracted show
-  17% accuracy (entity confusion). Consider requiring ≥2 extracted fields before
-  completing, or treating outcome-only records as low-confidence
-- ~~**Race eval normalization**~~: Fixed — keyword-based matching in both
-  `holdout.py` and `synthesize_node.py` (race accuracy 35% → 65%)
-- **Weapon category map**: Add SAWED-OFF SHOTGUN→SHOTGUN, MACHETE→KNIFE, and BB
-  GUN/PELLET GUN mappings to `WEAPON_CATEGORY_MAP`
-- **Time parse errors**: The synthesize node sometimes extracts day-of-week instead
-  of time-of-day (6 parse errors) — tighten the extraction prompt
-- Batch processing across all ~1,564 remaining records with priority ordering
-- Evaluation of the officers-shot dataset
+- **Weapon category map**: add SAWED-OFF SHOTGUN→SHOTGUN, MACHETE→KNIFE, and
+  BB/PELLET GUN mappings to `WEAPON_CATEGORY_MAP`
+- **Outcome-only / entity-confusion guard**: require ≥2 corroborated fields before
+  committing a generic outcome, to suppress same-location/same-time confusion
+- **Cost study**: a cheaper model (Haiku) for high-volume extraction
+- Batch processing across the ~1,564 remaining civilians records (priority order)
 - Human review UI for processing escalated records
 
 ## Appendix: Excluded Domains

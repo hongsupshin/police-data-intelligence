@@ -42,25 +42,23 @@ record = {
 }
 ```
 
-**Expected Agent Behavior:**
+**Expected Pipeline Behavior** (LangGraph nodes — see the README Architecture):
 
-1. **Planning Agent:**
-   - Constructs search query:
-     `"David Joseph" Austin police shooting February 2016`
+1. **Load** — reads the incident anchors from PostgreSQL.
 
-2. **Retrieval Agent:**
-   - Calls Tavily API with constructed query
-   - Returns 3-5 news articles
+2. **Search** — constructs a query from the anchors
+   (`"David Joseph" Austin police shooting February 2016`) and calls the Tavily
+   API, returning news articles.
 
-3. **Validation Agent:**
-   - Anchor matching: date ±3 days, location match, name match
-   - Extracts all fields in media feature set
-   - Runs entity detection for additional information
-   - Assigns per-field confidence based on source agreement
+3. **Validate** — date proximity (±5 days), location match, and optional name
+   match; only validated articles proceed.
 
-4. **Synthesis Agent:**
-   - Formats extraction results with evidence
-   - Flags items for human review
+4. **Synthesize** — an LLM extracts the media feature set from the validated
+   articles, checks cross-article consistency, runs the agentic precision/safety
+   layer (relevance judge, race verifier, conflict annotator), and assigns
+   per-field confidence.
+
+5. **Coordinator** — routes to Complete (writes JSON) or Escalate (human review).
 
 **Expected Output:**
 
@@ -142,9 +140,9 @@ Results:
   ⚠ 15 enriched (MEDIUM confidence - needs review)
   ✗ 5 failed (no matching articles found)
 
-Cost: $1.20 (avg $0.012/record)
+Cost: ~$20 (avg ~$0.20/record)
 
-Output: enrichment_results_2024-01-19.csv
+Output: output/eval/holdout_civilians_shot_<timestamp>.json
 ```
 
 **Expected Output File (CSV/Markdown):**
@@ -171,16 +169,16 @@ Output: enrichment_results_2024-01-19.csv
 
 **Input:** Record with conflicting officer name in news articles.
 
-**Expected Agent Behavior:**
+**Expected Pipeline Behavior:**
 
-1. **Retrieval Agent** returns articles with conflicting info:
+1. **Search** returns articles with conflicting info:
    - Source A (Houston Chronicle): "Officer James Rodriguez"
    - Source B (KHOU): "Sgt. J. Ramirez"
 
-2. **Validation Agent:**
-   - Detects conflict
-   - Generates reasoning about which source is more authoritative
-   - Flags for human review
+2. **Synthesize** detects the conflict (`check_articles_match`), records a
+   `FieldConflict` with the competing values, and — for deep identity conflicts —
+   the conflict annotator writes an advisory triage note; the Coordinator routes
+   the record to human review.
 
 **Expected Output:**
 
@@ -273,26 +271,13 @@ Each test should demonstrate:
 
 ```bash
 # 1. Load the database
-cd data
-python load_data.py
+python data/load_data.py
 
-# 2. Test 1: Single Record Enrichment
-curl -X POST http://localhost:8000/enrich \
-  -H "Content-Type: application/json" \
-  -d '{"incident_id": 142}'
+# 2. Single-record enrichment (Test 1)
+enrich 142 civilians_shot           # or: python -m src.run 142 civilians_shot
 
-# 3. Test 2: Batch Enrichment
-curl -X POST http://localhost:8000/enrich/batch \
-  -H "Content-Type: application/json" \
-  -d '{
-    "field": "weapon_reported_by_media",
-    "dataset": "incidents_civilians_shot",
-    "limit": 10
-  }'
+# 3. Batch / holdout evaluation (Test 2)
+python -m src.eval.run_eval civilians_shot --limit 100 --stratified
 
-# 4. Monitor batch progress
-curl http://localhost:8000/enrich/batch/status/{batch_id}
-
-# 5. Review pending suggestions
-curl http://localhost:8000/enrich/pending
+# Results are written to output/enrichment/ (per-incident) and output/eval/ (holdout)
 ```
