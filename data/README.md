@@ -7,10 +7,10 @@ setup scripts.
 
 ```
 data/
-├── tji_civilians-shot.csv        # Police shooting civilians (2,255 records, denormalized)
-├── tji_officers-shot.csv         # Civilians shooting police (282 records, denormalized)
+├── tji_civilians-shot.csv        # Police shooting civilians (1,674 records, column-wise denormalized)
+├── tji_officers-shot.csv         # Civilians shooting police (282 records, column-wise denormalized)
 ├── schema.sql                    # Normalized PostgreSQL database schema
-├── load_data.py                  # Main ETL orchestrator (141 lines)
+├── load_data.py                  # Main ETL orchestrator
 ├── test_queries.md               # Test cases for enrichment pipeline
 └── etl/                          # Modular ETL package
     ├── cleaners.py               # Data cleaning functions (5 functions)
