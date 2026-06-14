@@ -14,7 +14,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from data.load_data import main
+from data.load_data import _reset_data, main
 
 
 class TestMain:
@@ -68,8 +68,29 @@ class TestMain:
         mock_load_civilians.assert_called_once()
         mock_load_officers.assert_called_once()
 
+        # Verify the data tables were truncated (idempotent reload) before loading
+        executed = [str(c) for c in mock_cursor.execute.call_args_list]
+        assert any(
+            "TRUNCATE TABLE" in e and "RESTART IDENTITY CASCADE" in e for e in executed
+        )
+
         # Verify summary statistics were queried
-        assert mock_cursor.execute.call_count >= 7  # Schema + 7 count queries
+        assert mock_cursor.execute.call_count >= 7  # Schema + truncate + count queries
+
+    def test_reset_data_issues_cascade_truncate(self):
+        """_reset_data truncates the base tables with RESTART IDENTITY CASCADE."""
+        mock_conn = Mock()
+        mock_cursor = Mock()
+        mock_conn.cursor.return_value = mock_cursor
+
+        _reset_data(mock_conn)
+
+        sql = mock_cursor.execute.call_args.args[0]
+        assert "TRUNCATE TABLE" in sql
+        assert "incidents_civilians_shot" in sql
+        assert "incidents_officers_shot" in sql
+        assert "RESTART IDENTITY CASCADE" in sql
+        mock_conn.commit.assert_called_once()
 
 
 @pytest.mark.integration
