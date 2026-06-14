@@ -34,7 +34,7 @@ organizations, or locations.
 
 ```python
 record = {
-    "incident_id": 142,
+    "incident_id": 84,
     "date_incident": "2016-02-08",
     "incident_city": "AUSTIN",
     "civilian_name_first": "DAVID",
@@ -149,8 +149,8 @@ Output: output/eval/holdout_civilians_shot_<timestamp>.json
 
 | record_id | city    | date       | field        | value      | confidence | reasoning                   | sources |
 | --------- | ------- | ---------- | ------------ | ---------- | ---------- | --------------------------- | ------- |
-| 142       | Austin  | 2016-02-08 | weapon       | unarmed    | HIGH       | 3 sources agree             | [urls]  |
-| 142       | Austin  | 2016-02-08 | officer_name | G. Freeman | MEDIUM     | Single source, direct quote | [url]   |
+| 84        | Austin  | 2016-02-08 | weapon       | unarmed    | HIGH       | 3 sources agree             | [urls]  |
+| 84        | Austin  | 2016-02-08 | officer_name | G. Freeman | MEDIUM     | Single source, direct quote | [url]   |
 | 287       | Houston | 2018-03-15 | weapon       | knife      | MEDIUM     | 2 sources, unclear context  | [urls]  |
 
 **What This Tests:**
@@ -274,7 +274,7 @@ Each test should demonstrate:
 python data/load_data.py
 
 # 2. Single-record enrichment (Test 1)
-enrich 142 civilians_shot           # or: python -m src.run 142 civilians_shot
+enrich 84 civilians_shot            # or: python -m src.run 84 civilians_shot
 
 # 3. Batch / holdout evaluation (Test 2)
 python -m src.eval.run_eval civilians_shot --limit 100 --stratified

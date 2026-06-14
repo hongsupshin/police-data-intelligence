@@ -45,7 +45,7 @@ analysis.
 
 - **Civilians-Shot** (1,674 records): Police shooting civilians — 57% missing
   weapon info, 22.5% missing names
-- **Officers-Shot** (282 records): Civilians shooting police — 40% missing
+- **Officers-Shot** (282 records): Civilians shooting police — 39% missing
   officer names
 - **Total**: 1,956 records needing enrichment
 
@@ -53,7 +53,8 @@ analysis.
 searching news articles and extracting details.
 
 **The Solution**: An agentic AI system that automates the enrichment workflow
-while keeping humans in the loop, reducing volunteer time by 75%.
+while keeping humans in the loop, aiming to substantially reduce the volunteer
+time each record takes.
 
 ## Architecture
 

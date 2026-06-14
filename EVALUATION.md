@@ -377,8 +377,9 @@ all to NULL. The bug was fixed in commit `9eb79a7` but the database was never
 re-loaded.
 
 **Fix**: A backfill migration (`data/backfill_civilian_died.py`) updated all
-3,518 rows in-place by re-deriving `civilian_died` from the raw `cause_of_death`
-column, using the same logic as the corrected `clean_boolean()`.
+3,518 rows in-place (the table's then-duplicated row count; the DB has since
+been de-duplicated to 1,674) by re-deriving `civilian_died` from the raw
+`cause_of_death` column, using the same logic as the corrected `clean_boolean()`.
 
 **Pilot re-eval results** (same 10 dev-set samples, v2 → v3):
 
@@ -806,7 +807,7 @@ group-level accuracy differences should be read with that caveat.
 - ~~Fairness analysis across demographic groups~~ — both datasets, Phase 2
 - ~~Adversarial evaluation (20 fabricated incidents)~~ — 0/20 hallucinations,
   0/20 completions
-- ~~Evaluation of the officers-shot dataset~~ — 93% completion, 76%/90% precision
+- ~~Evaluation of the officers-shot dataset~~ — 92% completion, 71%/86% precision
 - ~~Agentic precision/safety layer~~ — relevance judge, race verifier, advisory
   conflict annotator (all on by default)
 - ~~Deterministic conflict reduction~~ — consensus resolver + victim-anchored
