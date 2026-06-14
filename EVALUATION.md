@@ -537,8 +537,8 @@ confusion (below).
 
 #### Outcome: Systematic False-Positive Deaths
 
-Outcome errors are few and **almost entirely one-directional**: civilians have 7
-of 75 wrong, all "fatal" extracted where ground truth is "survived" (100% fatal
+Outcome errors are few and **almost entirely one-directional**: civilians have 6
+of 74 wrong, all "fatal" extracted where ground truth is "survived" (100% fatal
 recall on civilians). Officers have 12 of 94 wrong — **11 conservative** ("fatal"
 vs GT "INJURY") and **1 reverse** (non-fatal vs GT "DEATH"), so officer fatal
 recall is high but not perfect. The mechanism is entity confusion: when a record's
@@ -791,7 +791,7 @@ group-level accuracy differences should be read with that caveat.
 | ------------------------------------- | ----------------------------------- | ------------ | -------- |
 | Retrieval gap (no articles found)     | 22 civ / 4 off escalations          | No           | —        |
 | Entity confusion (wrong incident)     | 4 civ / 12 off outcome-only         | Partial      | High     |
-| Outcome false-positive deaths         | 7/75 civ, 11/94 off (+1 reverse)    | Partial      | High     |
+| Outcome false-positive deaths         | 6/74 civ, 11/94 off (+1 reverse)    | Partial      | High     |
 | Race eval normalization gaps          | ~~5/17~~ Fixed                      | ~~Yes~~ Done | —        |
 | Race genuine misidentification        | 1/11 civ, 3/9 off                   | Investigate  | Medium   |
 | Weapon category mapping gaps          | ~17% of civ weapons                 | Yes (map)    | Low      |
