@@ -571,6 +571,10 @@ Estimate — cost varies with retry count, article length, and how many agents f
 (escalated incidents that never reach extraction cost only search). See
 [EVALUATION.md](EVALUATION.md) for methodology.
 
+A cheaper all-Haiku variant was tested and rejected: it fabricated a planted name on
+the adversarial probe where Sonnet did not, so the major runs stay on Sonnet 4.6.
+See [EVALUATION.md — Phase 4](EVALUATION.md#phase-4-model-comparison-sonnet-vs-haiku).
+
 ## Responsible AI
 
 This system operates in a sensitive domain (police accountability). Key design
@@ -604,12 +608,15 @@ principles:
 - Agentic precision/safety layer — three bounded LLM checks, on by default:
   relevance judge (wrong-article veto, both datasets), race verifier (nulls an
   unstated `civilian_race`), conflict annotator (advisory triage note)
+- Model comparison (Sonnet vs Haiku) — an all-Haiku variant was rejected by the
+  adversarial gate (it fabricated a planted name where Sonnet did not); major runs
+  stay on `claude-sonnet-4-6`, Haiku only for the advisory annotator (see
+  [EVALUATION.md — Phase 4](EVALUATION.md#phase-4-model-comparison-sonnet-vs-haiku))
 
 **Next:**
 
 - Batch processing across all records
 - Human review UI for processing escalated records
-- Cost study: a cheaper model (Haiku) for high-volume extraction
 
 ## License
 

@@ -734,6 +734,60 @@ ambush, Harding St. raid, Botham Jean, George Floyd protests). **0/20 completion
 
 Full results: `output/adversarial/results.json`
 
+## Phase 4: Model Comparison (Sonnet vs Haiku)
+
+### Setup
+
+The "major runs" (the holdout evaluations and the eventual full-DB enrichment) use
+Claude Sonnet 4.6 for extraction and the two binary judges, with Claude Haiku only
+for the advisory conflict annotator. This is a cost-conscious non-profit project, so
+we tested whether a cheaper model could take over the major runs — gated
+offline-first, the same way every other change is judged. Two variants: **V1
+all-Haiku** (flip `ANTHROPIC_MODEL` to Haiku, which moves extraction and both judges
+together, since they share the main client) and **V2 judges-on-Haiku** (extraction
+stays on Sonnet; built only if V1 warranted it).
+
+### Cost sizing
+
+Haiku is priced at exactly one-third of Sonnet per token on both input and output
+(\$1/\$5 vs \$3/\$15 per 1M tokens) — 3× cheaper, not the order of magnitude
+sometimes assumed. Because extraction dominates the per-record LLM cost (see
+[Cost and Latency](#cost-and-latency), ~\$0.16/record), an all-Haiku run would cut
+the LLM share by roughly two-thirds (to ~\$0.05/record), whereas a
+judges-only-Haiku run would save far less because extraction stays on Sonnet. The
+lever is real but bounded, so we sized it on saved data before spending and bought
+the cheapest live signal first.
+
+### Adversarial finding
+
+We re-ran the Phase 3 adversarial suite with extraction and both binary judges on
+Haiku (V1), against the Sonnet baseline.
+
+| Variant           | Scenarios | Hallucinations |
+| ----------------- | --------- | -------------- |
+| Sonnet (baseline) | 20        | **0**          |
+| All-Haiku (V1)    | 20        | **1**          |
+
+Both runs escalated 18 of 20 scenarios at search, so the search environment was
+unchanged and the model was the only variable. The one all-Haiku hallucination is
+scenario 99917, the fabricated "Michael Brown" common-name trap: where the Sonnet
+pipeline escalates it at search, the all-Haiku variant committed the planted
+`civilian_name = "Michael Brown"` at high confidence, and the adversarial detector
+flagged it. The relevance gate still fired (`irrelevant_sources`), but Haiku had
+already extracted the fabricated value before the veto.
+
+### Decision
+
+Under the multi-objective gate the adversarial guard is a hard, never-overridden
+veto (`adversarial == 0`), so the single fabrication rejects the all-Haiku variant
+outright — no holdout run needed. V2 (judges-on-Haiku) was not built: it would dodge
+this failure (extraction stays Sonnet) but saves little, since extraction is most of
+the cost. **The major runs stay on Sonnet 4.6**, with Haiku reserved for the
+advisory conflict annotator, which never commits a value. This is the cost-side
+instance of the project's stance that a confidently wrong field is worse than the
+cost it would save (faithfulness over coverage). The Batches API (50% off) remains
+an orthogonal cost lever for the non-latency-sensitive full-DB run.
+
 ## Discussion
 
 ### What Works
@@ -812,6 +866,9 @@ group-level accuracy differences should be read with that caveat.
   conflict annotator (all on by default)
 - ~~Deterministic conflict reduction~~ — consensus resolver + victim-anchored
   extraction + race taxonomy
+- ~~Cost study: a cheaper model (Haiku) for high-volume extraction~~ — all-Haiku
+  rejected by the adversarial gate (1 hallucination vs Sonnet's 0); major runs stay
+  on Sonnet 4.6 (Phase 4)
 
 **Remaining:**
 
@@ -819,7 +876,6 @@ group-level accuracy differences should be read with that caveat.
   BB/PELLET GUN mappings to `WEAPON_CATEGORY_MAP`
 - **Outcome-only / entity-confusion guard**: require ≥2 corroborated fields before
   committing a generic outcome, to suppress same-location/same-time confusion
-- **Cost study**: a cheaper model (Haiku) for high-volume extraction
 - Batch processing across the ~1,564 remaining civilians records (priority order)
 - Human review UI for processing escalated records
 
