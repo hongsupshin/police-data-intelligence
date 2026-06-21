@@ -62,27 +62,35 @@ The system uses **7 nodes** orchestrated by a Coordinator in LangGraph:
 
 ```mermaid
 flowchart TD
-    Start([Start]) --> Load
-
-    Load[Load<br/><i>DB → state fields</i>]
-    Search[Search<br/><i>Tavily API</i>]
-    Validate[Validate<br/><i>date + location + name</i>]
-    Synthesize[Synthesize<br/><i>LLM extraction</i>]
-    Coord{Coordinator}
-    Complete([Complete<br/><i>write JSON</i>])
-    Escalate([Escalate<br/><i>human review</i>])
-
-    Load --> Coord
-    Coord -- "fields OK" --> Search
+    Start([Start]) --> Load[Load<br/><i>DB → state fields</i>]
+    Load --> Coord{0. Coordinator}
+    Coord -- "✅ fields OK" --> Search[1. Search<br/><i>Tavily API</i>]
     Search --> Coord
-    Coord -- "results > 0" --> Validate
-    Coord -- "retry: next strategy" --> Search
+    Coord -- "✅ results > 0" --> Validate[2. Validate<br/><i>date + location + name</i>]
+    Coord -- "🔁 retry: next strategy" --> Search
     Validate --> Coord
-    Coord -- "articles valid" --> Synthesize
-    Synthesize --> Coord
-    Coord -- "fields extracted" --> Complete
-    Coord -- "error / max retries / zero extractions" --> Escalate
+
+    subgraph Synth [3. Synthesize]
+      direction LR
+      Extract[Extraction<br/><i>LLM</i>] --> RJ{{Relevance judge: Block}}
+      RJ --> RV{{Race verifier: Null}}
+      RV --> CA{{Conflict annotator: Advise}}
+    end
+
+    Coord -- "✅ articles valid" --> Synth
+    Synth --> Coord
+    Coord -- "✅ fields extracted" --> Complete([4A. Complete<br/><i>write JSON</i>])
+    Coord -- "🚩 error / max retries / zero extractions" --> Escalate([4B. Escalate<br/><i>human review</i>])
+
+    classDef judge fill:#dbe9ff,stroke:#2f6fb0,color:#111
+    class RJ,RV,CA judge
 ```
+
+Numbers show the happy-path order (Coordinator `0` → Search `1` → Validate `2` →
+Synthesize `3` → Complete `4A`, otherwise `4B` Escalate); ✅ marks a passed gate,
+🔁 a retry, 🚩 an escalation. The three judges inside **Synthesize** are the
+[agentic precision/safety layer](#agentic-precisionsafety-layer-llm) — sub-steps
+that run after extraction, not separate graph nodes.
 
 Each node accepts and returns `EnrichmentState` (defined in
 `src/agents/state.py`). The Coordinator reads `current_stage` to decide routing;
