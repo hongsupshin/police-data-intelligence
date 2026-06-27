@@ -422,10 +422,10 @@ Stratification ensured coverage across incident years (2014–2024). All agents 
 
 ### Results (civilians_shot)
 
-| Metric    | Value        |
-| --------- | ------------ |
-| Completed | 70/100 (70%) |
-| Escalated | 30/100 (30%) |
+| Metric    | Value                      |
+| --------- | -------------------------- |
+| Completed | 70/100 (70%, 95% CI 60–78) |
+| Escalated | 30/100 (30%)               |
 
 #### Pipeline Reach (civilians_shot)
 
@@ -447,7 +447,7 @@ Stratification ensured coverage across incident years (2014–2024). All agents 
 | time_of_day     | 92          | 42%      | 82%         | 82%         |
 | outcome         | 100         | 74%      | 92%         | 92%         |
 
-Aggregate precision: **210/272 exact (77%), 243/272 fuzzy (89%)**.
+Aggregate precision: **210/272 exact (77%, 95% CI 72–82), 243/272 fuzzy (89%, 85–92)**.
 
 **Key observations:**
 
@@ -457,9 +457,11 @@ Aggregate precision: **210/272 exact (77%), 243/272 fuzzy (89%)**.
   pipeline says "fatal" when ground truth is "survived", never the reverse (100%
   fatal recall on civilians).
 - **civilian_race**: the **race verifier** is visible here. Versus a gate-off run,
-  coverage falls (17%→11%) while exact accuracy rises (65%→91%): the verifier
-  nulls races the source does not explicitly state, leaving only faithfully
-  supported values. One disagreement remains (extracted Black, GT Hispanic).
+  coverage falls (17%→11%) while exact accuracy rises (65%→91%, though on only 11
+  values — a 95% Wilson CI of 62–98% that spans the 65% figure, so this is
+  faithfulness restraint, not a measured accuracy gain): the verifier nulls races
+  the source does not explicitly state, leaving only faithfully supported values.
+  One disagreement remains (extracted Black, GT Hispanic).
 - **location_detail** shows the usual exact/fuzzy gap (16% vs 91%): the pipeline
   extracts the correct city, but formatting differs from the street-level ground
   truth.
@@ -488,10 +490,10 @@ to COMPLETE.
 First evaluation of the officers-shot dataset (civilian = the suspect/shooter;
 outcome = the officer's harm, INJURY or DEATH).
 
-| Metric    | Value        |
-| --------- | ------------ |
-| Completed | 92/100 (92%) |
-| Escalated | 8/100 (8%)   |
+| Metric    | Value                      |
+| --------- | -------------------------- |
+| Completed | 92/100 (92%, 95% CI 85–96) |
+| Escalated | 8/100 (8%)                 |
 
 | Reason               | Count |
 | -------------------- | ----- |
@@ -506,7 +508,7 @@ outcome = the officer's harm, INJURY or DEATH).
 | location_detail | 100         | 37%      | 11%         | 97%         |
 | civilian_race   | 99          | 9%       | 67%         | 67%         |
 
-Aggregate precision: **147/207 exact (71%), 179/207 fuzzy (86%)**. Officers
+Aggregate precision: **147/207 exact (71%, 95% CI 64–77), 179/207 fuzzy (86%, 81–90)**. Officers
 complete far more often than civilians (92% vs 70%) — officer-involved shootings
 draw denser news coverage, so retrieval rarely fails. Completion is below an
 earlier gate-off run (95%) because the relevance gate now vetoes 3 wrong-article
@@ -819,9 +821,12 @@ and 71% / 86% (officers). Key strengths:
 
 **Sample size**: The holdout evaluation covers ~6% of the full dataset (100 of
 1,674). This provides reasonable estimates of pipeline behavior and enough
-statistical power to identify systematic failure modes, though confidence
-intervals for per-field accuracy remain moderately wide due to the subset of
-records that reach extraction.
+statistical power to identify systematic failure modes, but every rate is a
+sample proportion with a 95% Wilson confidence interval (computed by
+`src.eval.ci.cis_from_report`): the headline completion rates span roughly 8–11
+points (civilians 60–78%, officers 85–96%), and the small per-field/per-race
+cells are far wider (`civilian_race` 62–98% on 11 values, officer suspect-race
+35–88% on 9), so any difference smaller than these intervals is noise.
 
 **Temporal bias**: News articles from 2014–2016 incidents may no longer be
 available online, creating a structural disadvantage for older records that is
