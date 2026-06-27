@@ -400,14 +400,14 @@ python -m src.eval.run_eval civilians_shot --limit 100 --stratified
 python -m src.eval.run_eval officers_shot  --limit 100 --stratified
 ```
 
-**Holdout results (N=100 each, all agents on, `claude-sonnet-4-6`):**
+**Holdout results (N=100 each, all agents on, `claude-sonnet-4-6`); bracketed ranges are 95% Wilson confidence intervals:**
 
-| Metric           | civilians_shot | officers_shot |
-| ---------------- | -------------- | ------------- |
-| Completion rate  | 70% (70/100)   | 92% (92/100)  |
-| Escalation rate  | 30% (30/100)   | 8% (8/100)    |
-| Aggregate exact  | 77% (210/272)  | 71% (147/207) |
-| Aggregate fuzzy  | 89% (243/272)  | 86% (179/207) |
+| Metric          | civilians_shot        | officers_shot         |
+| --------------- | --------------------- | --------------------- |
+| Completion rate | 70% (70/100) [60–78]  | 92% (92/100) [85–96]  |
+| Escalation rate | 30% (30/100)          | 8% (8/100)            |
+| Aggregate exact | 77% (210/272) [72–82] | 71% (147/207) [64–77] |
+| Aggregate fuzzy | 89% (243/272) [85–92] | 86% (179/207) [81–90] |
 
 Per-field accuracy (civilians_shot):
 
@@ -423,8 +423,10 @@ Per-field accuracy (civilians_shot):
 Age, outcome, weapon, and time-of-day are the strongest fields; location is 91%
 correct by fuzzy match (the exact gap is city-vs-address formatting only). The
 **race verifier** is visible here: `civilian_race` coverage falls (17%→11% vs. a
-gate-off run) while exact accuracy rises (65%→91%) — it nulls races the source
-doesn't explicitly state, trading coverage for faithfulness. Of the 30 civilian
+gate-off run) while exact accuracy rises (65%→91%, but on only 11 values — a 95%
+Wilson interval of 62–98% that spans the 65% figure, so this is faithfulness
+restraint, not a measured accuracy gain) — it nulls races the source doesn't
+explicitly state, trading coverage for faithfulness. Of the 30 civilian
 escalations, 22 are retrieval gaps (no articles found), 7 are relevance-gate
 vetoes (`irrelevant_sources` — wrong-article cases that previously completed
 silently), and 1 `insufficient_sources`. Officers complete at 92% (vs. an earlier
