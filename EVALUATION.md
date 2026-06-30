@@ -42,6 +42,8 @@ plus a deterministic consensus resolver and victim-anchored extraction.
   - [Setup](#setup-2)
   - [Results](#results-2)
   - [Adversarial under v2.0: Zero Completions](#adversarial-under-v20-zero-completions)
+- [Phase 4: Model Comparison (Sonnet vs Haiku)](#phase-4-model-comparison-sonnet-vs-haiku)
+- [Phase 5: Autonomous-Agent Baseline](#phase-5-autonomous-agent-baseline)
 - [Discussion](#discussion)
   - [What Works](#what-works)
   - [Known Limitations](#known-limitations)
@@ -790,6 +792,91 @@ instance of the project's stance that a confidently wrong field is worse than th
 cost it would save (faithfulness over coverage). The Batches API (50% off) remains
 an orthogonal cost lever for the non-latency-sensitive full-DB run.
 
+## Phase 5: Autonomous-Agent Baseline
+
+Phase 3 shows the pipeline refuses fabricated incidents; Phase 4 shows a cheaper
+model breaks that refusal. This phase tests the opposite design: drop the workflow
+and let a single autonomous agent do the whole job. It is the "point an agent at the
+database and let it fill every blank" approach the project argues against, run on the
+same 20 fabricated incidents so the contrast is direct.
+
+### Setup
+
+A single Anthropic tool-use agent (`src/baselines/autonomous_agent/`) on the same
+extraction model (`claude-sonnet-4-6`), given three tools it drives itself: free-text
+Tavily search, an open-web page fetch, and a read of the incident anchor. It has
+**none** of the pipeline's machinery — no relevance judge, race verifier, conflict
+annotator, Coordinator, retry ladder, or eval gate.
+
+To keep the comparison fair, the agent's prompt states only a generic standard of
+care (cite a source for each value; decline when coverage is thin) and carries
+**none** of the project's earned rules (the relevance taxonomy, the race rule, the
+officer-as-suspect reframing). It is, if anything, more capable than the pipeline: it
+writes its own queries, fetches arbitrary web pages, and searches without a date
+window. This is a deliberately **conservative** baseline — charitable to the agent —
+so its failures are a floor, not a ceiling. Same 20 fabricated incidents, only the
+database fetch patched, **3 runs** for variance (60 runs). Outputs in
+`output/adversarial_baseline/naive/`.
+
+### Results
+
+| Metric (20-incident probe)   | Shipped pipeline               | Autonomous agent                  |
+| ---------------------------- | ------------------------------ | --------------------------------- |
+| Records completed            | 0/20                           | 1/20 (incident 99913, all 3 runs) |
+| Committed fabrications       | 0                              | 6 fields                          |
+| Signal on the failure        | escalated `irrelevant_sources` | none — record marked complete     |
+| Tavily searches / incident   | 2.8 (3-rung ladder)            | 14.9                              |
+| Open-web fetches / incident  | 0                              | 6.1                               |
+| Cost / incident (this probe) | ~\$0.05                        | ~\$1.00                           |
+
+Across all 60 runs, **only incident 99913 ever fabricated** (3/3, reproducibly), with
+55 genuine declines and 2 turn-cap near-misses (99911, 99920). 99913's six committed
+fields are two planted names (`officer_name`, `civilian_name`) and an `outcome`, all
+with no source, plus `weapon`, `circumstance`, and `location_detail` taken from real
+coverage of the May 2020 Austin protests — a different event sharing the city and date.
+
+### Behavioral analysis
+
+Reading the transcripts, not just the outcomes, sharpens the result:
+
+- **A generic instruction is not a mechanism.** On 99913 the agent did the relevance
+  reasoning the prompt asked for and wrote, in its final turn, that "the specific names
+  in our database record don't appear in any news articles I've found" — then submitted
+  the record as complete, labeling the two planted names low-confidence. The check
+  produced awareness but had no authority to stop the commit; the relevance judge
+  supplies exactly that authority.
+- **The declines are genuine relevance judgment, not empty retrieval.** Every incident
+  retrieved 80–190 results and the agent read 5–25 full articles before deciding. On
+  the Houston trap (99912) it found the real Harding Street raid and reported the
+  record's names matched no one in it; on the fabricated "Michael Brown" case (99917)
+  it named the Ferguson collision and declined.
+- **One decline was a near-miss.** On a San Antonio trap (99911) the agent chased a
+  real overnight-shooting story until the 24-turn cap stopped it, so the single
+  committed fabrication is propped up partly by an arbitrary backstop.
+
+### Cost (the autonomy tax)
+
+The agent ran 14.9 Tavily searches per incident to the pipeline's 2.8 (5.3×) and added
+~6 open-web fetches the pipeline never makes, costing about \$1.00 per incident against
+the pipeline's ~\$0.05 on this probe (18 of 20 incidents escalate before any extraction
+runs). The extra effort bought no safety: the additional searching on 99913 surfaced
+more of the adjacent Austin coverage the agent then drew on. The whole experiment cost
+\$44.85 (Claude) + \$14.29 (Tavily) = \$59.14.
+
+The agent's search tool excludes the same aggregation domains as the pipeline
+(wikipedia.org, fatalencounters.org). The transcripts show the agent *uses*
+aggregator/database sources to decline (the absence of a planted name is its decline
+signal), so this exclusion did not flatter it; a paid exclusion-off probe was judged
+unnecessary from the traces.
+
+### Takeaway
+
+A more capable, more expensive, unconstrained agent declined most of the suite but
+committed — silently and reproducibly — the one wrong-article fabrication the relevance
+judge is built to block. Autonomy over the whole task is a liability here; bounded
+judgment above extraction is not. The result is folded into the SciPy manuscript
+(Results: "An autonomous agent fabricates where the pipeline escalates").
+
 ## Discussion
 
 ### What Works
@@ -816,6 +903,10 @@ and 71% / 86% (officers). Key strengths:
   completed**. Defense-in-depth (validation → relevance gate → conflict detection
   → human review) caught every scenario, including hallucination traps placed near
   real high-profile events (see [Phase 3](#phase-3-adversarial-evaluation)).
+- **The bounded design beats the unconstrained one**: a no-guardrails autonomous
+  agent on the same 20 incidents fabricated 1/20 (silently, reproducibly) at 5.3×
+  the search cost, while the pipeline completed 0/20 and escalated every case with a
+  signal (see [Phase 5](#phase-5-autonomous-agent-baseline)).
 
 ### Known Limitations
 
@@ -874,6 +965,9 @@ group-level accuracy differences should be read with that caveat.
 - ~~Cost study: a cheaper model (Haiku) for high-volume extraction~~ — all-Haiku
   rejected by the adversarial gate (1 hallucination vs Sonnet's 0); major runs stay
   on Sonnet 4.6 (Phase 4)
+- ~~Autonomous-agent baseline (no guardrails) on the adversarial suite~~ — 1/20
+  fabrication vs the pipeline's 0/20, at 5.3× the search cost and no accuracy gain
+  (Phase 5)
 
 **Remaining:**
 

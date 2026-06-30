@@ -440,6 +440,16 @@ Reports save to `output/eval/`.
 appeared in extracted fields. (17 escalated at search via `max_retries`, 2 via
 the relevance gate's `irrelevant_sources`, 1 `insufficient_sources`.)
 
+**Autonomous-agent baseline (N=20×3):** the same 20 incidents were also run through
+a single autonomous tool-use agent (`src/baselines/autonomous_agent/`) with no
+judges, gate, or coordinator — the "point an agent at the database" approach this
+project argues against. Given more freedom than the pipeline (free-text search +
+open-web fetch, no date window) but none of its earned rules, the agent declined
+most incidents yet **completed one fabricated record (3/3 runs), committing six
+unsupported fields with no distrust signal** where the pipeline escalates it, at
+5.3× the search cost (~\$1.00 vs ~\$0.05 per incident). See
+[EVALUATION.md — Phase 5](EVALUATION.md#phase-5-autonomous-agent-baseline).
+
 See [EVALUATION.md](EVALUATION.md) for full methodology, error analysis,
 fairness metrics, adversarial evaluation, and discussion.
 
@@ -499,7 +509,9 @@ police-data-intelligence/
 │   ├── field_normalizers.py     # Deterministic outcome/time consensus normalizers
 │   ├── race_taxonomy.py         # Race → TJI-bucket taxonomy + divergence flag
 │   ├── config.py                # Settings (pydantic-settings, from env vars)
-│   └── run.py                   # CLI entrypoint
+│   ├── run.py                   # CLI entrypoint
+│   └── baselines/
+│       └── autonomous_agent/    # Autonomous-agent baseline (adversarial foil, Phase 5)
 ├── scripts/
 │   └── run_adversarial.py       # Adversarial suite (fabricated incidents → hallucination check)
 ├── data/
@@ -614,6 +626,10 @@ principles:
   adversarial gate (it fabricated a planted name where Sonnet did not); major runs
   stay on `claude-sonnet-4-6`, Haiku only for the advisory annotator (see
   [EVALUATION.md — Phase 4](EVALUATION.md#phase-4-model-comparison-sonnet-vs-haiku))
+- Autonomous-agent baseline — a no-guardrails agent on the 20 adversarial incidents
+  fabricated 1/20 (vs the pipeline's 0/20) at 5.3× the search cost, confirming the
+  bounded design (see
+  [EVALUATION.md — Phase 5](EVALUATION.md#phase-5-autonomous-agent-baseline))
 
 **Next:**
 
