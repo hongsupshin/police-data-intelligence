@@ -1,0 +1,6471 @@
+{
+  "dataset_type": "officers_shot",
+  "n_incidents": 100,
+  "n_completed": 38,
+  "n_escalated": 62,
+  "completion_rate": 0.38,
+  "field_metrics": [
+    {
+      "field_name": "civilian_age",
+      "n_evaluable": 99,
+      "n_extracted": 21,
+      "n_exact_match": 19,
+      "n_fuzzy_match": 19,
+      "coverage": 0.21212121212121213,
+      "exact_accuracy": 0.9047619047619048,
+      "fuzzy_accuracy": 0.9047619047619048,
+      "confidence_breakdown": {
+        "high": 0.9,
+        "medium": 0.9090909090909091
+      }
+    },
+    {
+      "field_name": "civilian_race",
+      "n_evaluable": 100,
+      "n_extracted": 4,
+      "n_exact_match": 3,
+      "n_fuzzy_match": 3,
+      "coverage": 0.04,
+      "exact_accuracy": 0.75,
+      "fuzzy_accuracy": 0.75,
+      "confidence_breakdown": {
+        "medium": 0.75
+      }
+    },
+    {
+      "field_name": "location_detail",
+      "n_evaluable": 100,
+      "n_extracted": 16,
+      "n_exact_match": 3,
+      "n_fuzzy_match": 15,
+      "coverage": 0.16,
+      "exact_accuracy": 0.1875,
+      "fuzzy_accuracy": 0.9375,
+      "confidence_breakdown": {
+        "medium": 0.1875
+      }
+    },
+    {
+      "field_name": "outcome",
+      "n_evaluable": 100,
+      "n_extracted": 33,
+      "n_exact_match": 15,
+      "n_fuzzy_match": 15,
+      "coverage": 0.33,
+      "exact_accuracy": 0.45454545454545453,
+      "fuzzy_accuracy": 0.45454545454545453,
+      "confidence_breakdown": {
+        "high": 0.5555555555555556,
+        "medium": 0.4166666666666667
+      }
+    }
+  ],
+  "per_incident": [
+    {
+      "incident_id": 1,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "complete",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "54",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "WHITE",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "SEGUIN",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": "Fatal",
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": "medium",
+          "error": null
+        }
+      ],
+      "escalation_reason": null,
+      "elapsed_seconds": 16.16,
+      "stage_reached": "complete",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 1,
+        "excluded": 7,
+        "date_fail": 3,
+        "location_fail": 2,
+        "name_fail": 0
+      }
+    },
+    {
+      "incident_id": 2,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "complete",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": "36",
+          "ground_truth_value": "36",
+          "exact_match": true,
+          "fuzzy_match": true,
+          "fuzzy_score": null,
+          "confidence": "medium",
+          "error": null
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "BLACK",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "SAN ANTONIO",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": "Non-fatal",
+          "ground_truth_value": "INJURY",
+          "exact_match": true,
+          "fuzzy_match": true,
+          "fuzzy_score": null,
+          "confidence": "high",
+          "error": null
+        }
+      ],
+      "escalation_reason": null,
+      "elapsed_seconds": 63.17,
+      "stage_reached": "complete",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 3,
+        "excluded": 2,
+        "date_fail": 8,
+        "location_fail": 2,
+        "name_fail": 5
+      }
+    },
+    {
+      "incident_id": 4,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "complete",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "27",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "HISPANIC",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "ODESSA",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": "Non-fatal",
+          "ground_truth_value": "INJURY",
+          "exact_match": true,
+          "fuzzy_match": true,
+          "fuzzy_score": null,
+          "confidence": "high",
+          "error": null
+        }
+      ],
+      "escalation_reason": null,
+      "elapsed_seconds": 145.63,
+      "stage_reached": "complete",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 7,
+        "excluded": 0,
+        "date_fail": 10,
+        "location_fail": 0,
+        "name_fail": 3
+      }
+    },
+    {
+      "incident_id": 5,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "complete",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "27",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "HISPANIC",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "ODESSA",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": "Non-fatal",
+          "ground_truth_value": "INJURY",
+          "exact_match": true,
+          "fuzzy_match": true,
+          "fuzzy_score": null,
+          "confidence": "medium",
+          "error": null
+        }
+      ],
+      "escalation_reason": null,
+      "elapsed_seconds": 132.45,
+      "stage_reached": "complete",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 8,
+        "excluded": 1,
+        "date_fail": 9,
+        "location_fail": 1,
+        "name_fail": 1
+      }
+    },
+    {
+      "incident_id": 7,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "complete",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": "27",
+          "ground_truth_value": "27",
+          "exact_match": true,
+          "fuzzy_match": true,
+          "fuzzy_score": null,
+          "confidence": "medium",
+          "error": null
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "BLACK",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": "NE Houston",
+          "ground_truth_value": "HOUSTON",
+          "exact_match": false,
+          "fuzzy_match": true,
+          "fuzzy_score": 100.0,
+          "confidence": "medium",
+          "error": null
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": "Non-fatal",
+          "ground_truth_value": "INJURY",
+          "exact_match": true,
+          "fuzzy_match": true,
+          "fuzzy_score": null,
+          "confidence": "medium",
+          "error": null
+        }
+      ],
+      "escalation_reason": null,
+      "elapsed_seconds": 21.84,
+      "stage_reached": "complete",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 1,
+        "excluded": 2,
+        "date_fail": 8,
+        "location_fail": 4,
+        "name_fail": 6
+      }
+    },
+    {
+      "incident_id": 8,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "complete",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "18",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "HISPANIC",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "CONROE",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": "Non-fatal",
+          "ground_truth_value": "INJURY",
+          "exact_match": true,
+          "fuzzy_match": true,
+          "fuzzy_score": null,
+          "confidence": "medium",
+          "error": null
+        }
+      ],
+      "escalation_reason": null,
+      "elapsed_seconds": 133.48,
+      "stage_reached": "complete",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 8,
+        "excluded": 0,
+        "date_fail": 10,
+        "location_fail": 2,
+        "name_fail": 0
+      }
+    },
+    {
+      "incident_id": 10,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "complete",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": "22",
+          "ground_truth_value": "22",
+          "exact_match": true,
+          "fuzzy_match": true,
+          "fuzzy_score": null,
+          "confidence": "medium",
+          "error": null
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "HISPANIC",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": "Carr Park, Euless",
+          "ground_truth_value": "EULESS",
+          "exact_match": false,
+          "fuzzy_match": true,
+          "fuzzy_score": 100.0,
+          "confidence": "medium",
+          "error": null
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": "Fatal",
+          "ground_truth_value": "DEATH",
+          "exact_match": true,
+          "fuzzy_match": true,
+          "fuzzy_score": null,
+          "confidence": "medium",
+          "error": null
+        }
+      ],
+      "escalation_reason": null,
+      "elapsed_seconds": 23.39,
+      "stage_reached": "complete",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 1,
+        "excluded": 0,
+        "date_fail": 10,
+        "location_fail": 3,
+        "name_fail": 9
+      }
+    },
+    {
+      "incident_id": 12,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "complete",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "42",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "WHITE",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": "Fort Worth",
+          "ground_truth_value": "FORT WORTH",
+          "exact_match": true,
+          "fuzzy_match": true,
+          "fuzzy_score": 100.0,
+          "confidence": "medium",
+          "error": null
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": null,
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        }
+      ],
+      "escalation_reason": null,
+      "elapsed_seconds": 97.9,
+      "stage_reached": "complete",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 5,
+        "excluded": 2,
+        "date_fail": 8,
+        "location_fail": 1,
+        "name_fail": 3
+      }
+    },
+    {
+      "incident_id": 13,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "complete",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": "25",
+          "ground_truth_value": "25",
+          "exact_match": true,
+          "fuzzy_match": true,
+          "fuzzy_score": null,
+          "confidence": "high",
+          "error": null
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "WHITE",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "AUSTIN",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": "Fatal",
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": "high",
+          "error": null
+        }
+      ],
+      "escalation_reason": null,
+      "elapsed_seconds": 53.68,
+      "stage_reached": "complete",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 3,
+        "excluded": 5,
+        "date_fail": 5,
+        "location_fail": 1,
+        "name_fail": 2
+      }
+    },
+    {
+      "incident_id": 14,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "complete",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": null,
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_ground_truth"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": "Black",
+          "ground_truth_value": "BLACK",
+          "exact_match": true,
+          "fuzzy_match": true,
+          "fuzzy_score": null,
+          "confidence": "medium",
+          "error": null
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "BAYTOWN",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": "Fatal",
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": "medium",
+          "error": null
+        }
+      ],
+      "escalation_reason": null,
+      "elapsed_seconds": 71.25,
+      "stage_reached": "complete",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 4,
+        "excluded": 3,
+        "date_fail": 7,
+        "location_fail": 3,
+        "name_fail": 0
+      }
+    },
+    {
+      "incident_id": 16,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "complete",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "18",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "WHITE",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "AUSTIN",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": "Non-fatal",
+          "ground_truth_value": "INJURY",
+          "exact_match": true,
+          "fuzzy_match": true,
+          "fuzzy_score": null,
+          "confidence": "medium",
+          "error": null
+        }
+      ],
+      "escalation_reason": null,
+      "elapsed_seconds": 86.34,
+      "stage_reached": "complete",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 4,
+        "excluded": 4,
+        "date_fail": 6,
+        "location_fail": 1,
+        "name_fail": 2
+      }
+    },
+    {
+      "incident_id": 17,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "complete",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": "26",
+          "ground_truth_value": "23",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": "medium",
+          "error": null
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "WHITE",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": "400 block of Summit Avenue, Arlington (near University of Texas at Arlington campus)",
+          "ground_truth_value": "ARLINGTON",
+          "exact_match": false,
+          "fuzzy_match": true,
+          "fuzzy_score": 100.0,
+          "confidence": "medium",
+          "error": null
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": "Non-fatal",
+          "ground_truth_value": "INJURY",
+          "exact_match": true,
+          "fuzzy_match": true,
+          "fuzzy_score": null,
+          "confidence": "medium",
+          "error": null
+        }
+      ],
+      "escalation_reason": null,
+      "elapsed_seconds": 23.03,
+      "stage_reached": "complete",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 1,
+        "excluded": 6,
+        "date_fail": 4,
+        "location_fail": 2,
+        "name_fail": 3
+      }
+    },
+    {
+      "incident_id": 18,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "complete",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "25",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "HISPANIC",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": "Memorial Drive near Wilcrest Drive, Houston",
+          "ground_truth_value": "HOUSTON",
+          "exact_match": false,
+          "fuzzy_match": true,
+          "fuzzy_score": 100.0,
+          "confidence": "medium",
+          "error": null
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": "Fatal",
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": "high",
+          "error": null
+        }
+      ],
+      "escalation_reason": null,
+      "elapsed_seconds": 31.94,
+      "stage_reached": "complete",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 2,
+        "excluded": 8,
+        "date_fail": 2,
+        "location_fail": 0,
+        "name_fail": 0
+      }
+    },
+    {
+      "incident_id": 19,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "complete",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": "25",
+          "ground_truth_value": "25",
+          "exact_match": true,
+          "fuzzy_match": true,
+          "fuzzy_score": null,
+          "confidence": "medium",
+          "error": null
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "HISPANIC",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": "Houston",
+          "ground_truth_value": "HOUSTON",
+          "exact_match": true,
+          "fuzzy_match": true,
+          "fuzzy_score": 100.0,
+          "confidence": "medium",
+          "error": null
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": "Fatal",
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": "medium",
+          "error": null
+        }
+      ],
+      "escalation_reason": null,
+      "elapsed_seconds": 58.27,
+      "stage_reached": "complete",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 3,
+        "excluded": 4,
+        "date_fail": 6,
+        "location_fail": 0,
+        "name_fail": 3
+      }
+    },
+    {
+      "incident_id": 43,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "complete",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "36",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "BLACK",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": "Calvert",
+          "ground_truth_value": "CALVERT",
+          "exact_match": true,
+          "fuzzy_match": true,
+          "fuzzy_score": 100.0,
+          "confidence": "medium",
+          "error": null
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": "non-fatal",
+          "ground_truth_value": "INJURY",
+          "exact_match": true,
+          "fuzzy_match": true,
+          "fuzzy_score": null,
+          "confidence": "medium",
+          "error": null
+        }
+      ],
+      "escalation_reason": null,
+      "elapsed_seconds": 38.82,
+      "stage_reached": "complete",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 2,
+        "excluded": 4,
+        "date_fail": 6,
+        "location_fail": 4,
+        "name_fail": 4
+      }
+    },
+    {
+      "incident_id": 44,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "complete",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": "46",
+          "ground_truth_value": "46",
+          "exact_match": true,
+          "fuzzy_match": true,
+          "fuzzy_score": null,
+          "confidence": "high",
+          "error": null
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "HISPANIC",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "LITTLE ELM",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": "Fatal",
+          "ground_truth_value": "DEATH",
+          "exact_match": true,
+          "fuzzy_match": true,
+          "fuzzy_score": null,
+          "confidence": "high",
+          "error": null
+        }
+      ],
+      "escalation_reason": null,
+      "elapsed_seconds": 793.36,
+      "stage_reached": "complete",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 6,
+        "excluded": 1,
+        "date_fail": 9,
+        "location_fail": 1,
+        "name_fail": 3
+      }
+    },
+    {
+      "incident_id": 45,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "complete",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": "44",
+          "ground_truth_value": "44",
+          "exact_match": true,
+          "fuzzy_match": true,
+          "fuzzy_score": null,
+          "confidence": "high",
+          "error": null
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "HISPANIC",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": "Fritch, Texas",
+          "ground_truth_value": "FRITCH",
+          "exact_match": false,
+          "fuzzy_match": true,
+          "fuzzy_score": 100.0,
+          "confidence": "medium",
+          "error": null
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": "Fatal",
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": "medium",
+          "error": null
+        }
+      ],
+      "escalation_reason": null,
+      "elapsed_seconds": 255.15,
+      "stage_reached": "complete",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 3,
+        "excluded": 0,
+        "date_fail": 10,
+        "location_fail": 7,
+        "name_fail": 7
+      }
+    },
+    {
+      "incident_id": 46,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "complete",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": "25 (Earl Donnell Riley), 26 (Johoan Rodriguez)",
+          "ground_truth_value": "25",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "parse_error"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": "Hispanic",
+          "ground_truth_value": "BLACK",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": "medium",
+          "error": null
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "HOUSTON",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": null,
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        }
+      ],
+      "escalation_reason": null,
+      "elapsed_seconds": 424.94,
+      "stage_reached": "complete",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 8,
+        "excluded": 2,
+        "date_fail": 8,
+        "location_fail": 0,
+        "name_fail": 0
+      }
+    },
+    {
+      "incident_id": 47,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "complete",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": "25",
+          "ground_truth_value": "25",
+          "exact_match": true,
+          "fuzzy_match": true,
+          "fuzzy_score": null,
+          "confidence": "medium",
+          "error": null
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "BLACK",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "HOUSTON",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": null,
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        }
+      ],
+      "escalation_reason": null,
+      "elapsed_seconds": 196.74,
+      "stage_reached": "complete",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 7,
+        "excluded": 1,
+        "date_fail": 9,
+        "location_fail": 2,
+        "name_fail": 0
+      }
+    },
+    {
+      "incident_id": 49,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "complete",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": "22",
+          "ground_truth_value": "22",
+          "exact_match": true,
+          "fuzzy_match": true,
+          "fuzzy_score": null,
+          "confidence": "medium",
+          "error": null
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "HISPANIC",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": "Santa Isabel Avenue, west Laredo",
+          "ground_truth_value": "LAREDO",
+          "exact_match": false,
+          "fuzzy_match": true,
+          "fuzzy_score": 100.0,
+          "confidence": "medium",
+          "error": null
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": "Non-fatal (civilian shot and hospitalized; officer injured but not by gunfire and released)",
+          "ground_truth_value": "INJURY",
+          "exact_match": true,
+          "fuzzy_match": true,
+          "fuzzy_score": null,
+          "confidence": "medium",
+          "error": null
+        }
+      ],
+      "escalation_reason": null,
+      "elapsed_seconds": 90.07,
+      "stage_reached": "complete",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 1,
+        "excluded": 4,
+        "date_fail": 6,
+        "location_fail": 4,
+        "name_fail": 5
+      }
+    },
+    {
+      "incident_id": 51,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "escalate",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "15",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "BLACK",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "KILLEEN",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": null,
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        }
+      ],
+      "escalation_reason": "max_retries",
+      "elapsed_seconds": 8.0,
+      "stage_reached": "search",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 0,
+        "excluded": 3,
+        "date_fail": 7,
+        "location_fail": 6,
+        "name_fail": 7
+      }
+    },
+    {
+      "incident_id": 52,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "complete",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": "36",
+          "ground_truth_value": "36",
+          "exact_match": true,
+          "fuzzy_match": true,
+          "fuzzy_score": null,
+          "confidence": "high",
+          "error": null
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": "Black",
+          "ground_truth_value": "BLACK",
+          "exact_match": true,
+          "fuzzy_match": true,
+          "fuzzy_score": null,
+          "confidence": "medium",
+          "error": null
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "DALLAS",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": "Fatal",
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": "medium",
+          "error": null
+        }
+      ],
+      "escalation_reason": null,
+      "elapsed_seconds": 489.38,
+      "stage_reached": "complete",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 8,
+        "excluded": 2,
+        "date_fail": 8,
+        "location_fail": 0,
+        "name_fail": 0
+      }
+    },
+    {
+      "incident_id": 53,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "complete",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "55",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "HISPANIC",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "LAREDO",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": "Fatal",
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": "medium",
+          "error": null
+        }
+      ],
+      "escalation_reason": null,
+      "elapsed_seconds": 1060.79,
+      "stage_reached": "complete",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 10,
+        "excluded": 0,
+        "date_fail": 10,
+        "location_fail": 0,
+        "name_fail": 0
+      }
+    },
+    {
+      "incident_id": 54,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "complete",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "55",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "HISPANIC",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "LAREDO",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": "Fatal",
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": "medium",
+          "error": null
+        }
+      ],
+      "escalation_reason": null,
+      "elapsed_seconds": 738.78,
+      "stage_reached": "complete",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 7,
+        "excluded": 1,
+        "date_fail": 9,
+        "location_fail": 0,
+        "name_fail": 2
+      }
+    },
+    {
+      "incident_id": 55,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "complete",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "55",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "HISPANIC",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "LAREDO",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": "Fatal",
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": "medium",
+          "error": null
+        }
+      ],
+      "escalation_reason": null,
+      "elapsed_seconds": 282.09,
+      "stage_reached": "complete",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 8,
+        "excluded": 1,
+        "date_fail": 9,
+        "location_fail": 0,
+        "name_fail": 1
+      }
+    },
+    {
+      "incident_id": 56,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "complete",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "55",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "HISPANIC",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "LAREDO",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": "Fatal",
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": "medium",
+          "error": null
+        }
+      ],
+      "escalation_reason": null,
+      "elapsed_seconds": 173.87,
+      "stage_reached": "complete",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 10,
+        "excluded": 0,
+        "date_fail": 10,
+        "location_fail": 0,
+        "name_fail": 0
+      }
+    },
+    {
+      "incident_id": 57,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "complete",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": "34",
+          "ground_truth_value": "34",
+          "exact_match": true,
+          "fuzzy_match": true,
+          "fuzzy_score": null,
+          "confidence": "medium",
+          "error": null
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "WHITE",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": "Main and Evergreen Street near San Antonio College, San Antonio",
+          "ground_truth_value": "SAN ANTONIO",
+          "exact_match": false,
+          "fuzzy_match": true,
+          "fuzzy_score": 100.0,
+          "confidence": "medium",
+          "error": null
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": "Fatal",
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": "medium",
+          "error": null
+        }
+      ],
+      "escalation_reason": null,
+      "elapsed_seconds": 22.83,
+      "stage_reached": "complete",
+      "validation_failure_summary": {
+        "total": 8,
+        "passed": 1,
+        "excluded": 1,
+        "date_fail": 7,
+        "location_fail": 2,
+        "name_fail": 6
+      }
+    },
+    {
+      "incident_id": 58,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "complete",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": "34",
+          "ground_truth_value": "34",
+          "exact_match": true,
+          "fuzzy_match": true,
+          "fuzzy_score": null,
+          "confidence": "medium",
+          "error": null
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "WHITE",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": "near San Antonio College, north of downtown, San Antonio",
+          "ground_truth_value": "SAN ANTONIO",
+          "exact_match": false,
+          "fuzzy_match": true,
+          "fuzzy_score": 100.0,
+          "confidence": "medium",
+          "error": null
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": "Fatal",
+          "ground_truth_value": "DEATH",
+          "exact_match": true,
+          "fuzzy_match": true,
+          "fuzzy_score": null,
+          "confidence": "medium",
+          "error": null
+        }
+      ],
+      "escalation_reason": null,
+      "elapsed_seconds": 21.29,
+      "stage_reached": "complete",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 1,
+        "excluded": 1,
+        "date_fail": 9,
+        "location_fail": 4,
+        "name_fail": 8
+      }
+    },
+    {
+      "incident_id": 59,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "complete",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "21",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "HISPANIC",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": "Victoria, Australia",
+          "ground_truth_value": "HOUSTON",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": 42.85714285714286,
+          "confidence": "medium",
+          "error": null
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": null,
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        }
+      ],
+      "escalation_reason": null,
+      "elapsed_seconds": 27.85,
+      "stage_reached": "complete",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 2,
+        "excluded": 3,
+        "date_fail": 7,
+        "location_fail": 5,
+        "name_fail": 0
+      }
+    },
+    {
+      "incident_id": 60,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "complete",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": "26",
+          "ground_truth_value": "26",
+          "exact_match": true,
+          "fuzzy_match": true,
+          "fuzzy_score": null,
+          "confidence": "medium",
+          "error": null
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "HISPANIC",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": "6000 block of Ingram Road, San Antonio",
+          "ground_truth_value": "SAN ANTONIO",
+          "exact_match": false,
+          "fuzzy_match": true,
+          "fuzzy_score": 100.0,
+          "confidence": "medium",
+          "error": null
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": "Fatal",
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": "medium",
+          "error": null
+        }
+      ],
+      "escalation_reason": null,
+      "elapsed_seconds": 31.74,
+      "stage_reached": "complete",
+      "validation_failure_summary": {
+        "total": 2,
+        "passed": 1,
+        "excluded": 0,
+        "date_fail": 2,
+        "location_fail": 1,
+        "name_fail": 1
+      }
+    },
+    {
+      "incident_id": 61,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "complete",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": "33",
+          "ground_truth_value": "33",
+          "exact_match": true,
+          "fuzzy_match": true,
+          "fuzzy_score": null,
+          "confidence": "medium",
+          "error": null
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "WHITE",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": "Kress, Texas",
+          "ground_truth_value": "KRESS",
+          "exact_match": false,
+          "fuzzy_match": true,
+          "fuzzy_score": 100.0,
+          "confidence": "medium",
+          "error": null
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": "Fatal",
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": "medium",
+          "error": null
+        }
+      ],
+      "escalation_reason": null,
+      "elapsed_seconds": 17.39,
+      "stage_reached": "complete",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 1,
+        "excluded": 3,
+        "date_fail": 7,
+        "location_fail": 5,
+        "name_fail": 6
+      }
+    },
+    {
+      "incident_id": 62,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "complete",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": "22",
+          "ground_truth_value": "22",
+          "exact_match": true,
+          "fuzzy_match": true,
+          "fuzzy_score": null,
+          "confidence": "high",
+          "error": null
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "BLACK",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": "4300 block of Kelly Hill Road, Arlington",
+          "ground_truth_value": "ARLINGTON",
+          "exact_match": false,
+          "fuzzy_match": true,
+          "fuzzy_score": 100.0,
+          "confidence": "medium",
+          "error": null
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": "Fatal",
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": "medium",
+          "error": null
+        }
+      ],
+      "escalation_reason": null,
+      "elapsed_seconds": 46.73,
+      "stage_reached": "complete",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 2,
+        "excluded": 2,
+        "date_fail": 8,
+        "location_fail": 5,
+        "name_fail": 4
+      }
+    },
+    {
+      "incident_id": 63,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "complete",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": "22",
+          "ground_truth_value": "22",
+          "exact_match": true,
+          "fuzzy_match": true,
+          "fuzzy_score": null,
+          "confidence": "high",
+          "error": null
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "BLACK",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": "4300 block of Kelly Hill Road, Arlington",
+          "ground_truth_value": "ARLINGTON",
+          "exact_match": false,
+          "fuzzy_match": true,
+          "fuzzy_score": 100.0,
+          "confidence": "medium",
+          "error": null
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": "Fatal",
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": "medium",
+          "error": null
+        }
+      ],
+      "escalation_reason": null,
+      "elapsed_seconds": 36.84,
+      "stage_reached": "complete",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 2,
+        "excluded": 2,
+        "date_fail": 8,
+        "location_fail": 5,
+        "name_fail": 4
+      }
+    },
+    {
+      "incident_id": 64,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "complete",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": "38",
+          "ground_truth_value": "37",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": "high",
+          "error": null
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "WHITE",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "HOUSTON",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": "Non-fatal",
+          "ground_truth_value": "INJURY",
+          "exact_match": true,
+          "fuzzy_match": true,
+          "fuzzy_score": null,
+          "confidence": "high",
+          "error": null
+        }
+      ],
+      "escalation_reason": null,
+      "elapsed_seconds": 52.12,
+      "stage_reached": "complete",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 3,
+        "excluded": 1,
+        "date_fail": 9,
+        "location_fail": 3,
+        "name_fail": 4
+      }
+    },
+    {
+      "incident_id": 65,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "complete",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": "32",
+          "ground_truth_value": "32",
+          "exact_match": true,
+          "fuzzy_match": true,
+          "fuzzy_score": null,
+          "confidence": "high",
+          "error": null
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": "Black",
+          "ground_truth_value": "BLACK",
+          "exact_match": true,
+          "fuzzy_match": true,
+          "fuzzy_score": null,
+          "confidence": "medium",
+          "error": null
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "FAIRFIELD",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": "Fatal",
+          "ground_truth_value": "DEATH",
+          "exact_match": true,
+          "fuzzy_match": true,
+          "fuzzy_score": null,
+          "confidence": "medium",
+          "error": null
+        }
+      ],
+      "escalation_reason": null,
+      "elapsed_seconds": 108.03,
+      "stage_reached": "complete",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 6,
+        "excluded": 0,
+        "date_fail": 10,
+        "location_fail": 2,
+        "name_fail": 3
+      }
+    },
+    {
+      "incident_id": 66,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "complete",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": "26",
+          "ground_truth_value": "26",
+          "exact_match": true,
+          "fuzzy_match": true,
+          "fuzzy_score": null,
+          "confidence": "high",
+          "error": null
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "WHITE",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "WIMBERLEY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": null,
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        }
+      ],
+      "escalation_reason": null,
+      "elapsed_seconds": 92.19,
+      "stage_reached": "complete",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 6,
+        "excluded": 2,
+        "date_fail": 8,
+        "location_fail": 2,
+        "name_fail": 1
+      }
+    },
+    {
+      "incident_id": 67,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "complete",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "51",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "WHITE",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "SAN MARCOS",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": "Fatal",
+          "ground_truth_value": "DEATH",
+          "exact_match": true,
+          "fuzzy_match": true,
+          "fuzzy_score": null,
+          "confidence": "high",
+          "error": null
+        }
+      ],
+      "escalation_reason": null,
+      "elapsed_seconds": 219.65,
+      "stage_reached": "complete",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 6,
+        "excluded": 0,
+        "date_fail": 10,
+        "location_fail": 0,
+        "name_fail": 4
+      }
+    },
+    {
+      "incident_id": 69,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "complete",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": "18",
+          "ground_truth_value": "18",
+          "exact_match": true,
+          "fuzzy_match": true,
+          "fuzzy_score": null,
+          "confidence": "high",
+          "error": null
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "HISPANIC",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "LEAGUE CITY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": "Fatal",
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": "high",
+          "error": null
+        }
+      ],
+      "escalation_reason": null,
+      "elapsed_seconds": 81.43,
+      "stage_reached": "complete",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 3,
+        "excluded": 4,
+        "date_fail": 6,
+        "location_fail": 2,
+        "name_fail": 3
+      }
+    },
+    {
+      "incident_id": 70,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "complete",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "19",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "HISPANIC",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "SAN ANTONIO",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": "Fatal",
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": "high",
+          "error": null
+        }
+      ],
+      "escalation_reason": null,
+      "elapsed_seconds": 818.72,
+      "stage_reached": "complete",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 7,
+        "excluded": 0,
+        "date_fail": 10,
+        "location_fail": 0,
+        "name_fail": 3
+      }
+    },
+    {
+      "incident_id": 71,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "escalate",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "35",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "WHITE",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "HOUSTON",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": null,
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        }
+      ],
+      "escalation_reason": "insufficient_sources",
+      "elapsed_seconds": 7.64,
+      "stage_reached": "synthesize",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 9,
+        "excluded": 1,
+        "date_fail": 9,
+        "location_fail": 0,
+        "name_fail": 0
+      }
+    },
+    {
+      "incident_id": 72,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "escalate",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "26",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "WHITE",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "RICHARDSON",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": null,
+          "ground_truth_value": "DEATH",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        }
+      ],
+      "escalation_reason": "insufficient_sources",
+      "elapsed_seconds": 4.69,
+      "stage_reached": "synthesize",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 1,
+        "excluded": 4,
+        "date_fail": 6,
+        "location_fail": 2,
+        "name_fail": 5
+      }
+    },
+    {
+      "incident_id": 73,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "escalate",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "19",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "BLACK",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "HUMBLE",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": null,
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        }
+      ],
+      "escalation_reason": "insufficient_sources",
+      "elapsed_seconds": 6.17,
+      "stage_reached": "synthesize",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 1,
+        "excluded": 3,
+        "date_fail": 7,
+        "location_fail": 6,
+        "name_fail": 0
+      }
+    },
+    {
+      "incident_id": 74,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "escalate",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "33",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "HISPANIC",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "CONVERSE",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": null,
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        }
+      ],
+      "escalation_reason": "max_retries",
+      "elapsed_seconds": 70.82,
+      "stage_reached": "search",
+      "validation_failure_summary": null
+    },
+    {
+      "incident_id": 75,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "escalate",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "61",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "HISPANIC",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "SAN ANTONIO",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": null,
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        }
+      ],
+      "escalation_reason": "insufficient_sources",
+      "elapsed_seconds": 7.41,
+      "stage_reached": "synthesize",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 5,
+        "excluded": 2,
+        "date_fail": 8,
+        "location_fail": 3,
+        "name_fail": 0
+      }
+    },
+    {
+      "incident_id": 76,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "escalate",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "61",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "HISPANIC",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "SAN ANTONIO",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": null,
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        }
+      ],
+      "escalation_reason": "insufficient_sources",
+      "elapsed_seconds": 1.74,
+      "stage_reached": "synthesize",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 5,
+        "excluded": 2,
+        "date_fail": 8,
+        "location_fail": 3,
+        "name_fail": 0
+      }
+    },
+    {
+      "incident_id": 77,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "escalate",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "28",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "HISPANIC",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "AUSTIN",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": null,
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        }
+      ],
+      "escalation_reason": "insufficient_sources",
+      "elapsed_seconds": 10.97,
+      "stage_reached": "synthesize",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 3,
+        "excluded": 3,
+        "date_fail": 7,
+        "location_fail": 3,
+        "name_fail": 2
+      }
+    },
+    {
+      "incident_id": 78,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "escalate",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "31",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "WHITE",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "HUMBLE",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": null,
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        }
+      ],
+      "escalation_reason": "max_retries",
+      "elapsed_seconds": 45.59,
+      "stage_reached": "search",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 0,
+        "excluded": 5,
+        "date_fail": 5,
+        "location_fail": 4,
+        "name_fail": 5
+      }
+    },
+    {
+      "incident_id": 79,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "escalate",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "30",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "HISPANIC",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "DALLAS",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": null,
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        }
+      ],
+      "escalation_reason": "insufficient_sources",
+      "elapsed_seconds": 6.08,
+      "stage_reached": "synthesize",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 7,
+        "excluded": 0,
+        "date_fail": 10,
+        "location_fail": 1,
+        "name_fail": 3
+      }
+    },
+    {
+      "incident_id": 80,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "escalate",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "30",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "HISPANIC",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "DALLAS",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": null,
+          "ground_truth_value": "DEATH",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        }
+      ],
+      "escalation_reason": "max_retries",
+      "elapsed_seconds": 9.07,
+      "stage_reached": "search",
+      "validation_failure_summary": null
+    },
+    {
+      "incident_id": 81,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "escalate",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "17",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "WHITE",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "SANTA FE",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": null,
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        }
+      ],
+      "escalation_reason": "insufficient_sources",
+      "elapsed_seconds": 6.1,
+      "stage_reached": "synthesize",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 5,
+        "excluded": 1,
+        "date_fail": 9,
+        "location_fail": 0,
+        "name_fail": 4
+      }
+    },
+    {
+      "incident_id": 82,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "escalate",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "26",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "BLACK",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "SAN ANTONIO",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": null,
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        }
+      ],
+      "escalation_reason": "insufficient_sources",
+      "elapsed_seconds": 4.41,
+      "stage_reached": "synthesize",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 1,
+        "excluded": 2,
+        "date_fail": 8,
+        "location_fail": 4,
+        "name_fail": 6
+      }
+    },
+    {
+      "incident_id": 82,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "escalate",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "26",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "BLACK",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "SAN ANTONIO",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": null,
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        }
+      ],
+      "escalation_reason": "insufficient_sources",
+      "elapsed_seconds": 0.43,
+      "stage_reached": "synthesize",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 1,
+        "excluded": 2,
+        "date_fail": 8,
+        "location_fail": 4,
+        "name_fail": 6
+      }
+    },
+    {
+      "incident_id": 83,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "escalate",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "38",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "HISPANIC",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "BROWNSVILLE",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": null,
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        }
+      ],
+      "escalation_reason": "insufficient_sources",
+      "elapsed_seconds": 6.25,
+      "stage_reached": "synthesize",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 1,
+        "excluded": 7,
+        "date_fail": 3,
+        "location_fail": 2,
+        "name_fail": 0
+      }
+    },
+    {
+      "incident_id": 84,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "escalate",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "24",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "WHITE",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "AMARILLO",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": null,
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        }
+      ],
+      "escalation_reason": "insufficient_sources",
+      "elapsed_seconds": 8.22,
+      "stage_reached": "synthesize",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 1,
+        "excluded": 6,
+        "date_fail": 4,
+        "location_fail": 3,
+        "name_fail": 2
+      }
+    },
+    {
+      "incident_id": 86,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "escalate",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "23",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "BLACK",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "FORT WORTH",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": null,
+          "ground_truth_value": "DEATH",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        }
+      ],
+      "escalation_reason": "insufficient_sources",
+      "elapsed_seconds": 4.87,
+      "stage_reached": "synthesize",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 4,
+        "excluded": 1,
+        "date_fail": 9,
+        "location_fail": 2,
+        "name_fail": 5
+      }
+    },
+    {
+      "incident_id": 87,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "escalate",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "56",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "HISPANIC",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "LAREDO",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": null,
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        }
+      ],
+      "escalation_reason": "insufficient_sources",
+      "elapsed_seconds": 4.04,
+      "stage_reached": "synthesize",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 3,
+        "excluded": 5,
+        "date_fail": 5,
+        "location_fail": 1,
+        "name_fail": 2
+      }
+    },
+    {
+      "incident_id": 88,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "escalate",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "49",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "WHITE",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "LEAGUE CITY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": null,
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        }
+      ],
+      "escalation_reason": "insufficient_sources",
+      "elapsed_seconds": 6.89,
+      "stage_reached": "synthesize",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 1,
+        "excluded": 2,
+        "date_fail": 8,
+        "location_fail": 7,
+        "name_fail": 6
+      }
+    },
+    {
+      "incident_id": 89,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "escalate",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "28",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "HISPANIC",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "RIO GRANDE CITY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": null,
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        }
+      ],
+      "escalation_reason": "insufficient_sources",
+      "elapsed_seconds": 11.8,
+      "stage_reached": "synthesize",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 1,
+        "excluded": 5,
+        "date_fail": 5,
+        "location_fail": 3,
+        "name_fail": 4
+      }
+    },
+    {
+      "incident_id": 90,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "escalate",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "41",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "HISPANIC",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "SUGAR LAND",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": null,
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        }
+      ],
+      "escalation_reason": "max_retries",
+      "elapsed_seconds": 108.77,
+      "stage_reached": "search",
+      "validation_failure_summary": null
+    },
+    {
+      "incident_id": 91,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "escalate",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "49",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "BLACK",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "LA GRANGE",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": null,
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        }
+      ],
+      "escalation_reason": "insufficient_sources",
+      "elapsed_seconds": 7.92,
+      "stage_reached": "synthesize",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 4,
+        "excluded": 0,
+        "date_fail": 10,
+        "location_fail": 5,
+        "name_fail": 4
+      }
+    },
+    {
+      "incident_id": 92,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "escalate",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "25",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "HISPANIC",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "HOUSTON",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": null,
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        }
+      ],
+      "escalation_reason": "insufficient_sources",
+      "elapsed_seconds": 4.64,
+      "stage_reached": "synthesize",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 2,
+        "excluded": 2,
+        "date_fail": 8,
+        "location_fail": 2,
+        "name_fail": 5
+      }
+    },
+    {
+      "incident_id": 93,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "escalate",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "25",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "OTHER",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "HOUSTON",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": null,
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        }
+      ],
+      "escalation_reason": "insufficient_sources",
+      "elapsed_seconds": 4.93,
+      "stage_reached": "synthesize",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 2,
+        "excluded": 4,
+        "date_fail": 6,
+        "location_fail": 3,
+        "name_fail": 3
+      }
+    },
+    {
+      "incident_id": 95,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "escalate",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "39",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "HISPANIC",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "SAN ANTONIO",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": null,
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        }
+      ],
+      "escalation_reason": "insufficient_sources",
+      "elapsed_seconds": 11.98,
+      "stage_reached": "synthesize",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 6,
+        "excluded": 2,
+        "date_fail": 8,
+        "location_fail": 2,
+        "name_fail": 2
+      }
+    },
+    {
+      "incident_id": 96,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "escalate",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "20",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "BLACK",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "ARLINGTON",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": null,
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        }
+      ],
+      "escalation_reason": "insufficient_sources",
+      "elapsed_seconds": 5.97,
+      "stage_reached": "synthesize",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 3,
+        "excluded": 4,
+        "date_fail": 6,
+        "location_fail": 3,
+        "name_fail": 0
+      }
+    },
+    {
+      "incident_id": 97,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "escalate",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "33",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "WHITE",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "ODESSA",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": null,
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        }
+      ],
+      "escalation_reason": "max_retries",
+      "elapsed_seconds": 63.71,
+      "stage_reached": "search",
+      "validation_failure_summary": null
+    },
+    {
+      "incident_id": 98,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "escalate",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "33",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "WHITE",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "ODESSA",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": null,
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        }
+      ],
+      "escalation_reason": "insufficient_sources",
+      "elapsed_seconds": 8.21,
+      "stage_reached": "synthesize",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 1,
+        "excluded": 3,
+        "date_fail": 7,
+        "location_fail": 1,
+        "name_fail": 6
+      }
+    },
+    {
+      "incident_id": 99,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "escalate",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "33",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "WHITE",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "ODESSA",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": null,
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        }
+      ],
+      "escalation_reason": "insufficient_sources",
+      "elapsed_seconds": 10.28,
+      "stage_reached": "synthesize",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 1,
+        "excluded": 3,
+        "date_fail": 7,
+        "location_fail": 1,
+        "name_fail": 6
+      }
+    },
+    {
+      "incident_id": 100,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "escalate",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "59",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "WHITE",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "HOUSTON",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": null,
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        }
+      ],
+      "escalation_reason": "insufficient_sources",
+      "elapsed_seconds": 5.06,
+      "stage_reached": "synthesize",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 9,
+        "excluded": 1,
+        "date_fail": 9,
+        "location_fail": 0,
+        "name_fail": 0
+      }
+    },
+    {
+      "incident_id": 100,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "escalate",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "59",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "WHITE",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "HOUSTON",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": null,
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        }
+      ],
+      "escalation_reason": "insufficient_sources",
+      "elapsed_seconds": 1.63,
+      "stage_reached": "synthesize",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 9,
+        "excluded": 1,
+        "date_fail": 9,
+        "location_fail": 0,
+        "name_fail": 0
+      }
+    },
+    {
+      "incident_id": 101,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "escalate",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "59",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "WHITE",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "HOUSTON",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": null,
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        }
+      ],
+      "escalation_reason": "insufficient_sources",
+      "elapsed_seconds": 1.68,
+      "stage_reached": "synthesize",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 9,
+        "excluded": 1,
+        "date_fail": 9,
+        "location_fail": 0,
+        "name_fail": 0
+      }
+    },
+    {
+      "incident_id": 101,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "escalate",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "59",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "WHITE",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "HOUSTON",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": null,
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        }
+      ],
+      "escalation_reason": "insufficient_sources",
+      "elapsed_seconds": 1.55,
+      "stage_reached": "synthesize",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 9,
+        "excluded": 1,
+        "date_fail": 9,
+        "location_fail": 0,
+        "name_fail": 0
+      }
+    },
+    {
+      "incident_id": 102,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "escalate",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "59",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "WHITE",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "HOUSTON",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": null,
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        }
+      ],
+      "escalation_reason": "insufficient_sources",
+      "elapsed_seconds": 1.69,
+      "stage_reached": "synthesize",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 9,
+        "excluded": 1,
+        "date_fail": 9,
+        "location_fail": 0,
+        "name_fail": 0
+      }
+    },
+    {
+      "incident_id": 102,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "escalate",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "59",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "WHITE",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "HOUSTON",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": null,
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        }
+      ],
+      "escalation_reason": "insufficient_sources",
+      "elapsed_seconds": 1.59,
+      "stage_reached": "synthesize",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 9,
+        "excluded": 1,
+        "date_fail": 9,
+        "location_fail": 0,
+        "name_fail": 0
+      }
+    },
+    {
+      "incident_id": 103,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "escalate",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "59",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "WHITE",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "HOUSTON",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": null,
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        }
+      ],
+      "escalation_reason": "insufficient_sources",
+      "elapsed_seconds": 42.13,
+      "stage_reached": "synthesize",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 9,
+        "excluded": 1,
+        "date_fail": 9,
+        "location_fail": 0,
+        "name_fail": 0
+      }
+    },
+    {
+      "incident_id": 103,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "escalate",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "59",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "WHITE",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "HOUSTON",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": null,
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        }
+      ],
+      "escalation_reason": "insufficient_sources",
+      "elapsed_seconds": 6.4,
+      "stage_reached": "synthesize",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 9,
+        "excluded": 1,
+        "date_fail": 9,
+        "location_fail": 0,
+        "name_fail": 0
+      }
+    },
+    {
+      "incident_id": 104,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "escalate",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "25",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "WHITE",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "HEWITT",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": null,
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        }
+      ],
+      "escalation_reason": "insufficient_sources",
+      "elapsed_seconds": 4.27,
+      "stage_reached": "synthesize",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 1,
+        "excluded": 0,
+        "date_fail": 10,
+        "location_fail": 3,
+        "name_fail": 9
+      }
+    },
+    {
+      "incident_id": 138,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "escalate",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "32",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "HISPANIC",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "FOREST HILL",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": null,
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        }
+      ],
+      "escalation_reason": "insufficient_sources",
+      "elapsed_seconds": 4.32,
+      "stage_reached": "synthesize",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 1,
+        "excluded": 1,
+        "date_fail": 9,
+        "location_fail": 1,
+        "name_fail": 8
+      }
+    },
+    {
+      "incident_id": 139,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "escalate",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "28",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "WHITE",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "SAN ANGELO",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": null,
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        }
+      ],
+      "escalation_reason": "insufficient_sources",
+      "elapsed_seconds": 9.12,
+      "stage_reached": "synthesize",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 2,
+        "excluded": 3,
+        "date_fail": 7,
+        "location_fail": 4,
+        "name_fail": 5
+      }
+    },
+    {
+      "incident_id": 140,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "escalate",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "16",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "WHITE",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "GEORGETOWN",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": null,
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        }
+      ],
+      "escalation_reason": "max_retries",
+      "elapsed_seconds": 12.82,
+      "stage_reached": "search",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 0,
+        "excluded": 7,
+        "date_fail": 3,
+        "location_fail": 3,
+        "name_fail": 3
+      }
+    },
+    {
+      "incident_id": 141,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "escalate",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "16",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "WHITE",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "GEORGETOWN",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": null,
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        }
+      ],
+      "escalation_reason": "max_retries",
+      "elapsed_seconds": 11.31,
+      "stage_reached": "search",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 0,
+        "excluded": 7,
+        "date_fail": 3,
+        "location_fail": 3,
+        "name_fail": 3
+      }
+    },
+    {
+      "incident_id": 142,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "escalate",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "16",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "HISPANIC",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "SAN ANTONIO",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": null,
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        }
+      ],
+      "escalation_reason": "insufficient_sources",
+      "elapsed_seconds": 6.96,
+      "stage_reached": "synthesize",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 8,
+        "excluded": 1,
+        "date_fail": 9,
+        "location_fail": 1,
+        "name_fail": 0
+      }
+    },
+    {
+      "incident_id": 143,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "escalate",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "38",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "BLACK",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "SAN ANTONIO",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": null,
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        }
+      ],
+      "escalation_reason": "insufficient_sources",
+      "elapsed_seconds": 6.19,
+      "stage_reached": "synthesize",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 2,
+        "excluded": 4,
+        "date_fail": 6,
+        "location_fail": 3,
+        "name_fail": 4
+      }
+    },
+    {
+      "incident_id": 144,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "escalate",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "46",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "HISPANIC",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "SAN MARCOS",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": null,
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        }
+      ],
+      "escalation_reason": "insufficient_sources",
+      "elapsed_seconds": 3.73,
+      "stage_reached": "synthesize",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 1,
+        "excluded": 4,
+        "date_fail": 6,
+        "location_fail": 5,
+        "name_fail": 5
+      }
+    },
+    {
+      "incident_id": 175,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "escalate",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "26",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "WHITE",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "HOUSTON",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": null,
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        }
+      ],
+      "escalation_reason": "insufficient_sources",
+      "elapsed_seconds": 6.68,
+      "stage_reached": "synthesize",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 4,
+        "excluded": 1,
+        "date_fail": 9,
+        "location_fail": 1,
+        "name_fail": 5
+      }
+    },
+    {
+      "incident_id": 176,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "escalate",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "26",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "WHITE",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "HOUSTON",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": null,
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        }
+      ],
+      "escalation_reason": "insufficient_sources",
+      "elapsed_seconds": 0.92,
+      "stage_reached": "synthesize",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 4,
+        "excluded": 1,
+        "date_fail": 9,
+        "location_fail": 1,
+        "name_fail": 5
+      }
+    },
+    {
+      "incident_id": 177,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "escalate",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "26",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "WHITE",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "HOUSTON",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": null,
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        }
+      ],
+      "escalation_reason": "insufficient_sources",
+      "elapsed_seconds": 1.03,
+      "stage_reached": "synthesize",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 4,
+        "excluded": 1,
+        "date_fail": 9,
+        "location_fail": 1,
+        "name_fail": 5
+      }
+    },
+    {
+      "incident_id": 178,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "escalate",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "37",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "HISPANIC",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "HOUSTON",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": null,
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        }
+      ],
+      "escalation_reason": "insufficient_sources",
+      "elapsed_seconds": 5.54,
+      "stage_reached": "synthesize",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 2,
+        "excluded": 5,
+        "date_fail": 5,
+        "location_fail": 2,
+        "name_fail": 3
+      }
+    },
+    {
+      "incident_id": 179,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "escalate",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "27",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "HISPANIC",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "BALCONS HEIGHTS",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": null,
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        }
+      ],
+      "escalation_reason": "insufficient_sources",
+      "elapsed_seconds": 4.07,
+      "stage_reached": "synthesize",
+      "validation_failure_summary": {
+        "total": 5,
+        "passed": 2,
+        "excluded": 0,
+        "date_fail": 5,
+        "location_fail": 0,
+        "name_fail": 3
+      }
+    },
+    {
+      "incident_id": 180,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "escalate",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "31",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "WHITE",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "DALLAS",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": null,
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        }
+      ],
+      "escalation_reason": "insufficient_sources",
+      "elapsed_seconds": 9.57,
+      "stage_reached": "synthesize",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 1,
+        "excluded": 1,
+        "date_fail": 9,
+        "location_fail": 0,
+        "name_fail": 8
+      }
+    },
+    {
+      "incident_id": 208,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "escalate",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "51",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "HISPANIC",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "HOUSTON",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": null,
+          "ground_truth_value": "DEATH",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        }
+      ],
+      "escalation_reason": "insufficient_sources",
+      "elapsed_seconds": 4.86,
+      "stage_reached": "synthesize",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 6,
+        "excluded": 0,
+        "date_fail": 10,
+        "location_fail": 2,
+        "name_fail": 4
+      }
+    },
+    {
+      "incident_id": 209,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "escalate",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "31",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "HISPANIC",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "HOUSTON",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": null,
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        }
+      ],
+      "escalation_reason": "insufficient_sources",
+      "elapsed_seconds": 3.18,
+      "stage_reached": "synthesize",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 1,
+        "excluded": 2,
+        "date_fail": 8,
+        "location_fail": 5,
+        "name_fail": 7
+      }
+    },
+    {
+      "incident_id": 210,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "escalate",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "31",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "HISPANIC",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "HOUSTON",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": null,
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        }
+      ],
+      "escalation_reason": "insufficient_sources",
+      "elapsed_seconds": 6.23,
+      "stage_reached": "synthesize",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 3,
+        "excluded": 1,
+        "date_fail": 9,
+        "location_fail": 5,
+        "name_fail": 5
+      }
+    },
+    {
+      "incident_id": 211,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "escalate",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "31",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "HISPANIC",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "HOUSTON",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": null,
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        }
+      ],
+      "escalation_reason": "insufficient_sources",
+      "elapsed_seconds": 7.35,
+      "stage_reached": "synthesize",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 9,
+        "excluded": 1,
+        "date_fail": 9,
+        "location_fail": 0,
+        "name_fail": 0
+      }
+    },
+    {
+      "incident_id": 212,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "escalate",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "43",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "OTHER",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "KATY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": null,
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        }
+      ],
+      "escalation_reason": "insufficient_sources",
+      "elapsed_seconds": 4.78,
+      "stage_reached": "synthesize",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 1,
+        "excluded": 3,
+        "date_fail": 7,
+        "location_fail": 5,
+        "name_fail": 5
+      }
+    },
+    {
+      "incident_id": 236,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "escalate",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "18",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "HISPANIC",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "DALLAS",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": null,
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        }
+      ],
+      "escalation_reason": "insufficient_sources",
+      "elapsed_seconds": 5.04,
+      "stage_reached": "synthesize",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 2,
+        "excluded": 2,
+        "date_fail": 8,
+        "location_fail": 1,
+        "name_fail": 5
+      }
+    },
+    {
+      "incident_id": 237,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "escalate",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "52",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "WHITE",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "HORSESHOE BAY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": null,
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        }
+      ],
+      "escalation_reason": "insufficient_sources",
+      "elapsed_seconds": 14.04,
+      "stage_reached": "synthesize",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 2,
+        "excluded": 5,
+        "date_fail": 5,
+        "location_fail": 1,
+        "name_fail": 3
+      }
+    },
+    {
+      "incident_id": 238,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "escalate",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "52",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "WHITE",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "HORSESHOE BAY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": null,
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        }
+      ],
+      "escalation_reason": "insufficient_sources",
+      "elapsed_seconds": 5.82,
+      "stage_reached": "synthesize",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 1,
+        "excluded": 6,
+        "date_fail": 4,
+        "location_fail": 3,
+        "name_fail": 3
+      }
+    },
+    {
+      "incident_id": 239,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "escalate",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "26",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "OTHER",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "HOUSTON",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": null,
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        }
+      ],
+      "escalation_reason": "insufficient_sources",
+      "elapsed_seconds": 4.11,
+      "stage_reached": "synthesize",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 3,
+        "excluded": 4,
+        "date_fail": 6,
+        "location_fail": 3,
+        "name_fail": 3
+      }
+    },
+    {
+      "incident_id": 240,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "escalate",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "26",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "OTHER",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "HOUSTON",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": null,
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        }
+      ],
+      "escalation_reason": "insufficient_sources",
+      "elapsed_seconds": 0.98,
+      "stage_reached": "synthesize",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 3,
+        "excluded": 4,
+        "date_fail": 6,
+        "location_fail": 3,
+        "name_fail": 3
+      }
+    },
+    {
+      "incident_id": 241,
+      "dataset_type": "officers_shot",
+      "pipeline_outcome": "escalate",
+      "field_results": [
+        {
+          "field_name": "civilian_age",
+          "extracted_value": null,
+          "ground_truth_value": "45",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "civilian_race",
+          "extracted_value": null,
+          "ground_truth_value": "WHITE",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "location_detail",
+          "extracted_value": null,
+          "ground_truth_value": "WICHITA FALLS",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        },
+        {
+          "field_name": "outcome",
+          "extracted_value": null,
+          "ground_truth_value": "INJURY",
+          "exact_match": false,
+          "fuzzy_match": false,
+          "fuzzy_score": null,
+          "confidence": null,
+          "error": "no_extraction"
+        }
+      ],
+      "escalation_reason": "insufficient_sources",
+      "elapsed_seconds": 11.91,
+      "stage_reached": "synthesize",
+      "validation_failure_summary": {
+        "total": 10,
+        "passed": 2,
+        "excluded": 6,
+        "date_fail": 4,
+        "location_fail": 2,
+        "name_fail": 2
+      }
+    }
+  ],
+  "samples": [
+    {
+      "incident_id": 1,
+      "year": 2015,
+      "race": "WHITE",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 2,
+      "year": 2015,
+      "race": "BLACK",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 4,
+      "year": 2015,
+      "race": "HISPANIC",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 5,
+      "year": 2015,
+      "race": "HISPANIC",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 7,
+      "year": 2016,
+      "race": "BLACK",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 8,
+      "year": 2016,
+      "race": "HISPANIC",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 10,
+      "year": 2016,
+      "race": "HISPANIC",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 12,
+      "year": 2016,
+      "race": "WHITE",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 13,
+      "year": 2016,
+      "race": "WHITE",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 14,
+      "year": 2016,
+      "race": "BLACK",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 16,
+      "year": 2016,
+      "race": "WHITE",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 17,
+      "year": 2016,
+      "race": "WHITE",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 18,
+      "year": 2016,
+      "race": "HISPANIC",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 19,
+      "year": 2016,
+      "race": "HISPANIC",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 43,
+      "year": 2017,
+      "race": "BLACK",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 44,
+      "year": 2017,
+      "race": "HISPANIC",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 45,
+      "year": 2017,
+      "race": "HISPANIC",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 46,
+      "year": 2017,
+      "race": "BLACK",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 47,
+      "year": 2017,
+      "race": "BLACK",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 49,
+      "year": 2017,
+      "race": "HISPANIC",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 51,
+      "year": 2017,
+      "race": "BLACK",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 52,
+      "year": 2017,
+      "race": "BLACK",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 53,
+      "year": 2017,
+      "race": "HISPANIC",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 54,
+      "year": 2017,
+      "race": "HISPANIC",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 55,
+      "year": 2017,
+      "race": "HISPANIC",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 56,
+      "year": 2017,
+      "race": "HISPANIC",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 57,
+      "year": 2017,
+      "race": "WHITE",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 58,
+      "year": 2017,
+      "race": "WHITE",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 59,
+      "year": 2017,
+      "race": "HISPANIC",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 60,
+      "year": 2017,
+      "race": "HISPANIC",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 61,
+      "year": 2017,
+      "race": "WHITE",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 62,
+      "year": 2017,
+      "race": "BLACK",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 63,
+      "year": 2017,
+      "race": "BLACK",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 64,
+      "year": 2017,
+      "race": "WHITE",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 65,
+      "year": 2017,
+      "race": "BLACK",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 66,
+      "year": 2017,
+      "race": "WHITE",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 67,
+      "year": 2017,
+      "race": "WHITE",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 69,
+      "year": 2018,
+      "race": "HISPANIC",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 70,
+      "year": 2018,
+      "race": "HISPANIC",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 71,
+      "year": 2018,
+      "race": "WHITE",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 72,
+      "year": 2018,
+      "race": "WHITE",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 73,
+      "year": 2018,
+      "race": "BLACK",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 74,
+      "year": 2018,
+      "race": "HISPANIC",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 75,
+      "year": 2018,
+      "race": "HISPANIC",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 76,
+      "year": 2018,
+      "race": "HISPANIC",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 77,
+      "year": 2018,
+      "race": "HISPANIC",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 78,
+      "year": 2018,
+      "race": "WHITE",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 79,
+      "year": 2018,
+      "race": "HISPANIC",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 80,
+      "year": 2018,
+      "race": "HISPANIC",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 81,
+      "year": 2018,
+      "race": "WHITE",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 82,
+      "year": 2018,
+      "race": "BLACK",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 82,
+      "year": 2018,
+      "race": "BLACK",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 83,
+      "year": 2018,
+      "race": "HISPANIC",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 84,
+      "year": 2018,
+      "race": "WHITE",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 86,
+      "year": 2018,
+      "race": "BLACK",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 87,
+      "year": 2018,
+      "race": "HISPANIC",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 88,
+      "year": 2018,
+      "race": "WHITE",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 89,
+      "year": 2018,
+      "race": "HISPANIC",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 90,
+      "year": 2018,
+      "race": "HISPANIC",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 91,
+      "year": 2018,
+      "race": "BLACK",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 92,
+      "year": 2018,
+      "race": "HISPANIC",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 93,
+      "year": 2018,
+      "race": "OTHER",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 95,
+      "year": 2019,
+      "race": "HISPANIC",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 96,
+      "year": 2019,
+      "race": "BLACK",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 97,
+      "year": 2019,
+      "race": "WHITE",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 98,
+      "year": 2019,
+      "race": "WHITE",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 99,
+      "year": 2019,
+      "race": "WHITE",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 100,
+      "year": 2019,
+      "race": "WHITE",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 100,
+      "year": 2019,
+      "race": "WHITE",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 101,
+      "year": 2019,
+      "race": "WHITE",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 101,
+      "year": 2019,
+      "race": "WHITE",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 102,
+      "year": 2019,
+      "race": "WHITE",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 102,
+      "year": 2019,
+      "race": "WHITE",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 103,
+      "year": 2019,
+      "race": "WHITE",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 103,
+      "year": 2019,
+      "race": "WHITE",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 104,
+      "year": 2019,
+      "race": "WHITE",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 138,
+      "year": 2020,
+      "race": "HISPANIC",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 139,
+      "year": 2020,
+      "race": "WHITE",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 140,
+      "year": 2020,
+      "race": "WHITE",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 141,
+      "year": 2020,
+      "race": "WHITE",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 142,
+      "year": 2020,
+      "race": "HISPANIC",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 143,
+      "year": 2020,
+      "race": "BLACK",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 144,
+      "year": 2020,
+      "race": "HISPANIC",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 175,
+      "year": 2021,
+      "race": "WHITE",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 176,
+      "year": 2021,
+      "race": "WHITE",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 177,
+      "year": 2021,
+      "race": "WHITE",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 178,
+      "year": 2021,
+      "race": "HISPANIC",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 179,
+      "year": 2021,
+      "race": "HISPANIC",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 180,
+      "year": 2021,
+      "race": "WHITE",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 208,
+      "year": 2022,
+      "race": "HISPANIC",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 209,
+      "year": 2022,
+      "race": "HISPANIC",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 210,
+      "year": 2022,
+      "race": "HISPANIC",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 211,
+      "year": 2022,
+      "race": "HISPANIC",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 212,
+      "year": 2022,
+      "race": "OTHER",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 236,
+      "year": 2023,
+      "race": "HISPANIC",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 237,
+      "year": 2023,
+      "race": "WHITE",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 238,
+      "year": 2023,
+      "race": "WHITE",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 239,
+      "year": 2023,
+      "race": "OTHER",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 240,
+      "year": 2023,
+      "race": "OTHER",
+      "n_eval_fields": 4
+    },
+    {
+      "incident_id": 241,
+      "year": 2023,
+      "race": "WHITE",
+      "n_eval_fields": 4
+    }
+  ],
+  "mean_elapsed_seconds": 77.53,
+  "total_elapsed_seconds": 7753.49,
+  "fairness_metrics": {
+    "black": {
+      "n": 18.0,
+      "completion_rate": 0.5555555555555556,
+      "mean_exact_accuracy": 0.6499999999999999
+    },
+    "hispanic": {
+      "n": 39.0,
+      "completion_rate": 0.4358974358974359,
+      "mean_exact_accuracy": 0.42156862745098034
+    },
+    "other": {
+      "n": 4.0,
+      "completion_rate": 0.0,
+      "mean_exact_accuracy": 0.0
+    },
+    "white": {
+      "n": 39.0,
+      "completion_rate": 0.28205128205128205,
+      "mean_exact_accuracy": 0.6060606060606061
+    }
+  },
+  "validation_failure_totals": {
+    "total": 575,
+    "passed": 205,
+    "excluded": 150,
+    "date_fail": 425,
+    "location_fail": 129,
+    "name_fail": 189
+  }
+}
