@@ -609,7 +609,7 @@ def test_extract_fields_happy_path(
 
 
 def test_extract_fields_officers_prompt(base_article: Article) -> None:
-    """officers_shot uses the officer-framed prompt (suspect vs officer-victim)."""
+    """officers_shot uses the officer-framed prompt (shooter vs officer-victim)."""
     mock_llm = MagicMock()
     mock_llm.with_structured_output.return_value.invoke.return_value = (
         MergeExtractionResponse(extractions=[])

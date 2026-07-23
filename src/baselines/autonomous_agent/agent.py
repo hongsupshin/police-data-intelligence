@@ -107,7 +107,7 @@ def _target_fields_block(dataset_type: DatasetType, arm: str) -> str:
 
     NAIVE: plain dataset meaning + generic field descriptions (no earned
     anti-misframing / per-person de-blending coaching). INFORMED: the shipped
-    extraction framing (civilian=suspect for officers_shot) + tuned
+    extraction framing (civilian=shooter for officers_shot) + tuned
     FIELD_DEFINITIONS.
     """
     if arm == "naive":

@@ -9,7 +9,7 @@ same-city article, or a famous-name collision like a civilian sharing a name
 with a high-profile case).
 
 The prompt is dataset-aware: ``officers_shot`` anchors on the officer victim
-(the suspect/civilian is secondary); ``civilians_shot`` anchors on the civilian
+(the civilian shooter is secondary); ``civilians_shot`` anchors on the civilian
 victim (there is often no officer victim). Ported from the offline A/B (vetoed
 ~8% of officer completions, well-calibrated; civilian variant earned offline).
 On by default; gated by ``Settings.enable_relevance_gate``.
@@ -44,7 +44,7 @@ class RelevanceVerdict(BaseModel):
 def _build_prompt(state: EnrichmentState, articles: list[Article]) -> str:
     """Build the dataset-aware relevance-judge prompt from anchors + the articles.
 
-    officers_shot anchors on the officer victim (civilian = suspect);
+    officers_shot anchors on the officer victim (civilian = shooter);
     civilians_shot anchors on the civilian victim. The officers_shot prompt is
     unchanged from the A/B-earned original.
 

@@ -60,7 +60,7 @@ _OFFICERS_PREAMBLE = """
     For each of the following fields, extract the value from the article:
     """
 
-# officers_shot reframes the suspect-vs-officer roles; only these field
+# officers_shot reframes the shooter-vs-officer roles; only these field
 # definitions differ from the civilian-centric defaults.
 _OFFICER_FIELD_OVERRIDES: dict[MediaFeatureField, str] = {
     MediaFeatureField.CIVILIAN_AGE: (
@@ -85,7 +85,7 @@ def _prompt_parts(
 ) -> tuple[str, dict[MediaFeatureField, str]]:
     """Return the (preamble, field-definitions) for the dataset.
 
-    officers_shot reframes the civilian fields as the suspect/shooter and
+    officers_shot reframes the civilian fields as the shooter and
     outcome as the officer-victim's fate; civilians_shot keeps the defaults
     (its civilian-centric prompt is correct and stays byte-identical).
 

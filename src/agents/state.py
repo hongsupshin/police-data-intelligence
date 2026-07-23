@@ -323,7 +323,7 @@ class EnrichmentState(BaseModel):
         incident_date: Date of the incident.
         location: City/county where incident occurred.
         severity: Outcome severity (fatal, injured, etc.).
-        civilian_outcome: Suspect/civilian outcome for officers_shot
+        civilian_outcome: Civilian (shooter) outcome for officers_shot
             (killed/injured/not harmed/unknown); None for civilians_shot.
         civilian_age: Victim age from database (civilians_shot only); used as an
             extraction anchor to disambiguate multi-subject sources. None otherwise.

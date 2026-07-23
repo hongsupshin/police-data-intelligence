@@ -42,7 +42,7 @@ def fetch_incident(
     """
     cursor = conn.cursor()
 
-    # Suspect/civilian outcome is an officers_shot concept (the civilian is the
+    # Civilian (shooter) outcome is an officers_shot concept (the civilian is the
     # shooter); civilians_shot leaves it None (there the civilian is the victim).
     civilian_outcome = None
 
@@ -176,7 +176,7 @@ def fetch_incident(
         else:
             severity = "unknown"
 
-        # Map the suspect/civilian (shooter) outcome for the relevance judge
+        # Map the civilian (shooter) outcome for the relevance judge
         if civilian_harm == "DEATH":
             civilian_outcome = "killed"
         elif civilian_harm == "INJURY":

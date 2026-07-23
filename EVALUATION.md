@@ -489,7 +489,7 @@ to COMPLETE.
 
 ### Results (officers_shot)
 
-First evaluation of the officers-shot dataset (civilian = the suspect/shooter;
+First evaluation of the officers-shot dataset (civilian = the shooter;
 outcome = the officer's harm, INJURY or DEATH).
 
 | Metric    | Value                      |
@@ -535,7 +535,7 @@ Officers: **147/207 exact (71%), 179/207 fuzzy (86%)** — see Results above.
 Civilians improved over the v1.3 civilians baseline (72%/84%): the race verifier
 raised race faithfulness, the consensus resolver and anchored extraction reduced
 spurious conflicts, and the relevance gate removed wrong-article completions.
-Officers are lower mainly because the suspect-race and location fields are sparse
+Officers are lower mainly because the shooter-race and location fields are sparse
 and coarse there, and because 12% of officer completions are outcome-only entity
 confusion (below).
 
@@ -557,7 +557,7 @@ Under v2.0 the **race verifier** reshapes this field: it nulls any `civilian_rac
 the source does not explicitly state for the victim. Versus a gate-off run,
 civilian-race coverage falls (17%→11%) and exact accuracy rises (65%→91%) — only
 **1 of 11** committed civilian races now disagrees with the database (extracted
-Black, GT Hispanic). On officers, where race is the suspect's and coverage is low
+Black, GT Hispanic). On officers, where race is the civilian shooter's and coverage is low
 (9%), 3 of 9 disagree. The verifier is a faithfulness filter, not an accuracy
 lever: it removes unsupported guesses rather than correcting them.
 
@@ -811,7 +811,7 @@ annotator, Coordinator, retry ladder, or eval gate.
 To keep the comparison fair, the agent's prompt states only a generic standard of
 care (cite a source for each value; decline when coverage is thin) and carries
 **none** of the project's earned rules (the relevance taxonomy, the race rule, the
-officer-as-suspect reframing). It is, if anything, more capable than the pipeline: it
+civilian-as-shooter reframing). It is, if anything, more capable than the pipeline: it
 writes its own queries, fetches arbitrary web pages, and searches without a date
 window. This is a deliberately **conservative** baseline — charitable to the agent —
 so its failures are a floor, not a ceiling. Same 20 fabricated incidents, only the
@@ -916,7 +916,7 @@ statistical power to identify systematic failure modes, but every rate is a
 sample proportion with a 95% Wilson confidence interval (computed by
 `src.eval.ci.cis_from_report`): the headline completion rates span roughly 8–11
 points (civilians 60–78%, officers 85–96%), and the small per-field/per-race
-cells are far wider (`civilian_race` 62–98% on 11 values, officer suspect-race
+cells are far wider (`civilian_race` 62–98% on 11 values, officer shooter-race
 35–88% on 9), so any difference smaller than these intervals is noise.
 
 **Temporal bias**: News articles from 2014–2016 incidents may no longer be
