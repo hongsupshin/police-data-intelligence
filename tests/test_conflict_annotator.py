@@ -18,7 +18,7 @@ def _state() -> EnrichmentState:
     return EnrichmentState(
         incident_id="51",
         dataset_type=DatasetType.CIVILIANS_SHOT,
-        civilian_name="John Suspect",
+        civilian_name="John Vance",
         incident_date=date(2019, 5, 1),
         location="Killeen",
         civilian_age=41,
@@ -62,7 +62,7 @@ class TestBuildPrompt:
 
     def test_includes_conflicts_anchors_articles(self) -> None:
         prompt = _build_prompt(_state(), _conflicts(), [_article()])
-        assert "John Suspect" in prompt
+        assert "John Vance" in prompt
         assert "Killeen" in prompt
         assert "civilian_age" in prompt
         assert "['41', '18']" in prompt  # candidate values surfaced

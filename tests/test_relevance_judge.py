@@ -16,7 +16,7 @@ def _state() -> EnrichmentState:
         incident_id="51",
         dataset_type=DatasetType.OFFICERS_SHOT,
         officer_name="Officer Jane Doe",
-        civilian_name="John Suspect",
+        civilian_name="John Vance",
         incident_date=date(2019, 5, 1),
         location="Killeen",
         severity="injury",
@@ -58,7 +58,7 @@ class TestBuildPrompt:
     def test_includes_anchors_and_article_content(self) -> None:
         prompt = _build_prompt(_state(), [_article()])
         assert "Officer Jane Doe" in prompt
-        assert "John Suspect" in prompt
+        assert "John Vance" in prompt
         assert "Killeen" in prompt
         assert "An officer was shot in Killeen" in prompt
         assert "[0] title:" in prompt
