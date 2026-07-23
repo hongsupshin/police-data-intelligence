@@ -1160,6 +1160,18 @@ class TestRelevanceGate:
         result = synthesize_node(self._officers(base_state), self._config(mock_llm, True))
         assert result.relevance_vetoed is False
         assert result.extracted_fields
+        assert len(result.judge_failures) == 1
+        assert result.judge_failures[0].startswith("relevance_judge: ")
+
+    def test_no_failures_recorded_when_judge_runs(
+        self, base_state: EnrichmentState
+    ) -> None:
+        """A judge that runs (veto or not) records no fail-open event."""
+        mock_llm = self._mock_llm(
+            RelevanceVerdict(relevant_any=True, reasoning="same incident")
+        )
+        result = synthesize_node(base_state, self._config(mock_llm, True))
+        assert result.judge_failures == []
 
 
 class TestRaceVerification:
@@ -1271,6 +1283,8 @@ class TestRaceVerification:
         result = synthesize_node(base_state, self._config(mock_llm, True))
         assert self._verify_called(mock_llm)
         assert self._race(result) is not None  # kept on error
+        assert len(result.judge_failures) == 1
+        assert result.judge_failures[0].startswith("race_verifier: ")
 
 
 class TestConflictAnnotation:
@@ -1370,6 +1384,8 @@ class TestConflictAnnotation:
         result = synthesize_node(base_state, self._config(mock_llm, True))
         assert self._annotate_called(mock_llm)
         assert result.conflict_annotation is None  # fail-open
+        assert len(result.judge_failures) == 1
+        assert result.judge_failures[0].startswith("conflict_annotator: ")
 
 
 class TestRaceTaxonomyFlag:

@@ -346,6 +346,10 @@ class EnrichmentState(BaseModel):
             was committed.
         conflict_annotation: Advisory LLM triage note for a record with deep
             flagged conflicts (any dataset). None when not generated.
+        judge_failures: Fail-open events from the LLM judges, one entry per
+            failure ("<judge>: <error>"). Empty when every enabled judge ran.
+            Persisted to the terminal JSON reports so a skipped check is
+            auditable from saved artifacts, not just run-time warnings.
 
         retry_count: Number of retry attempts made.
         max_retries: Maximum retries before escalation (default 3).
@@ -389,6 +393,7 @@ class EnrichmentState(BaseModel):
     conflicting_fields: list[FieldConflict] | None = None
     civilian_race_taxonomy: RaceTaxonomyFlag | None = None
     conflict_annotation: ConflictAnnotation | None = None
+    judge_failures: list[str] = Field(default_factory=list)
 
     # Coordinator control
     retry_count: int = 0
