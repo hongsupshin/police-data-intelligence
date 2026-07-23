@@ -535,6 +535,7 @@ def synthesize_node(state: EnrichmentState, config: RunnableConfig) -> Enrichmen
             if not verdict.relevant_any:
                 state.relevance_vetoed = True
         except Exception as e:
+            state.judge_failures.append(f"relevance_judge: {e}")
             logger.warning("Relevance judge failed (fail-open, no veto): %s", e)
 
     # Race verification (civilians_shot only, flag-gated): null a committed
@@ -568,6 +569,7 @@ def synthesize_node(state: EnrichmentState, config: RunnableConfig) -> Enrichmen
                         verdict.reasoning,
                     )
             except Exception as e:
+                state.judge_failures.append(f"race_verifier: {e}")
                 logger.warning("Race verifier failed (fail-open, no null): %s", e)
 
     # Race taxonomy flag (any dataset): annotate where a committed civilian_race
@@ -608,6 +610,7 @@ def synthesize_node(state: EnrichmentState, config: RunnableConfig) -> Enrichmen
                     annot_llm, state, deep_conflicts, validated_articles
                 )
             except Exception as e:
+                state.judge_failures.append(f"conflict_annotator: {e}")
                 logger.warning("Conflict annotator failed (fail-open): %s", e)
 
     return state

@@ -526,6 +526,7 @@ def test_complete_node_json_keys(
         "conflicting_fields",
         "civilian_race_taxonomy",
         "conflict_annotation",
+        "judge_failures",
         "outcome_summary",
     }
     assert set(data.keys()) == expected_keys
@@ -556,9 +557,32 @@ def test_escalate_node_json_keys(
         "conflicting_fields",
         "civilian_race_taxonomy",
         "conflict_annotation",
+        "judge_failures",
         "outcome_summary",
     }
     assert set(data.keys()) == expected_keys
+
+
+def test_terminal_nodes_write_judge_failures(
+    base_state: EnrichmentState, tmp_path: Path
+) -> None:
+    """Both terminal reports persist judge fail-open events verbatim."""
+    config = RunnableConfig(
+        {"configurable": {"settings": Settings(output_dir=str(tmp_path))}}
+    )
+    failures = ["relevance_judge: LLM call timed out"]
+
+    state = base_state.model_copy()
+    state.judge_failures = list(failures)
+    done = complete_node(state, config)
+    data = json.loads(Path(done.output_file_path).read_text())
+    assert data["judge_failures"] == failures
+
+    state = base_state.model_copy()
+    state.judge_failures = list(failures)
+    escalated = escalate_node(state, config)
+    data = json.loads(Path(escalated.output_file_path).read_text())
+    assert data["judge_failures"] == failures
 
 
 def test_escalate_node_dumps_validation_telemetry(

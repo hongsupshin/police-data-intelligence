@@ -13,7 +13,7 @@ states but that diverges from the label (e.g. "Asian" vs the agency's "OTHER")
 is faithful and kept — that taxonomy-collapse is the race-disagreement typer's
 concern, not this gate's.
 
-Off by default; gated by ``Settings.enable_race_verification`` (civilians_shot
+On by default; gated by ``Settings.enable_race_verification`` (civilians_shot
 only). Earned offline (faithfulness A/B, 2026-06-13): zero genuine false-nulls.
 """
 
