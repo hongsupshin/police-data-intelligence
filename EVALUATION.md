@@ -1,8 +1,11 @@
 # Evaluation Report
 
 **Pipeline version**: v2.0 — agentic precision/safety layer (relevance judge,
-race verifier, advisory conflict annotator) on top of deterministic extraction,
-plus a deterministic consensus resolver and victim-anchored extraction.
+race verifier, advisory conflict annotator) on top of a fixed, non-agentic
+extraction workflow, plus a deterministic consensus resolver and
+victim-anchored extraction. Throughout this document *deterministic* describes
+the control flow (which nodes run, in what order, on which outcomes), not
+model outputs — every LLM call is sampled (see Decoding config under Phase 2).
 **Datasets**: TJI Civilians-Shot (1,674 records) and Officers-Shot (282 records),
 2014–2024. **Date**: June 2026
 
@@ -413,6 +416,12 @@ deterministic year-proportional stratification, excluding the 10 dev set records
 Stratification ensured coverage across incident years (2014–2024). All agents on,
 `claude-sonnet-4-6` (Haiku for the advisory annotator).
 
+**Decoding config.** Temperature is left unset on the `ChatAnthropic` clients,
+so every call samples at the Anthropic API default (1.0); the Messages API
+exposes no seed. Run-to-run variance therefore comes from both sampling and
+API-side nondeterminism, and eval reports are not bit-for-bit reproducible.
+The architecture is built to catch wrong values, not to remove variance.
+
 > **How this N=100 was assembled.** A data-integrity bug (a non-idempotent ETL
 > that appended duplicate incident rows) had polluted the database; once fixed and
 > reloaded cleanly (back to 1,674 / 282 records), the holdout was de-duplicated to
@@ -464,9 +473,12 @@ Aggregate precision: **210/272 exact (77%, 95% CI 72–82), 243/272 fuzzy (89%, 
   faithfulness restraint, not a measured accuracy gain): the verifier nulls races
   the source does not explicitly state, leaving only faithfully supported values.
   One disagreement remains (extracted Black, GT Hispanic).
-- **location_detail** shows the usual exact/fuzzy gap (16% vs 91%): the pipeline
-  extracts the correct city, but formatting differs from the street-level ground
-  truth.
+- **location_detail** shows the usual exact/fuzzy gap (16% vs 91%): the ground
+  truth is the database's city (county as fallback) while the pipeline extracts
+  street-level detail (e.g. "100 block of Couch Court, Springtown"), so exact
+  match fails on the granularity gap by construction and the fuzzy score is the
+  meaningful one. Because the city also anchors search and validation, this
+  field's score is a consistency check, not a blind holdout.
 - **weapon** is 83% exact after category normalization; remaining errors are
   category-map gaps (e.g. SAWED-OFF SHOTGUN, GUN vs HANDGUN canonicals) and a few
   entity-confusion cases.
@@ -518,7 +530,16 @@ officer completions. Outcome (the officer's harm) is the highest-coverage field
 at 94%; of its 12 errors, 11 are conservative (extracted "fatal" when GT is
 "INJURY") and 1 is the reverse (extracted non-fatal, GT "DEATH") — so fatal recall
 is high but not perfect on officers. location_detail repeats the city-vs-address
-formatting gap (11% exact, 97% fuzzy).
+granularity gap (11% exact, 97% fuzzy).
+
+**What escalation contributes.** Escalated records commit no values, so they
+never enter the precision figures — and for most of them no counterfactual
+precision exists: 28 of the 38 escalations across both datasets are retrieval
+gaps or insufficient-source cases, leaving nothing an un-escalated run could
+have extracted. The counterfactual is real only for the 10 relevance-judge
+vetoes (7 civilian, 3 officer): without the judge those records complete
+(officer completion is 95% rather than 92%) with fields describing a different
+incident — the audit of every veto found only wrong-article retrievals.
 
 ### Error Analysis
 
@@ -538,6 +559,14 @@ spurious conflicts, and the relevance gate removed wrong-article completions.
 Officers are lower mainly because the shooter-race and location fields are sparse
 and coarse there, and because 12% of officer completions are outcome-only entity
 confusion (below).
+
+**The database is an imperfect reference.** TJI cautions that race is often
+mischaracterized and the harm field can be stale, so a scored mismatch can be a
+database error rather than an extraction error. Because every mismatch counts
+against the pipeline, the reported accuracy is a conservative lower bound: many
+disagreements are taxonomy or comparator artifacts (e.g. "rifle" vs "firearm"),
+and the lone committed civilian-race conflict (extracted Black, GT Hispanic) is
+as likely a database error as an extraction one.
 
 #### Outcome: Systematic False-Positive Deaths
 
@@ -736,6 +765,11 @@ placed within the validation window of real high-profile events (Dallas police
 ambush, Harding St. raid, Botham Jean, George Floyd protests). **0/20 completions,
 0/20 hallucinations.**
 
+Twenty is a small sample: with zero completions the 95% Wilson upper bound on
+the fabrication rate is still ~16%, so this is no fabrication *observed* on a
+small, deliberately hard probe — not a guarantee of none. Growing the suite is
+the way to tighten that bound (see Roadmap).
+
 Full results: `output/adversarial/results.json`
 
 ## Phase 4: Model Comparison (Sonnet vs Haiku)
@@ -892,8 +926,10 @@ and 71% / 86% (officers). Key strengths:
 - **Fatal recall is high**: on civilians the pipeline never says someone survived
   when the database says they died (100% fatal recall); on officers it misses once
   (1 of 94). Outcome errors are otherwise all in the conservative direction.
-- **location_detail** is ~91–97% fuzzy, confirming the correct city is extracted
-  even when formatting differs from street-level ground truth.
+- **location_detail** is ~91–97% fuzzy: the pipeline extracts street-level
+  detail against city-level ground truth, so exact match fails on granularity
+  by construction; and since the city anchors search and validation, this score
+  is a consistency check, not a blind holdout.
 - **The agentic precision/safety layer earns its place**: the race verifier lifts
   civilian-race faithfulness (65%→91% exact) by nulling unstated values; the
   relevance gate removes wrong-article completions (7 civilians, 3 officers) that
@@ -903,6 +939,8 @@ and 71% / 86% (officers). Key strengths:
   completed**. Defense-in-depth (validation → relevance gate → conflict detection
   → human review) caught every scenario, including hallucination traps placed near
   real high-profile events (see [Phase 3](#phase-3-adversarial-evaluation)).
+  Twenty is a small probe — the 95% Wilson upper bound on the fabrication rate
+  is ~16% — so this is no fabrication observed, not a guarantee of none.
 - **The bounded design beats the unconstrained one**: a no-guardrails autonomous
   agent on the same 20 incidents fabricated 1/20 (silently, reproducibly) at 5.3×
   the search cost, while the pipeline completed 0/20 and escalated every case with a
@@ -928,6 +966,14 @@ completion rate vs 83% for Hispanic incidents.
 **Ground truth completeness**: The `civilian_died` column was backfilled
 ([Fix 4](#fix-4-civilian_died-backfill-migration)). Other ground truth fields
 may also have gaps limiting evaluation coverage.
+
+**Judge fail-open observability**: the judges fail open — an error is logged
+and the pipeline proceeds as if the judge had not run. In the runs reported
+here a fail-open was only a run-time warning, so its exact count is not
+recoverable from the saved reports. The judges' recorded effects (10 relevance
+vetoes, the 11 verifier-committed civilian races) show they were running, but
+a hard zero can't be certified for these runs. Terminal reports now persist a
+`judge_failures` field, making skipped checks auditable in future runs.
 
 **Both datasets evaluated**: v2.0 evaluates both civilians-shot and officers-shot
 (N=100 each). Officers complete far more often (92% vs 70%) thanks to denser news
@@ -975,6 +1021,14 @@ group-level accuracy differences should be read with that caveat.
   BB/PELLET GUN mappings to `WEAPON_CATEGORY_MAP`
 - **Outcome-only / entity-confusion guard**: require ≥2 corroborated fields before
   committing a generic outcome, to suppress same-location/same-time confusion
+- **Gate noise floor**: validate the eval gate's tolerances against a no-op
+  duplicate run — the gate cannot yet distinguish its own run-to-run noise from
+  a real regression
+- **Larger adversarial suite**: 0/20 bounds the fabrication rate below ~16%
+  (95% Wilson); growing the probe is the way to tighten that bound
+- **TJI terminology in live prompts**: replace "suspect" with "shooter" in the
+  prompt strings (inert text is already updated) — a behavioral change that
+  goes through the offline gate like any other prompt edit
 - Batch processing across the ~1,564 remaining civilians records (priority order)
 - Human review UI for processing escalated records
 
