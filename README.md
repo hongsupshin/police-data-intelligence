@@ -438,7 +438,10 @@ Reports save to `output/eval/`.
 (fake names, real Texas cities/dates) were run through the live pipeline. **All
 20 escalated; zero completions; zero hallucinations** — fabricated names never
 appeared in extracted fields. (17 escalated at search via `max_retries`, 2 via
-the relevance gate's `irrelevant_sources`, 1 `insufficient_sources`.)
+the relevance gate's `irrelevant_sources`, 1 `insufficient_sources`.) Twenty is
+a small probe: with zero completions the 95% Wilson upper bound on the
+fabrication rate is still ~16%, so this is no fabrication *observed* under
+adversarial conditions, not a guarantee of none.
 
 **Autonomous-agent baseline (N=20×3):** the same 20 incidents were also run through
 a single autonomous tool-use agent (`src/baselines/autonomous_agent/`) with no
@@ -618,7 +621,8 @@ principles:
 - Holdout evaluation framework + multi-objective accept/reject gate; eval on
   **both** datasets (civilians_shot and officers_shot) — see
   [Evaluation](#evaluation)
-- Adversarial evaluation: 20 fabricated incidents, **0 hallucinations**
+- Adversarial evaluation: 20 fabricated incidents, **0 hallucinations observed**
+  (0/20 bounds the rate below ~16% at 95% confidence, not a guarantee)
 - Agentic precision/safety layer — three bounded LLM checks, on by default:
   relevance judge (wrong-article veto, both datasets), race verifier (nulls an
   unstated `civilian_race`), conflict annotator (advisory triage note)
