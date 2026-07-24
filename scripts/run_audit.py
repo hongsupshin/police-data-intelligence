@@ -16,6 +16,10 @@ Examples:
 
     # Inspect the sample + cost estimate without running anything
     python scripts/run_audit.py civilians_shot --dry-run --limit 100
+
+    # False-flag suite: audit presumed-correct incidents, report specificity
+    # (add --from-saved output/enrichment for the offline tier, zero LLM cost)
+    python scripts/run_audit.py civilians_shot --false-flag-suite --limit 30
 """
 
 import argparse
@@ -39,6 +43,12 @@ from src.audit.report import (  # noqa: E402
 )
 from src.audit.runner import run_audit  # noqa: E402
 from src.audit.sampling import select_audit_incidents  # noqa: E402
+from src.audit.specificity import (  # noqa: E402
+    HOLDOUT_REPORTS_DIR,
+    build_presumed_correct_set,
+    print_specificity,
+    specificity_from_results,
+)
 from src.eval.comparators import PipelineOutcome  # noqa: E402
 
 # Approximate per-incident pipeline cost, from holdout runs (~$0.20/record
@@ -70,7 +80,25 @@ def _parse_args() -> argparse.Namespace:
         action="store_true",
         help="Print the sample and cost estimate; run nothing",
     )
+    parser.add_argument(
+        "--false-flag-suite",
+        action="store_true",
+        help="Audit presumed-correct incidents and report specificity",
+    )
     return parser.parse_args()
+
+
+def _presumed_correct(dataset_type: DatasetType) -> list[int]:
+    """Build the presumed-correct id set from saved holdout reports."""
+    report_paths = sorted(
+        HOLDOUT_REPORTS_DIR.glob(f"holdout_{dataset_type.value}_*.json")
+    )
+    ids = build_presumed_correct_set(report_paths, dataset_type)
+    print(
+        f"Presumed-correct set: {len(ids)} incidents "
+        f"from {len(report_paths)} holdout reports"
+    )
+    return ids
 
 
 def _dry_run(dataset_type: DatasetType, limit: int) -> None:
@@ -96,9 +124,15 @@ def _dry_run(dataset_type: DatasetType, limit: int) -> None:
     print("Incident ids: " + ", ".join(str(s.incident_id) for s in samples))
 
 
-def _offline(dataset_type: DatasetType, directory: Path) -> None:
+def _offline(
+    dataset_type: DatasetType,
+    directory: Path,
+    false_flag_suite: bool = False,
+) -> None:
     """Replay saved enrichment outputs through the flag layer (no LLM)."""
     from src.database.connection import get_connection
+
+    presumed = set(_presumed_correct(dataset_type)) if false_flag_suite else None
 
     conn = get_connection()
     try:
@@ -126,6 +160,8 @@ def _offline(dataset_type: DatasetType, directory: Path) -> None:
         results=results,
     )
     print_report(report)
+    if presumed is not None:
+        print_specificity(specificity_from_results(results, presumed))
     print(f"Report: {save_report(report)}")
     print(f"Worksheet: {write_verification_worksheet(report)}")
 
@@ -140,13 +176,24 @@ def _live(args: argparse.Namespace, dataset_type: DatasetType) -> None:
     finally:
         conn.close()
 
+    incident_ids = args.incident_ids
+    presumed: set[int] | None = None
+    if args.false_flag_suite:
+        presumed_ids = _presumed_correct(dataset_type)
+        incident_ids = presumed_ids[: args.limit]
+        presumed = set(presumed_ids)
+
     report = run_audit(
         dataset_type=dataset_type,
         limit=args.limit,
         run_id=args.resume,
-        incident_ids=args.incident_ids,
+        incident_ids=incident_ids,
     )
     print_report(report)
+    if presumed is not None:
+        print_specificity(
+            specificity_from_results(report.per_incident, presumed)
+        )
     print(f"Report: {save_report(report)}")
     print(f"Worksheet: {write_verification_worksheet(report)}")
 
@@ -162,7 +209,7 @@ def main() -> None:
     if args.dry_run:
         _dry_run(dataset_type, args.limit)
     elif args.from_saved is not None:
-        _offline(dataset_type, args.from_saved)
+        _offline(dataset_type, args.from_saved, args.false_flag_suite)
     else:
         _live(args, dataset_type)
 
