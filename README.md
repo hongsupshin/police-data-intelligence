@@ -31,6 +31,7 @@
   - [Cost](#cost)
 - [Responsible AI](#responsible-ai)
 - [Roadmap](#roadmap)
+- [Publications](#publications)
 - [License](#license)
 - [Acknowledgment](#acknowledgment)
 
@@ -639,6 +640,14 @@ principles:
 
 - Batch processing across all records
 - Human review UI for processing escalated records
+
+## Publications
+
+- **SciPy 2026 talk** — _Automated Data Enrichment for Police Accountability:
+  Where Agentic Judgment Earns Its Place_:
+  [slides (PDF)](publications/SciPy2026_HongsupShin_talk.pdf)
+- The accompanying SciPy 2026 proceedings paper will be added here once
+  published.
 
 ## License
 
