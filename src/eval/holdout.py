@@ -333,6 +333,46 @@ def _infer_stage_reached(
     return "unknown"
 
 
+# Every year stratum gets at least this many samples so sparse years are
+# not drowned out by proportional allocation.
+MIN_PER_STRATUM = 4
+
+
+def allocate_by_stratum(
+    rows_by_stratum: dict[int, list[tuple]],
+    limit: int,
+    min_per_stratum: int = MIN_PER_STRATUM,
+) -> list[tuple]:
+    """Proportionally allocate rows across strata with a per-stratum minimum.
+
+    Shared by holdout and audit sampling. Strata are visited in sorted key
+    order; each gets max(min_per_stratum, its proportional share of limit),
+    capped at what it has, until limit is reached.
+
+    Args:
+        rows_by_stratum: Rows grouped by stratum key (e.g. year).
+        limit: Total number of rows to select.
+        min_per_stratum: Minimum rows per stratum when available.
+
+    Returns:
+        Selected rows, at most ``limit``.
+    """
+    total_available = sum(len(v) for v in rows_by_stratum.values())
+    selected: list[tuple] = []
+    for stratum in sorted(rows_by_stratum.keys()):
+        stratum_rows = rows_by_stratum[stratum]
+        proportion = len(stratum_rows) / total_available if total_available > 0 else 0
+        n_for_stratum = max(min_per_stratum, round(proportion * limit))
+        n_for_stratum = min(n_for_stratum, len(stratum_rows))
+        for row in stratum_rows[:n_for_stratum]:
+            selected.append(row)
+            if len(selected) >= limit:
+                break
+        if len(selected) >= limit:
+            break
+    return selected[:limit]
+
+
 def select_holdout_stratified(
     conn: connection,
     dataset_type: DatasetType,
@@ -436,32 +476,15 @@ def select_holdout_stratified(
     for row in rows:
         by_year[row[1]].append(row)
 
-    # Proportional allocation with minimum 4 per stratum
-    total_available = sum(len(v) for v in by_year.values())
-    selected: list[HoldoutSample] = []
-    min_per_stratum = 4
-
-    for year in sorted(by_year.keys()):
-        year_rows = by_year[year]
-        # Proportional count, at least min_per_stratum
-        proportion = len(year_rows) / total_available if total_available > 0 else 0
-        n_for_year = max(min_per_stratum, round(proportion * limit))
-        n_for_year = min(n_for_year, len(year_rows))
-        for row in year_rows[:n_for_year]:
-            selected.append(
-                HoldoutSample(
-                    incident_id=row[0],
-                    year=row[1],
-                    race=row[2],
-                    n_eval_fields=row[3],
-                )
-            )
-            if len(selected) >= limit:
-                break
-        if len(selected) >= limit:
-            break
-
-    return selected[:limit]
+    return [
+        HoldoutSample(
+            incident_id=row[0],
+            year=row[1],
+            race=row[2],
+            n_eval_fields=row[3],
+        )
+        for row in allocate_by_stratum(by_year, limit)
+    ]
 
 
 def evaluate_single(
